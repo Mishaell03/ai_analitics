@@ -14,6 +14,8 @@ class Settings:
     db_user: str = os.getenv("DB_USER")
     db_password: str = os.getenv("DB_PASSWORD")
 
+    api_reload: bool = os.getenv("API_RELOAD", False)
+
     # DATABASE URL
     @property
     def database_url(self) -> str:
