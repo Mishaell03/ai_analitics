@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from starlette.requests import HTTPConnection
 
-from app.db.models import UserEventLogs
+from app.models.errors import UserEventLog
 from app.utilit.client_ip import get_client_ip
 from app.utilit.geoip import get_geoip
 
@@ -27,9 +27,9 @@ def user_event_logs(
 
     request_method = getattr(request, "method", None)
     if request_method is None:
-        request_method = "WEBSOCKET"
+        request_method = "API"
 
-    log = UserEventLogs(
+    log = UserEventLog(
         user_id=user_id,
         session_id=session_id,
         event=event,
