@@ -1,18 +1,17 @@
 from datetime import datetime, timezone
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import HTTPConnection
 
 from app.models.errors import UserEventLog
-from app.utilit.client_ip import get_client_ip
-from app.utilit.geoip import get_geoip
+from app.core.clients_ip import get_client_ip, get_geoip
 
 
-def user_event_logs(
-        db: Session,
+async def user_event_logs(
+        db: AsyncSession,
         *,
         request: HTTPConnection,
         user_id: int | None = None,
-        session_id: int | None = None,
+        session_id: str | None = None,
         event: str,
         status_code: int | None = None,
         device_id: str | None = None,
@@ -45,4 +44,4 @@ def user_event_logs(
     )
 
     db.add(log)
-    db.commit()
+    await db.commit()

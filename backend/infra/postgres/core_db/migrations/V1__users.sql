@@ -3,7 +3,6 @@ CREATE TABLE IF NOT EXISTS users (
     name VARCHAR(64),
     phone VARCHAR(30) UNIQUE,
     email VARCHAR(250) UNIQUE NOT NULL,
-    password_hash VARCHAR(255),
     img VARCHAR(512),
     is_admin BOOLEAN NOT NULL DEFAULT FALSE,
     is_blocked BOOLEAN NOT NULL DEFAULT FALSE,

@@ -1,4 +1,5 @@
 import os
+from ipaddress import ip_network
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -14,7 +15,17 @@ class Settings:
     db_user: str = os.getenv("DB_USER")
     db_password: str = os.getenv("DB_PASSWORD")
 
+    # API
     api_reload: bool = os.getenv("API_RELOAD", False)
+
+    # IP
+    trusted_proxies: list = [
+        ip_network(network.strip())
+        for network in os.getenv(
+            "TRUSTED_PROXIES"
+        ).split(",")
+    ]
+    geoip_db_path: str = os.getenv("GEOIP_DB_PATH")
 
     # DATABASE URL
     @property

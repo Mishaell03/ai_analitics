@@ -1,13 +1,15 @@
 import logging
-from sqlalchemy.orm import Session
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import HTTPConnection
+from fastapi import HTTPException, Request
+from app.models.errors import BackendError, BackendErrorLocalization
+from app.core.users_events_logs import user_event_logs
 
-from app.db.models import BackendErrors, BackendErrorsLocalization
-from app.core.user_event_logs import user_event_logs
 
-
-def build_backend_error(
-    db: Session,
+async def build_backend_error(
+    db: AsyncSession,
     request: HTTPConnection,
     *,
     code: str,
@@ -17,15 +19,16 @@ def build_backend_error(
     device_id: str | None = None,
     platform: str | None = None,
 ) -> tuple[int, dict]:
-    backend_error = (
-        db.query(BackendErrors)
-        .filter(BackendErrors.code == code)
-        .first()
+    result = await db.execute(
+        select(BackendError)
+        .where(BackendError.code == code)
     )
+
+    backend_error = result.scalar_one_or_none()
 
     if backend_error is None:
         logging.error(f"UNKNOWN_ERROR: {backend_error}")
-        user_event_logs(
+        await user_event_logs(
             db,
             request=request,
             event="UNKNOWN_ERROR",
@@ -41,26 +44,25 @@ def build_backend_error(
             "message": "Unknown backend error",
         }
 
-    localization = (
-        db.query(BackendErrorsLocalization)
-        .filter(
-            BackendErrorsLocalization.code == code,
-            BackendErrorsLocalization.language == language,
+    result = await db.execute(
+        select(BackendErrorLocalization).where(
+            BackendErrorLocalization.code == code,
+            BackendErrorLocalization.language == language,
         )
-        .first()
     )
+    localization = result.scalar_one_or_none()
 
     if localization is None:
-        localization = (
-            db.query(BackendErrorsLocalization)
-            .filter(
-                BackendErrorsLocalization.code == code,
-                BackendErrorsLocalization.language == "en",
+        result = await db.execute(
+            select(BackendErrorLocalization).where(
+                BackendErrorLocalization.code == code,
+                BackendErrorLocalization.language == "en",
             )
-            .first()
         )
 
-    user_event_logs(
+        localization = result.scalar_one_or_none()
+
+    await user_event_logs(
         db,
         request=request,
         event=backend_error.code,
@@ -75,3 +77,30 @@ def build_backend_error(
         "code": backend_error.code,
         "message": localization.message if localization else backend_error.code,
     }
+
+async def raise_backend_error(
+        db: AsyncSession,
+        request: Request,
+    *,
+        code: str,
+        language: str = "en",
+        user_id: int | None = None,
+        session_id: str | None = None,
+        device_id: str | None = None,
+        platform: str | None = None,
+) -> None:
+    status_code, detail = await build_backend_error(
+        db=db,
+        request=request,
+        code=code,
+        language=language,
+        user_id=user_id,
+        session_id=session_id,
+        device_id=device_id,
+        platform=platform,
+    )
+
+    raise HTTPException(
+        status_code=status_code,
+        detail=detail,
+    )
