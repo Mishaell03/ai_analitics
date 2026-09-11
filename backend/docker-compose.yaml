@@ -65,6 +65,13 @@ services:
       mc mb local/default-avatars --ignore-existing;
       mc mb local/avatars --ignore-existing;
       
+      mc mb local/course-content --ignore-existing;
+      mc mb local/module-content --ignore-existing;
+      mc mb local/lesson-content --ignore-existing;
+      mc mb local/lesson-videos --ignore-existing;
+      mc mb local/lesson-assets --ignore-existing;
+      mc mb local/datasets --ignore-existing;
+      
       mc cp --recursive /seeds/default-avatars/ local/default-avatars;
       "
 
