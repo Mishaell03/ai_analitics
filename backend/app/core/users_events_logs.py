@@ -1,17 +1,17 @@
+import logging
 from datetime import datetime, timezone
-from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import HTTPConnection
 
 from app.models.errors import UserEventLog
 from app.core.clients_ip import get_client_ip, get_geoip
+from app.core.database import AsyncSessionLocal
 
 
 async def user_event_logs(
-        db: AsyncSession,
         *,
         request: HTTPConnection,
         user_id: int | None = None,
-        session_id: str | None = None,
+        session_id: int | None = None,
         event: str,
         status_code: int | None = None,
         device_id: str | None = None,
@@ -28,20 +28,27 @@ async def user_event_logs(
     if request_method is None:
         request_method = "API"
 
-    log = UserEventLog(
-        user_id=user_id,
-        session_id=session_id,
-        event=event,
-        request_method=request_method,
-        request_path=request.url.path,
-        status_code=status_code,
-        ip_address=client_ip,
-        country_code=country_code,
-        is_proxy=is_proxy,
-        device_id=device_id,
-        platform=platform,
-        created_at=now,
-    )
+    async with AsyncSessionLocal() as db:
+        try:
+            log = UserEventLog(
+                user_id=user_id,
+                session_id=session_id,
+                event=event,
+                request_method=request_method,
+                request_path=request.url.path,
+                status_code=status_code,
+                ip_address=client_ip,
+                country_code=country_code,
+                is_proxy=is_proxy,
+                device_id=device_id,
+                platform=platform,
+                created_at=now,
+            )
 
-    db.add(log)
-    await db.commit()
+            db.add(log)
+            await db.commit()
+
+        except Exception as e:
+            logging.exception(f'user_event_logs exception: {e}')
+            await db.rollback()
+            raise

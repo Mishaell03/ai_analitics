@@ -3,15 +3,16 @@ from datetime import datetime, timezone, timedelta
 
 from argon2 import PasswordHasher
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
-from app.api.v1.schemas.auth import BaseRegisterRequest
+from app.api.v1.dto.auth_service import BaseAuthContext
+from app.api.v1.schemas.auth import BaseAuthRequest
 from app.core.errors import raise_backend_error
 from app.models.auth import UserAuthMethod, UserSession, Provider
 from app.models.users import User
 from app.core.clients_ip import get_client_ip
-
 
 class BaseAuthService:
     def __init__(self, db: AsyncSession):
@@ -19,9 +20,12 @@ class BaseAuthService:
 
     async def register(
             self,
-            data: BaseRegisterRequest,
+            data: BaseAuthRequest,
             request: Request,
-    ) -> str:
+            is_register: bool,
+    ) -> BaseAuthContext:
+        """Authorization with mail + password"""
+        ph = PasswordHasher()
 
         # test user has registration or not
         user_result = await self.db.execute(
@@ -31,56 +35,135 @@ class BaseAuthService:
 
         existing_user = user_result.scalar_one_or_none()
 
-        if existing_user is not None:
-            await raise_backend_error(
-                db=self.db,
-                request=request,
-                code="EMAIL_ALREADY_EXISTS",
-                language=data.language,
-                device_id=data.device_id,
+        if is_register:
+
+            if existing_user is not None:
+                await raise_backend_error(
+                    db=self.db,
+                    request=request,
+                    code="EMAIL_ALREADY_EXISTS",
+                    language=data.language,
+                    device_id=data.device_id,
+                )
+
+            result_provider = await self.db.execute(
+                select(Provider).where(
+                    Provider.code == "pass"
+                )
             )
 
-        result_provider = await self.db.execute(
-            select(Provider).where(
-                Provider.code == "pass"
+            provider = result_provider.scalar_one_or_none()
+
+            if provider is None:
+                await raise_backend_error(
+                    db=self.db,
+                    request=request,
+                    code="AUTH_PROVIDER_NOT_FOUND",
+                    language=data.language,
+                    device_id=data.device_id,
+                )
+
+            password_hash = ph.hash(data.password)
+
+            # create user + get it`s id
+            user = User(
+                email=data.email,
             )
-        )
 
-        provider = result_provider.scalar_one_or_none()
+            self.db.add(user)
+            await self.db.flush()
 
-        if provider is None:
-            await raise_backend_error(
-                db=self.db,
-                request=request,
-                code="AUTH_PROVIDER_NOT_FOUND",
-                language=data.language,
-                device_id=data.device_id,
+            # create user login method
+            auth_method = UserAuthMethod(
+                user_id=user.user_id,
+                provider=provider.code,
+                provider_user_id=None,
+                password_hash=password_hash,
             )
 
-        ph = PasswordHasher()
-        password_hash = ph.hash(data.password)
+            self.db.add(auth_method)
 
-        # create user + get it`s id
-        user = User(
-            email=data.email,
-        )
+            now = datetime.now(timezone.utc)
+            error_fail = "BASE_AUTH_FAILED"
 
-        self.db.add(user)
-        await self.db.flush()
+        else:
+            user = existing_user
 
-        # create user login method
-        auth_method = UserAuthMethod(
-            user_id=user.user_id,
-            provider=provider.code,
-            provider_user_id=None,
-            password_hash=password_hash,
-        )
+            if user is None:
+                await raise_backend_error(
+                    db=self.db,
+                    request=request,
+                    code="USER_NOT_FOUND",
+                    language=data.language,
+                    device_id=data.device_id,
+                )
 
-        self.db.add(auth_method)
+            result_provider = await self.db.execute(
+                select(Provider).where(
+                    Provider.code == "pass"
+                )
+            )
+
+            provider = result_provider.scalar_one_or_none()
+
+            if provider is None:
+                await raise_backend_error(
+                    db=self.db,
+                    request=request,
+                    code="AUTH_PROVIDER_NOT_FOUND",
+                    language=data.language,
+                    device_id=data.device_id,
+                )
+
+            result_auth_method = await self.db.execute(
+                select(UserAuthMethod).where(
+                    UserAuthMethod.user_id == user.user_id,
+                    UserAuthMethod.provider == provider.code,
+                )
+            )
+
+            auth_method = result_auth_method.scalar_one_or_none()
+
+            if auth_method is None:
+                await raise_backend_error(
+                    db=self.db,
+                    request=request,
+                    code="INCORRECT_AUTH_METHOD",
+                    language=data.language,
+                    device_id=data.device_id,
+                )
+
+            try:
+                ph.verify(auth_method.password_hash, data.password)
+            except Exception:
+                await raise_backend_error(
+                    db=self.db,
+                    request=request,
+                    code="REGISTRATION_FAILED",
+                    language=data.language,
+                    device_id=data.device_id,
+                )
+
+            now = datetime.now(timezone.utc)
+
+            result_device_id = await self.db.execute(
+                select(UserSession).where(
+                    UserSession.user_id == user.user_id,
+                    UserSession.device_id == data.device_id,
+                    UserSession.expires_at >= now,
+                    UserSession.revoked_at.is_(None),
+                )
+            )
+
+            device_id = result_device_id.scalars().all()
+
+            for session in device_id:
+                session.revoked_at = now
+
+            error_fail = "BASE_LOGIN_FAILED"
 
         client_ip = get_client_ip(request)
         session_token = secrets.token_urlsafe(64)
-        now = datetime.now(timezone.utc)
 
         expires_at = now + timedelta(days=180)
 
@@ -100,15 +183,20 @@ class BaseAuthService:
         try:
             await self.db.commit()
 
-        except InterruptedError:
+        except IntegrityError:
             await self.db.rollback()
 
             await raise_backend_error(
                 db=self.db,
                 request=request,
-                code="REGISTRATION_FAILED",
+                code=error_fail,
                 language=data.language,
                 device_id=data.device_id,
             )
 
-        return session_token
+        return BaseAuthContext(
+            device_id=data.device_id,
+            user_id=user.user_id,
+            session_id=user_session.id,
+            session=session_token,
+        )

@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 
-class BaseRegisterRequest(BaseModel):
+# locale base models
+class _AuthData(BaseModel):
     device_id: str = Field(
         ...,
         pattern=r'^[a-zA-Z0-9_-]+$',
@@ -15,6 +16,15 @@ class BaseRegisterRequest(BaseModel):
         max_length=32,
         examples=["Chrome"],
     )
+    language: str = Field(
+        ...,
+        pattern=r"^[a-z]{2,3}$",
+        max_length=3,
+        examples=["ru"],
+    )
+
+# register && login with only password and email + base data for reg
+class BaseAuthRequest(_AuthData):
     email: str = Field(
         ...,
         min_length=5,
@@ -29,14 +39,8 @@ class BaseRegisterRequest(BaseModel):
         pattern=r'^[A-Za-z0-9!@#$%^&*()_+\-=\[\]{};:,.<>?/\\|~`]+$',
         examples=['Qwery123@']
     )
-    language: str = Field(
-        ...,
-        pattern=r"^[a-z]{2,3}$",
-        max_length=3,
-        examples=["ru"],
-    )
 
-class BaseRegisterResponse(BaseModel):
+class BaseAuthResponse(BaseModel):
     session: str = Field(
         examples=["session"],
     )
