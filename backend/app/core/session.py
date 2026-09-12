@@ -6,18 +6,28 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.models.users import User
-from app.models.auth import UserSession
 from app.core.errors import raise_backend_error
+from app.models.auth import UserSession
+from app.models.users import User
 
 security = HTTPBearer()
 
+
+class CurrentUserContext:
+    def __init__(
+        self,
+        user: User,
+        session: UserSession,
+    ):
+        self.user = user
+        self.session = session
 
 async def get_current_user(
         request: Request,
         credentials: HTTPAuthorizationCredentials = Depends(security),
         db: AsyncSession = Depends(get_db),
-) -> User:
+) -> CurrentUserContext:
+
     session_token = credentials.credentials.strip()
 
     if not session_token:
@@ -37,6 +47,7 @@ async def get_current_user(
             UserSession.expires_at > now,
         )
     )
+
     session = result.scalar_one_or_none()
 
     if session is None:
@@ -48,8 +59,11 @@ async def get_current_user(
         )
 
     result = await db.execute(
-        select(User).where(User.user_id == session.user_id)
+        select(User).where(
+            User.user_id == session.user_id,
+        )
     )
+
     user = result.scalar_one_or_none()
 
     if user is None:
@@ -72,21 +86,26 @@ async def get_current_user(
             user_id=user.user_id,
         )
 
-    return user
+    return CurrentUserContext(
+        user=user,
+        session=session,
+    )
 
 
 async def get_current_admin(
         request: Request,
-        user: User = Depends(get_current_user),
+        current: CurrentUserContext = Depends(get_current_user),
         db: AsyncSession = Depends(get_db),
-) -> User:
-    if not user.is_admin:
+) -> CurrentUserContext:
+
+    if not current.user.is_admin:
         await raise_backend_error(
             db=db,
             request=request,
             code="ADMIN_ACCESS_REQUIRED",
-            language="en",
-            user_id=user.user_id,
+            language=current.session.language,
+            session_id=current.session.id,
+            user_id=current.user.user_id,
         )
 
-    return user
+    return current
