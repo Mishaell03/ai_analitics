@@ -1,5 +1,6 @@
 import secrets
 from datetime import datetime, timezone, timedelta
+import random
 
 from argon2 import PasswordHasher
 from sqlalchemy import select
@@ -64,10 +65,11 @@ class BaseAuthService:
                 )
 
             password_hash = ph.hash(data.password)
-
+            random_number = random.randint(1, 11)
             # create user + get it`s id
             user = User(
                 email=data.email,
+                img=f'user{random_number}',
             )
 
             self.db.add(user)
@@ -196,7 +198,7 @@ class BaseAuthService:
 
         return BaseAuthContext(
             device_id=data.device_id,
-            user_id=user.user_id,
             session_id=user_session.id,
+            user_id=user.user_id,
             session=session_token,
         )
