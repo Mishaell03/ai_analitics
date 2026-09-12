@@ -57,6 +57,7 @@ class UserSession(Base):
     language: Mapped[str] = mapped_column(String(3), nullable=False)
     provider: Mapped[str] = mapped_column(String(20), ForeignKey("providers.code", ondelete="RESTRICT", ),
                                           nullable=False)
+    platform: Mapped[str | None] = mapped_column(String(15), nullable=True)
     device_name: Mapped[str | None] = mapped_column(String(32), nullable=True)
     device_id: Mapped[str] = mapped_column(String(255), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

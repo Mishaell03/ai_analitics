@@ -34,6 +34,7 @@ async def get_courses(
         device_id=current.session.device_id,
         user_id=current.user.user_id,
         session_id=current.session.id,
+        platform=current.session.platform
     )
 
     return courses

@@ -2,9 +2,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.courses import CoursesResponse, CourseItem
-from app.models.courses import Course
 from app.core.config import settings
 from app.core.minio_url import get_minio_url
+from app.models.courses import Course
 
 
 class BaseCoursesService:
@@ -53,14 +53,13 @@ class BaseCoursesService:
         course_items = []
 
         for course in courses:
-            main_image_url = None
+            image_path = f"{course.course_id}/main.webp"
 
-            if course.content_path:
-                main_image_url = get_minio_url(
-                    file_path=course.content_path,
-                    expires=settings.image_url_ttl,
-                    bucket="course-content",
-                )
+            main_image_url = get_minio_url(
+                file_path=image_path,
+                expires=settings.image_url_ttl,
+                bucket="course-content",
+            )
 
             course_items.append(
                 CourseItem(

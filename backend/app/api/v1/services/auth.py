@@ -171,6 +171,7 @@ class BaseAuthService:
 
         user_session = UserSession(
             device_id=data.device_id,
+            platform='web',
             user_id=user.user_id,
             session=session_token,
             ip=client_ip,

@@ -73,6 +73,7 @@ services:
       mc mb local/datasets --ignore-existing;
       
       mc cp --recursive /seeds/default-avatars/ local/default-avatars;
+      mc cp --recursive /seeds/course-content/ local/course-content;
       "
 
 volumes:
