@@ -4,6 +4,7 @@ uvicorn[standard]
 sqlalchemy
 asyncpg
 alembic
+minio
 
 pydantic
 pydantic-settings

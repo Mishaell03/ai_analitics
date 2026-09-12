@@ -2,6 +2,7 @@ import os
 from ipaddress import ip_network
 from pathlib import Path
 from dotenv import load_dotenv
+from minio import Minio
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 load_dotenv(BASE_DIR / ".env")
@@ -16,7 +17,25 @@ class Settings:
     db_password: str = os.getenv("DB_PASSWORD")
 
     # API
-    api_reload: bool = os.getenv("API_RELOAD", False)
+    api_reload: bool = os.getenv("API_RELOAD", "false").lower() == "true"
+
+    # MINIO
+    minio_endpoint: str = os.getenv("MINIO_ENDPOINT")
+    minio_access_key: str = os.getenv("MINIO_ACCESS_KEY")
+    minio_secret_key: str = os.getenv("MINIO_SECRET_KEY")
+    minio_secure: bool = os.getenv("MINIO_SECURE", "false").lower() == "true"
+
+    minio_client = Minio(
+        endpoint=minio_endpoint,
+        access_key=minio_access_key,
+        secret_key=minio_secret_key,
+        secure=minio_secure,
+    )
+
+    image_url_ttl: int = int(os.getenv("IMAGE_URL_TTL", "3600"))
+    content_url_ttl: int = int(os.getenv("CONTENT_URL_TTL", "3600"))
+    video_url_ttl: int = int(os.getenv("VIDEO_URL_TTL", "7200"))
+    upload_url_ttl: int = int(os.getenv("UPLOAD_URL_TTL", "900"))
 
     # IP
     trusted_proxies: list = [

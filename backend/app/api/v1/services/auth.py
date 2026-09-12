@@ -86,7 +86,7 @@ class BaseAuthService:
             self.db.add(auth_method)
 
             now = datetime.now(timezone.utc)
-            error_fail = "BASE_AUTH_FAILED"
+            error_fail = "REGISTRATION_FAILED"
 
         else:
             user = existing_user
@@ -141,7 +141,7 @@ class BaseAuthService:
                 await raise_backend_error(
                     db=self.db,
                     request=request,
-                    code="REGISTRATION_FAILED",
+                    code="LOGIN_FAILED",
                     language=data.language,
                     device_id=data.device_id,
                 )
@@ -162,7 +162,7 @@ class BaseAuthService:
             for session in device_id:
                 session.revoked_at = now
 
-            error_fail = "BASE_LOGIN_FAILED"
+            error_fail = "LOGIN_FAILED"
 
         client_ip = get_client_ip(request)
         session_token = secrets.token_urlsafe(64)
