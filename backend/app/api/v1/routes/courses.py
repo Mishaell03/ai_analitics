@@ -1,12 +1,11 @@
 from fastapi import APIRouter, Request, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.schemas.courses import CoursesResponse, CourseDetailResponse
+from app.api.v1.schemas.courses import CoursesResponse, CourseDetailResponse, LessonDetailResponse
 from app.api.v1.services.courses import BaseCoursesService
 from app.core.database import get_db
 from app.core.session import CurrentUserContext, get_current_user
 from app.core.users_events_logs import user_event_logs
-from app.core.errors import raise_backend_error
 
 router = APIRouter()
 
@@ -36,6 +35,7 @@ async def get_courses(
 
     return courses
 
+
 @router.get("/courses/{course_id}", response_model=CourseDetailResponse)
 async def get_course(
         course_id: int,
@@ -49,19 +49,13 @@ async def get_course(
         course_id=course_id,
         page=page,
         page_size=page_size,
+        request=request,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.user.user_id,
+        platform=current.session.platform,
     )
-
-    if course is None:
-        await raise_backend_error(
-            db=db,
-            request=request,
-            code="COURSE_NOT_FOUND",
-            language=current.session.language,
-            device_id=current.session.device_id,
-            session_id=current.session.id,
-            user_id=current.user.user_id,
-            platform=current.session.platform,
-        )
 
     await user_event_logs(
         request=request,
@@ -74,3 +68,37 @@ async def get_course(
     )
 
     return course
+
+
+@router.get("/courses/{course_id}/modules/{module_id}/lessons/{lesson_id}", response_model=LessonDetailResponse)
+async def get_lesson(
+        course_id: int,
+        module_id: int,
+        lesson_id: int,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_user),
+):
+    lesson = await BaseCoursesService(db).get_lesson(
+        course_id=course_id,
+        module_id=module_id,
+        lesson_id=lesson_id,
+        request=request,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.user.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_GET_LESSON",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.user.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return lesson

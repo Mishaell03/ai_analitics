@@ -44,3 +44,26 @@ class CourseDetailResponse(BaseModel):
     total_pages: int
     current_page: int
     page_size: int
+
+
+class CourseShortInfo(BaseModel):
+    course_id: int
+    slug: str
+    title: str
+
+class ModuleShortInfo(BaseModel):
+    module_id: int
+    title: str
+    position: int
+
+class LessonInfo(BaseModel):
+    lesson_id: int
+    title: str
+    description: str | None = None
+    position: int
+    content_url: str | None = None
+
+class LessonDetailResponse(BaseModel):
+    course: CourseShortInfo
+    module: ModuleShortInfo
+    lesson: LessonInfo

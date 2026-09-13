@@ -10,7 +10,9 @@ VALUES
     ('ADMIN_ACCESS_REQUIRED', 403),
     ('INCORRECT_AUTH_METHOD', 400),
     ('LOGIN_FAILED', 401),
-    ('COURSE_NOT_FOUND', 404)
+    ('COURSE_NOT_FOUND', 404),
+    ('MODULE_NOT_FOUND', 404),
+    ('LESSON_NOT_FOUND', 404)
 ON CONFLICT (code) DO NOTHING;
 
 -- локализации ошибок
@@ -44,5 +46,11 @@ VALUES
     ('LOGIN_FAILED', 'ru', 'Не удалось выполнить вход'),
 
     ('COURSE_NOT_FOUND', 'en', 'Course not found'),
-    ('COURSE_NOT_FOUND', 'ru', 'Курс не найден')
+    ('COURSE_NOT_FOUND', 'ru', 'Курс не найден'),
+
+    ('MODULE_NOT_FOUND', 'en', 'Module not found'),
+    ('MODULE_NOT_FOUND', 'ru', 'Модуль не найден'),
+
+    ('LESSON_NOT_FOUND', 'en', 'Lesson not found'),
+    ('LESSON_NOT_FOUND', 'ru', 'Урок не найден')
 ON CONFLICT (code, language) DO NOTHING;

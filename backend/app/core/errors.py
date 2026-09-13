@@ -91,7 +91,7 @@ async def raise_backend_error(
         db=db,
         request=request,
         code=code,
-        language=language,
+        language=language.lower(),
         user_id=user_id,
         session_id=session_id,
         device_id=device_id,
