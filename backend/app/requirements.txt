@@ -11,3 +11,5 @@ pydantic-settings
 python-dotenv
 
 geoip2
+argon2-cffi
+greenlet
