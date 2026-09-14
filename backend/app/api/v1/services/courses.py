@@ -12,10 +12,13 @@ from app.api.v1.schemas.courses import (
     LessonDetailResponse,
     CourseShortInfo,
     ModuleShortInfo,
-    LessonInfo
+    LessonInfo,
+    LessonsResponse,
+    ModuleInfo,
+    LessonItem
 )
 from app.core.config import settings
-from app.core.minio_url import get_minio_url
+from app.core.minio_url import minio_storage
 from app.models.courses import Course, CourseModule, Lesson
 from app.core.pagination import get_pagination, get_total_pages
 
@@ -63,7 +66,7 @@ class BaseCoursesService:
         for course in courses:
             image_path = f"{course.course_id}/main.webp"
 
-            main_image_url = await get_minio_url(
+            main_image_url = await minio_storage.get_url(
                 file_path=image_path,
                 expires=settings.image_url_ttl,
                 bucket="course-content",
@@ -159,7 +162,7 @@ class BaseCoursesService:
         for module in modules:
             module_content_path = f"{module.module_id}/content.md"
 
-            module_content_url = await get_minio_url(
+            module_content_url = await minio_storage.get_url(
                 file_path=module_content_path,
                 expires=settings.content_url_ttl,
                 bucket="module-content",
@@ -181,7 +184,7 @@ class BaseCoursesService:
         if pagination.page == 1:
             image_path = f"{course.course_id}/main.webp"
 
-            main_image_url = await get_minio_url(
+            main_image_url = await minio_storage.get_url(
                 file_path=image_path,
                 expires=settings.image_url_ttl,
                 bucket="course-content",
@@ -189,7 +192,7 @@ class BaseCoursesService:
 
             content_path = f"{course.course_id}/content.md"
 
-            content_url = await get_minio_url(
+            content_url = await minio_storage.get_url(
                 file_path=content_path,
                 expires=settings.content_url_ttl,
                 bucket="course-content",
@@ -206,6 +209,129 @@ class BaseCoursesService:
         return CourseDetailResponse(
             course=course_info,
             modules=module_items,
+            total_pages=total_pages,
+            current_page=pagination.page,
+            page_size=pagination.page_size,
+        )
+
+    async def get_lessons(
+            self,
+            request: Request,
+            course_id: int,
+            module_id: int,
+            language: str,
+            page: int = 1,
+            page_size: int = 20,
+            device_id: str | None = None,
+            session_id: int | None = None,
+            user_id: int | None = None,
+            platform: str | None = None,
+    ) -> LessonsResponse:
+        """LIST OF LESSONS OF THE SELECTED MODULE"""
+
+        pagination = get_pagination(
+            page=page,
+            page_size=page_size,
+        )
+
+        course_result = await self.db.execute(
+            select(Course)
+            .where(
+                Course.course_id == course_id,
+                Course.is_published.is_(True),
+            )
+        )
+        course = course_result.scalar_one_or_none()
+
+        if course is None:
+            await raise_backend_error(
+                db=self.db,
+                request=request,
+                code="COURSE_NOT_FOUND",
+                language=language,
+                device_id=device_id,
+                session_id=session_id,
+                user_id=user_id,
+                platform=platform,
+            )
+
+        module_result = await self.db.execute(
+            select(CourseModule)
+            .where(
+                CourseModule.module_id == module_id,
+                CourseModule.course_id == course.course_id,
+            )
+        )
+        module = module_result.scalar_one_or_none()
+
+        if module is None:
+            await raise_backend_error(
+                db=self.db,
+                request=request,
+                code="MODULE_NOT_FOUND",
+                language=language,
+                device_id=device_id,
+                session_id=session_id,
+                user_id=user_id,
+                platform=platform,
+            )
+
+        total_result = await self.db.execute(
+            select(func.count(Lesson.lesson_id))
+            .where(
+                Lesson.module_id == module.module_id,
+            )
+        )
+        total = total_result.scalar_one()
+
+        total_pages = get_total_pages(
+            total=total,
+            page_size=pagination.page_size,
+        )
+
+        lessons_result = await self.db.execute(
+            select(Lesson)
+            .where(
+                Lesson.module_id == module.module_id,
+            )
+            .order_by(Lesson.position)
+            .offset(pagination.offset)
+            .limit(pagination.page_size)
+        )
+        lessons = lessons_result.scalars().all()
+
+        lesson_items = [
+            LessonItem(
+                lesson_id=lesson.lesson_id,
+                title=lesson.title,
+                description=lesson.description,
+                position=lesson.position,
+            )
+            for lesson in lessons
+        ]
+
+        module_info = None
+
+        if pagination.page == 1:
+            module_content_path = f"{module.module_id}/content.md"
+
+            module_content_url = await minio_storage.get_url(
+                file_path=module_content_path,
+                expires=settings.content_url_ttl,
+                bucket="module-content",
+            )
+
+            module_info = ModuleInfo(
+                module_id=module.module_id,
+                title=module.title,
+                description=module.description,
+                position=module.position,
+                content_url=module_content_url,
+            )
+
+        return LessonsResponse(
+            module=module_info,
+            lessons=lesson_items,
             total_pages=total_pages,
             current_page=pagination.page,
             page_size=pagination.page_size,
@@ -296,7 +422,7 @@ class BaseCoursesService:
         # Lesson content
         content_path = f"{lesson.lesson_id}/content.md"
 
-        content_url = await get_minio_url(
+        content_url = await minio_storage.get_url(
             file_path=content_path,
             expires=settings.content_url_ttl,
             bucket="lesson-content",

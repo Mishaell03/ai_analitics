@@ -1,7 +1,12 @@
 from fastapi import APIRouter, Request, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.schemas.courses import CoursesResponse, CourseDetailResponse, LessonDetailResponse
+from app.api.v1.schemas.courses import (
+    CoursesResponse,
+    CourseDetailResponse,
+    LessonDetailResponse,
+    LessonsResponse,
+)
 from app.api.v1.services.courses import BaseCoursesService
 from app.core.database import get_db
 from app.core.session import CurrentUserContext, get_current_user
@@ -68,6 +73,45 @@ async def get_course(
     )
 
     return course
+
+
+@router.get(
+    "/courses/{course_id}/modules/{module_id}",
+    response_model=LessonsResponse,
+)
+async def get_lessons(
+    course_id: int,
+    module_id: int,
+    request: Request,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current: CurrentUserContext = Depends(get_current_user),
+):
+    lessons = await BaseCoursesService(db).get_lessons(
+        course_id=course_id,
+        module_id=module_id,
+        page=page,
+        page_size=page_size,
+        request=request,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.user.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_GET_LESSONS",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.user.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return lessons
 
 
 @router.get("/courses/{course_id}/modules/{module_id}/lessons/{lesson_id}", response_model=LessonDetailResponse)
