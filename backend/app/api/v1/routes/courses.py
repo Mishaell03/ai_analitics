@@ -12,10 +12,10 @@ from app.core.database import get_db
 from app.core.session import CurrentUserContext, get_current_user
 from app.core.users_events_logs import user_event_logs
 
-router = APIRouter()
+router = APIRouter(prefix='/courses')
 
 
-@router.get("/courses", response_model=CoursesResponse)
+@router.get("", response_model=CoursesResponse)
 async def get_courses(
         request: Request,
         db: AsyncSession = Depends(get_db),
@@ -41,7 +41,7 @@ async def get_courses(
     return courses
 
 
-@router.get("/courses/{course_id}", response_model=CourseDetailResponse)
+@router.get("/{course_id}", response_model=CourseDetailResponse)
 async def get_course(
         course_id: int,
         request: Request,
@@ -75,10 +75,7 @@ async def get_course(
     return course
 
 
-@router.get(
-    "/courses/{course_id}/modules/{module_id}",
-    response_model=LessonsResponse,
-)
+@router.get("/{course_id}/modules/{module_id}", response_model=LessonsResponse )
 async def get_lessons(
     course_id: int,
     module_id: int,
@@ -114,7 +111,7 @@ async def get_lessons(
     return lessons
 
 
-@router.get("/courses/{course_id}/modules/{module_id}/lessons/{lesson_id}", response_model=LessonDetailResponse)
+@router.get("/{course_id}/modules/{module_id}/lessons/{lesson_id}", response_model=LessonDetailResponse)
 async def get_lesson(
         course_id: int,
         module_id: int,
