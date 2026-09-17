@@ -19,7 +19,7 @@ class BaseAuthService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def register(
+    async def auth(
             self,
             data: BaseAuthRequest,
             request: Request,

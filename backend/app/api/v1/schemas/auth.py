@@ -36,7 +36,7 @@ class BaseAuthRequest(_AuthData):
         ...,
         min_length=8,
         max_length=128,
-        pattern=r'^[A-Za-z0-9!@#$%^&*()_+\-=\[\]{};:,.<>?/\\|~`]+$',
+        pattern=r'^[A-Za-z0-9!@#$%^&*()_+\-=\[\]{};:,.<>?/\\|~`]*$',
         examples=['Qwery123@']
     )
 

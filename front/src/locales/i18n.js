@@ -1,0 +1,37 @@
+import ruLogin from "@/locales/auth/login_ru.js";
+import ruError from "@/locales/error/error_ru.js";
+
+const translations = {
+    ru: {
+        auth: {
+            login: ruLogin,
+        },
+        error: {
+            error: ruError,
+        }
+    },
+
+    en: {
+        // Будет позже
+    },
+};
+
+export function getLanguage() {
+    return localStorage.getItem("language") || "ru";
+}
+
+export function setLanguage(language) {
+    localStorage.setItem("language", language);
+}
+
+export function getTranslation(path, language = getLanguage()) {
+    const keys = path.split(".");
+
+    let value = translations[language];
+
+    for (const key of keys) {
+        value = value?.[key];
+    }
+
+    return value ?? path;
+}

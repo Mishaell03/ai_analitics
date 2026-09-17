@@ -15,7 +15,7 @@ async def register_user(
         request: Request,
         db: AsyncSession = Depends(get_db)
 ):
-    session = await BaseAuthService(db).register(
+    session = await BaseAuthService(db).auth(
         data=data,
         request=request,
         is_register=True,
@@ -41,7 +41,7 @@ async def auth_user(
         request: Request,
         db: AsyncSession = Depends(get_db)
 ):
-    session = await BaseAuthService(db).register(
+    session = await BaseAuthService(db).auth(
         data=data,
         request=request,
         is_register=False,
