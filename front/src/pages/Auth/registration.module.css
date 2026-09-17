@@ -1,0 +1,392 @@
+.registration {
+    height: 100vh;
+    width: 100%;
+    overflow: hidden;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding: 40px 20px;
+    position: relative;
+}
+
+.cloud {
+    position: absolute;
+    display: block;
+}
+
+.cloud:nth-child(1) {
+    top: -80px;
+    left: 0;
+    width: 480px;
+    filter: blur(7px);
+}
+
+.cloud:nth-child(2) {
+    top: 10px;
+    right: 350px;
+    width: 240px;
+    filter: blur(8px);
+}
+
+.cloud:nth-child(3) {
+    bottom: 180px;
+    left: 300px;
+    width: 260px;
+    filter: blur(1px);
+}
+
+.cloud:nth-child(4) {
+    top: 660px;
+    right: 150px;
+    width: 330px;
+    filter: blur(3px);
+}
+
+.cloud:nth-child(5) {
+    top: -60px;
+    right: -300px;
+    width: 760px;
+    filter: blur(7px);
+    transform: skewY(10deg);
+}
+
+.cloud:nth-child(6) {
+    bottom: -200px;
+    left: -270px;
+    width: 760px;
+    filter: blur(18px);
+    transform: skewY(10deg);
+}
+
+.cloudDucks:nth-child(1) {
+    position: absolute;
+    z-index: -1;
+    bottom: 10px;
+    left: 30px;
+    width: 550px;
+    filter: blur(10px);
+}
+
+.cloudDucks:nth-child(2) {
+    position: absolute;
+    z-index: -1;
+    bottom: -20px;
+    right: -40px;
+    width: 650px;
+    filter: blur(8px);
+    transform: scaleX(-1);
+}
+
+.registrationCart {
+    position: relative;
+    z-index: 2;
+    width: 450px;
+}
+
+.registrationBox {
+    padding: 70px 50px 80px 50px;
+    border-radius: var(--radius-lg);
+    background: rgb(255 255 255 / 0.37);
+    backdrop-filter: blur(3px);
+}
+
+/* ---------- header ---------- */
+
+.registrationHeader {
+    margin-bottom: 26px;
+}
+
+.company {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 22px;
+}
+
+.company img {
+    width: 35px;
+    height: 35px;
+}
+
+.company p {
+    margin: 0;
+    padding-bottom: 3px;
+    font-size: 25px;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.company span {
+    color: var(--primary);
+}
+
+.registration h1 {
+    font-size: 50px;
+    line-height: 1;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.5px;
+}
+
+/* ---------- inputs ---------- */
+
+.registrationInput {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.authBox {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.box p {
+    margin: 0;
+}
+
+.inputLabel {
+    font-size: 12.5px;
+    color: var(--muted);
+}
+
+.passwordHeader {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+}
+
+.passwordHeader .inputLabel {
+    margin: 0;
+}
+
+.forgotPassword {
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: underline;
+    color: var(--ink);
+}
+
+/* ---------- password ---------- */
+
+.passwordInput {
+    position: relative;
+}
+
+.passwordInput input {
+    padding-right: 70px;
+}
+
+.passwordToggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+
+    width: auto;
+    margin: 0;
+    padding: 4px;
+
+    border: none;
+    background: transparent;
+
+    color: var(--muted);
+    cursor: pointer;
+}
+
+.passwordToggle svg {
+    height: 20px;
+    width: 20px;
+}
+
+.passwordToggle:hover {
+    color: var(--ink);
+}
+
+/* ---------- submit button ---------- */
+
+.registrationButton {
+    width: 100%;
+    margin-top: 6px;
+    padding: 14px;
+
+    border: none;
+    border-radius: var(--radius-md);
+
+    background: var(--accent);
+    color: #fff;
+
+    font-size: 15px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition: 0.65s;
+}
+
+.registrationButton:hover {
+    opacity: 0.9;
+    border-radius: 16px;
+    background-color: var(--primary);
+}
+
+.registrationButton:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* ---------- illustration side ---------- */
+
+.registrationImg {
+    position: relative;
+    flex-shrink: 0;
+    margin-left: -50px;
+}
+
+.duckImg {
+    height: 700px;
+}
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 1650px) {
+    .cloud:nth-child(2) {
+        top: -30px;
+        right: 350px;
+    }
+
+    .cloud:nth-child(3) {
+       display: none;
+    }
+
+    .cloud:nth-child(4) {
+        bottom: -80px;
+        top: auto;
+        right: -10px;
+        width: 330px;
+        filter: blur(3px);
+    }
+
+    .cloud:nth-child(5) {
+        top: -110px;
+        right: -400px;
+    }
+}
+
+@media (max-width: 1100px) {
+    .cloud:nth-child(2) {display: none}
+    .cloud:nth-child(4) {filter: blur(28px);}
+    .cloud:nth-child(5) {
+        top: -200px;
+        right: -550px;
+        width: 760px;
+        filter: blur(7px);
+        transform: skewY(10deg);
+    }
+    .registrationCart{
+        margin-left: 50px;
+    }
+    .registrationBox {
+        margin-left: 80px;
+        width: 450px;
+    }
+}
+
+@media (max-width: 900px) {
+    .registrationImg {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+
+        width: max-content;
+        height: max-content;
+        margin: 0;
+    }
+
+    .registrationBox {
+        margin-left: 0;
+    }
+
+    .duckImg {
+        display: block;
+        width: auto;
+        height: 700px;
+    }
+
+    .registrationCart{
+        position: absolute;
+        top: 310px;
+        margin: 0;
+        background-color: rgb(255 255 255 / 0.1);
+        border-radius: 20px;
+        backdrop-filter: blur(23px);
+    }
+
+    .cloudDucks:nth-child(1) {
+        position: absolute;
+        z-index: -1;
+        top: 240px;
+        bottom: 0;
+        left: 30px;
+        width: 550px;
+        filter: blur(0);
+        display: block;
+    }
+
+    .cloudDucks:nth-child(2) {
+        position: absolute;
+        z-index: -1;
+        top: 200px;
+        bottom: 0;
+        right: -0px;
+        width: 650px;
+        filter: blur(8px);
+        transform: scaleX(-1);
+        display: block;
+
+    }
+
+    .cloud:nth-child(5) {
+        top: -150px;
+        right: -60px;
+        width: 360px;
+        filter: blur(3px);
+        transform: skewY(0deg);
+
+    }
+
+    .cloud:nth-child(1) {
+        top: -80px;
+        left: -260px;
+        width: 450px;
+        filter: blur(7px);
+    }
+}
+
+@media (max-width: 600px) {
+    .duckImg {
+
+        height: 500px;
+    }
+
+    .registrationCart {
+        top: 200px;
+        width: 350px;
+    }
+
+    .registrationBox {
+        width: 350px;
+        padding: 30px;
+    }
+}

@@ -1,10 +1,12 @@
 import ruLogin from "@/locales/auth/login_ru.js";
+import ruRegister from "@/locales/auth/register_ru.js";
 import ruError from "@/locales/error/error_ru.js";
 
 const translations = {
     ru: {
         auth: {
             login: ruLogin,
+            register: ruRegister,
         },
         error: {
             error: ruError,

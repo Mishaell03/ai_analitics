@@ -9,6 +9,7 @@ import cloud2 from "@/assets/auth/cloud2.png"
 import {API_ROUTES} from "@/api/routes.js";
 import {api} from "@/api/axios.js";
 import { getDeviceId, getDeviceName } from "@/services/device.js";
+import {Link} from "react-router-dom";
 
 export function Login() {
     const [showPassword, setShowPassword] = useState(false);
@@ -152,7 +153,11 @@ export function Login() {
                         >
                             {loading ? t("title") + "..." : t("login")}
                         </button>
-
+                        <div className={styles.authBox}>
+                            <p>
+                                {t('noAccount')}    <Link to='/registration'>{t('register')}</Link>
+                            </p>
+                        </div>
                     </div>
                 </div>
             </form>

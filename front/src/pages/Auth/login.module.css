@@ -45,7 +45,7 @@
 }
 
 .cloud:nth-child(5) {
-    top: 60px;
+    top: -60px;
     right: -300px;
     width: 760px;
     filter: blur(7px);
@@ -136,6 +136,13 @@
     display: flex;
     flex-direction: column;
     gap: 25px;
+}
+
+.authBox {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .box {
