@@ -1,5 +1,6 @@
 import ruLogin from "@/locales/auth/login_ru.js";
 import ruRegister from "@/locales/auth/register_ru.js";
+import ruHome from "@/locales/home/home.js";
 import ruError from "@/locales/error/error_ru.js";
 
 const translations = {
@@ -7,6 +8,9 @@ const translations = {
         auth: {
             login: ruLogin,
             register: ruRegister,
+        },
+        home: {
+            home: ruHome,
         },
         error: {
             error: ruError,

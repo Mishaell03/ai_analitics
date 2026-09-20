@@ -62,7 +62,7 @@ input:focus-visible {
     outline-offset: 2px;
 }
 
-a {
+a, Link {
     color: var(--accent);
     text-decoration: underline;
     cursor: pointer;
