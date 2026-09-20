@@ -2,20 +2,10 @@ import axios from "axios";
 
 const _baseConfig = {
     baseURL: import.meta.env.VITE_API_URL,
+    withCredentials: true,
 };
 
-const _addAuthInterceptor = (config) => {
-    const sessionToken = localStorage.getItem("session_token");
-
-    if (sessionToken) {
-        config.headers.Authorization = `Bearer ${sessionToken}`;
-    }
-
-    return config;
-};
-
-
-// api with auth and without
+// JSON
 export const api = axios.create({
     ..._baseConfig,
     headers: {
@@ -23,10 +13,7 @@ export const api = axios.create({
     },
 });
 
-// FormData always with auth
+// FormData
 export const formApi = axios.create({
     ..._baseConfig,
 });
-
-api.interceptors.request.use(_addAuthInterceptor);
-formApi.interceptors.request.use(_addAuthInterceptor);

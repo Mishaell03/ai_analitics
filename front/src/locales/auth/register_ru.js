@@ -6,6 +6,6 @@ export default {
     hasAccount: "Есть аккаунт?",
     login: "Войти",
     fillAllFields: "Заполните все поля",
-    fillEmail: "Введите полностью email",
+    fillEmail: "Введите корректно email",
     fillPassword: "Введите полностью пароль"
 }

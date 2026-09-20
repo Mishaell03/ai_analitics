@@ -41,6 +41,6 @@ class BaseAuthRequest(_AuthData):
     )
 
 class BaseAuthResponse(BaseModel):
-    session: str = Field(
-        examples=["session"],
+    success: bool = Field(
+        examples=["true"],
     )

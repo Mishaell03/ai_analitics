@@ -18,12 +18,14 @@ class Settings:
 
     # API
     api_reload: bool = os.getenv("API_RELOAD", "false").lower() == "true"
+    is_product: bool = os.getenv("IS_PRODUCT", "false").lower() == "true"
 
     # MINIO
     minio_endpoint: str = os.getenv("MINIO_ENDPOINT")
     minio_access_key: str = os.getenv("MINIO_ACCESS_KEY")
     minio_secret_key: str = os.getenv("MINIO_SECRET_KEY")
     minio_secure: bool = os.getenv("MINIO_SECURE", "false").lower() == "true"
+
 
     minio_client = Minio(
         endpoint=minio_endpoint,

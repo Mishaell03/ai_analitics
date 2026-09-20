@@ -58,11 +58,14 @@ export function Registration() {
             );
             // console.log(response);
 
-            localStorage.setItem("session_token", response.data.token);
-            console.info("Register success")
+            if (response.data.success === true) {
+                // TODO: navigate
+            }
+
+            // console.info("Register succçess")
         } catch (error) {
-            console.log(error);
-            console.log(error.response);
+            // console.log(error);
+            // console.log(error.response);
 
 
             const message =

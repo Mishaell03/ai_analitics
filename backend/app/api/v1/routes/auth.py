@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.auth import BaseAuthResponse, BaseAuthRequest
 from app.api.v1.services.auth import BaseAuthService
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.users_events_logs import user_event_logs
 
@@ -13,6 +14,7 @@ router = APIRouter()
 async def register_user(
         data: BaseAuthRequest,
         request: Request,
+        response: Response,
         db: AsyncSession = Depends(get_db)
 ):
     session = await BaseAuthService(db).auth(
@@ -30,9 +32,19 @@ async def register_user(
         session_id=session.session_id,
     )
 
-    return (BaseAuthResponse(
-        session=session.session,
-    ))
+    response.set_cookie(
+        key="session_token",
+        value=session.session,
+        httponly=True,
+        secure=settings.is_product,
+        samesite="lax",
+        path="/",
+        max_age=60*60*24*180,
+    )
+
+    return BaseAuthResponse(
+        success=True,
+    )
 
 
 @router.post("/auth", response_model=BaseAuthResponse)
@@ -57,5 +69,5 @@ async def auth_user(
     )
 
     return BaseAuthResponse(
-        session=session.session,
+        success=True,
     )

@@ -7,6 +7,6 @@ export default {
   noAccount: "Нет аккаунта?",
   register: "Зарегистрироваться",
   fillAllFields: "Заполните все поля",
-  fillEmail: "Введите полностью email",
+  fillEmail: "Введите корректно email",
   fillPassword: "Введите полностью пароль"
 }

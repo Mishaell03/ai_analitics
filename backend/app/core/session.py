@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 
 from fastapi import Depends, Request
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,8 +8,6 @@ from app.core.database import get_db
 from app.core.errors import raise_backend_error
 from app.models.auth import UserSession
 from app.models.users import User
-
-security = HTTPBearer()
 
 
 class CurrentUserContext:
@@ -24,11 +21,10 @@ class CurrentUserContext:
 
 async def get_current_user(
         request: Request,
-        credentials: HTTPAuthorizationCredentials = Depends(security),
         db: AsyncSession = Depends(get_db),
 ) -> CurrentUserContext:
 
-    session_token = credentials.credentials.strip()
+    session_token = request.cookies.get("session_token")
 
     if not session_token:
         await raise_backend_error(
@@ -37,6 +33,8 @@ async def get_current_user(
             code="INVALID_SESSION",
             language="en",
         )
+
+    session_token = session_token.strip()
 
     now = datetime.now(timezone.utc)
 

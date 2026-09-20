@@ -56,10 +56,13 @@ export function Login() {
                     language: language,
                 }
             );
-            // console.log(response);
+            console.log(response);
 
-            localStorage.setItem("session_token", response.data.token);
-            // console.info("Login success")
+            if (response.data.success === true) {
+                // TODO: navigate
+            }
+
+            console.info("Login success")
         } catch (error) {
             // console.log(error);
             // console.log(error.response);
