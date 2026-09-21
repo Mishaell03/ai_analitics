@@ -3,15 +3,16 @@ import MainLayout from "./layouts/MainLayout.jsx";
 import {Login} from "./pages/Auth/Login.jsx";
 import {Registration} from "@/pages/Auth/Registration.jsx";
 import {Home} from "@/pages/Home/Home.jsx";
+import {ROUTES} from "@/router/AppRouter.jsx";
 
 function App() {
 
     return (
         <Routes>
             <Route element={<MainLayout/>}>
-                <Route element={<Login/>} path='/login'/>
-                <Route element={<Registration/>} path='/registration'/>
-                <Route element={<Home/>} path='/'/>
+                <Route element={<Login />} path={ROUTES.login} />
+                <Route element={<Registration />} path={ROUTES.registration} />
+                <Route element={<Home />} path={ROUTES.home} />
             </Route>
         </Routes>
     )

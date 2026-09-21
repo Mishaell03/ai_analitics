@@ -9,9 +9,12 @@ import cloud2 from "@/assets/auth/cloud2.png"
 import {API_ROUTES} from "@/api/routes.js";
 import {api} from "@/api/axios.js";
 import { getDeviceId, getDeviceName } from "@/services/device.js";
-import {Link} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
+import {ROUTES} from "@/router/AppRouter.jsx";
+import AuthCheck from "@/services/AuthCheck.jsx";
 
 export function Login() {
+    const navigate = useNavigate();
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -59,10 +62,11 @@ export function Login() {
             console.log(response);
 
             if (response.data.success === true) {
-                // TODO: navigate
+                await AuthCheck.refresh();
+                navigate(ROUTES.home);
             }
 
-            console.info("Login success")
+            // console.info("Login success")
         } catch (error) {
             // console.log(error);
             // console.log(error.response);

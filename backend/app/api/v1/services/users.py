@@ -1,6 +1,4 @@
-from fastapi import Request
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from app.core import session
 from app.core.session import CurrentUserContext
 from app.core.minio_url import minio_storage
 from app.core.config import settings
@@ -11,11 +9,10 @@ class UserService:
 
     async def get_me(
         self,
-        db: AsyncSession,
-        request: Request,
         current_user: CurrentUserContext,
     ) -> MeResponse:
         user = current_user.user
+        session = current_user.session
 
         img_url = None
 
@@ -27,14 +24,11 @@ class UserService:
             )
 
         return MeResponse(
-            user_id=user.user_id,
             name=user.name,
             phone=user.phone,
             email=user.email,
-            img=img_url,
-            is_default_img=user.is_default_img,
-            created_at=user.created_at,
-            updated_at=user.updated_at,
+            img_url=img_url,
+            expires_at=session.expires_at
         )
 
 

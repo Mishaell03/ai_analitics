@@ -39,7 +39,7 @@ async def register_user(
         secure=settings.is_product,
         samesite="lax",
         path="/",
-        max_age=60*60*24*180,
+        max_age=60 * 60 * 24 * 180,
     )
 
     return BaseAuthResponse(
@@ -51,6 +51,7 @@ async def register_user(
 async def auth_user(
         data: BaseAuthRequest,
         request: Request,
+        response: Response,
         db: AsyncSession = Depends(get_db)
 ):
     session = await BaseAuthService(db).auth(
@@ -66,6 +67,16 @@ async def auth_user(
         device_id=session.device_id,
         user_id=session.user_id,
         session_id=session.session_id,
+    )
+
+    response.set_cookie(
+        key="session_token",
+        value=session.session,
+        httponly=True,
+        secure=settings.is_product,
+        samesite="lax",
+        path="/",
+        max_age=60 * 60 * 24 * 180,
     )
 
     return BaseAuthResponse(

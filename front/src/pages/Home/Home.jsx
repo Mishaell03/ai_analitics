@@ -2,23 +2,16 @@ import orangeSpiral from "@/assets/artefacts/orange_spiral_3d.png";
 import violetSpiral from "@/assets/artefacts/violet_spiral_3d.png";
 import {getTranslation} from "@/locales/i18n.js";
 import styles from "./home.module.css";
-import {
-    ArrowRight,
-    Award,
-    Briefcase,
-    GraduationCap,
-    Layers,
-    ShoppingBag,
-    Tags,
-    Users,
-} from "lucide-react";
-import {Link} from "react-router-dom";
+import {ArrowRight, Award, Briefcase, GraduationCap, Layers, ShoppingBag, Tags, Users,} from "lucide-react";
+import {Link, useNavigate} from "react-router-dom";
 import duck from "@/assets/home/smart_duck.png";
 import bg from "@/assets/home/bg.webp";
+import {ROUTES} from "@/router/AppRouter.jsx";
 
 const language = "ru";
 
 export function Home() {
+    const navigate = useNavigate();
     const t = (key) => getTranslation(`home.home.${key}`, language);
 
     const stats = [
@@ -44,21 +37,25 @@ export function Home() {
             icon: Layers,
             title: t("programs.analytics.title"),
             description: t("programs.analytics.description"),
+            link: ROUTES.analytics,
         },
         {
             icon: Tags,
             title: t("programs.ai.title"),
             description: t("programs.ai.description"),
+            link: ROUTES.ai,
         },
         {
             icon: ShoppingBag,
             title: t("programs.teachers.title"),
             description: t("programs.teachers.description"),
+            link: ROUTES.teachers,
         },
         {
             icon: Briefcase,
             title: t("programs.career.title"),
             description: t("programs.career.description"),
+            link: ROUTES.careers,
         },
     ];
 
@@ -125,7 +122,7 @@ export function Home() {
                         "--card-image": `url(${bg})`,
                     }}
                 >
-                    <img src={duck} alt={t("hero.mentorAlt")} />
+                    <img src={duck} alt={t("hero.mentorAlt")}/>
 
                     <div className={styles.heroCardBadge}>
                         <p>{t("hero.mentorLabel")}</p>
@@ -190,7 +187,7 @@ export function Home() {
                         alt=""
                     />
                     {programs.map(
-                        ({icon: Icon, title, description}) => (
+                        ({icon: Icon, title, description, link}) => (
                             <div
                                 className={styles.programCard}
                                 key={title}
@@ -204,7 +201,7 @@ export function Home() {
                                     <p>{description}</p>
                                 </div>
 
-                                <button className={styles.programButton}>
+                                <button className={styles.programButton} onClick={() => navigate(link)}>
                                     {t("programs.action")}
                                     <ArrowRight/>
                                 </button>
@@ -212,12 +209,12 @@ export function Home() {
                         )
                     )}
                 </div>
-                    <img
-                        src={violetSpiral}
-                        className={styles.artefact}
-                        data-pos="7"
-                        alt=""
-                    />
+                <img
+                    src={violetSpiral}
+                    className={styles.artefact}
+                    data-pos="7"
+                    alt=""
+                />
             </section>
         </div>
     );

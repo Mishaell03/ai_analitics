@@ -10,6 +10,8 @@ import {API_ROUTES} from "@/api/routes.js";
 import {api} from "@/api/axios.js";
 import { getDeviceId, getDeviceName } from "@/services/device.js";
 import {Link} from "react-router-dom";
+import AuthCheck from "@/services/AuthCheck.jsx";
+import {ROUTES} from "@/router/AppRouter.jsx";
 
 export function Registration() {
     const [showPassword, setShowPassword] = useState(false);
@@ -59,7 +61,8 @@ export function Registration() {
             // console.log(response);
 
             if (response.data.success === true) {
-                // TODO: navigate
+                await AuthCheck.refresh();
+                navigate(ROUTES.home);
             }
 
             // console.info("Register succçess")

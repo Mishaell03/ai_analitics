@@ -18,7 +18,7 @@
     top: -10px;
     left: -20px;
     width: 200px;
-    opacity: 0.85;
+    opacity: 1;
 }
 
 .artefact[data-pos="2"] {
@@ -167,10 +167,10 @@
     overflow: hidden;
     background:
             linear-gradient(
-                    rgb(255 255 255 / 0.25),
-                    rgb(255 255 255 / 0.18),
-                    rgb(255 255 255 / 0.14),
-                    rgb(255 255 255 / 0.25)),
+                    rgb(255 255 255 / 0.09),
+                    rgb(255 255 255 / 0),
+                    rgb(255 255 255 / 0),
+                    rgb(255 255 255 / 0.07)),
             var(--card-image) center / cover no-repeat,
             #fbfbfb;
     display: flex;
@@ -410,7 +410,6 @@
         top: 402px;
         left: -20px;
         width: 200px;
-        opacity: 0.85;
     }
 
     .artefact[data-pos="2"], .artefact[data-pos="3"], .artefact[data-pos="4"] {
