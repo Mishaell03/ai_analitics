@@ -1,10 +1,11 @@
 import { Outlet } from "react-router-dom";
+import Header from "@/layouts/Header/Header.jsx";
 
 const MainLayout = () => {
     return (
         <div className="app">
             <header>
-                {/* Header */}
+                 <Header/>
             </header>
 
             <main>

@@ -80,3 +80,7 @@ a:hover {
     font-size: 13px;
     text-decoration: none;
 }
+
+main {
+    padding-top: 120px;
+}

@@ -11,7 +11,8 @@ import {api} from "@/api/axios.js";
 import { getDeviceId, getDeviceName } from "@/services/device.js";
 import {Link, useNavigate} from "react-router-dom";
 import {ROUTES} from "@/router/AppRouter.jsx";
-import AuthCheck from "@/services/AuthCheck.jsx";
+import AuthCheck from "@/context/AuthService.js";
+import {useAuth} from "@/context/AuthContext.jsx";
 
 export function Login() {
     const navigate = useNavigate();
@@ -22,6 +23,7 @@ export function Login() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
+    const {setUser} = useAuth();
     const language = "ru";
     const t = (key) => getTranslation(`auth.login.${key}`, language);
     const tError = (key) => getTranslation(`error.error.${key}`, language);
@@ -62,7 +64,8 @@ export function Login() {
             console.log(response);
 
             if (response.data.success === true) {
-                await AuthCheck.refresh();
+                const user = await AuthCheck.refresh();
+                setUser(user)
                 navigate(ROUTES.home);
             }
 

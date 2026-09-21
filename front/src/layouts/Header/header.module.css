@@ -1,0 +1,389 @@
+.header {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+
+    width: min(1200px, calc(100% - 40px));
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 32px;
+
+    padding: 14px 22px;
+
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 24px;
+
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+    z-index: 1000;
+}
+
+.wrapper {
+    position: fixed;
+
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+
+    width: min(1200px, calc(100% - 40px));
+
+    z-index: 1000;
+}
+
+
+.header {
+    width: 100%;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 32px;
+
+    padding: 14px 22px;
+
+    background: rgba(255,255,255,0.65);
+
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+
+    border: 1px solid rgba(0,0,0,0.08);
+
+    border-radius: 24px;
+
+    box-shadow:
+            0 10px 40px rgba(0,0,0,0.08);
+}
+
+/* LOGO */
+
+.logo a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    color: #111;
+    text-decoration: none;
+}
+
+.logo img {
+    width: 42px;
+    height: 42px;
+
+    border-radius: 14px;
+}
+
+.logo h1 {
+    margin: 0;
+
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+}
+
+
+/* DESKTOP NAV */
+
+.desktop {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 5px;
+
+    /*background: rgba(0, 0, 0, 0.04);*/
+    border-radius: 16px;
+}
+
+a, a:hover {
+    text-decoration: none;
+}
+
+.navLink {
+    position: relative;
+
+    padding: 10px 16px;
+
+    color: #333;
+    text-decoration: none;
+
+    font-size: 15px;
+    font-weight: 500;
+
+    border-radius: 14px;
+
+    transition: background 0.25s ease,
+    color 0.25s ease,
+    transform 0.25s ease;
+}
+
+
+.navLink:hover {
+    background: rgb(182 95 253 / 0.12);
+    color: #000;
+
+    transform: translateY(-1px);
+}
+
+
+.profile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+
+    padding: 6px 12px;
+
+    border-radius: 16px;
+
+    color: #111;
+    text-decoration: none;
+
+    transition:
+            background .25s ease,
+            transform .25s ease;
+}
+
+
+.profile:hover {
+    background: rgba(0,0,0,0.06);
+    transform: translateY(-1px);
+}
+
+
+.email {
+    max-width: 180px;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    font-size: 14px;
+    font-weight: 600;
+}
+
+/* AUTH BUTTONS */
+
+.info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+
+.login,
+.registration {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    height: 42px;
+    padding: 0 20px;
+
+    border-radius: 14px;
+
+    text-decoration: none;
+
+    font-size: 15px;
+    font-weight: 600;
+
+    transition: transform 0.25s ease,
+    box-shadow 0.25s ease,
+    background 0.25s ease;
+}
+
+
+.login {
+    color: #111;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.5);
+}
+
+
+.login:hover {
+    transform: translateY(-2px);
+    color: #fff;
+    background: var(--primary);
+    border-color: var(--primary);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+
+.registration {
+    color: white;
+    background: var(--accent);
+}
+
+
+.registration:hover {
+    transform: translateY(-2px);
+    color: white;
+    background: var(--primary);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+
+.navLink.active {
+    background: var(--accent);
+    background: transparent;
+    border: 2px solid var(--accent);
+    color: var(--accent);
+}
+
+
+.login.activeButton {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.info:has(.registration.activeButton) .registration:hover,
+.info:has(.login.activeButton) .login:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: none;
+    transform: none;
+}
+
+.info:has(.login.activeButton) .registration,
+.info:has(.registration.activeButton) .login {
+    color: #111;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.5);
+    box-shadow: none;
+    transform: none;
+}
+
+.registration.activeButton {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+/* MOBILE */
+
+.mobile {
+    display: none;
+}
+
+.burger {
+    display: none;
+
+    width: 42px;
+    height: 42px;
+
+    align-items: center;
+    justify-content: center;
+
+    border: none;
+    border-radius: 14px;
+
+    background: rgba(0,0,0,0.05);
+
+    cursor: pointer;
+
+    color: #111;
+
+    transition:
+            background 0.25s ease,
+            transform 0.25s ease;
+}
+
+.burger:hover {
+    background: rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+
+.mobileMenu {
+    display: none;
+}
+
+
+@media (max-width: 900px) {
+
+    .header {
+        position: fixed;
+    }
+
+
+    .desktop,
+    .info {
+        display: none;
+    }
+
+
+    .burger {
+        display: flex;
+    }
+
+
+    .mobileMenu {
+        position: absolute;
+
+        top: calc(100% + 110px);
+        left: 0;
+        right: 0;
+
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+
+        padding: 16px;
+
+
+        background: rgba(255,255,255,0.35);
+
+        backdrop-filter: blur(40px);
+        -webkit-backdrop-filter: blur(40px);
+
+
+        border-radius: 22px;
+
+        border: 1px solid rgba(255,255,255,0.5);
+
+
+        box-shadow:
+                0 20px 50px rgba(0,0,0,0.15);
+
+
+        opacity: 0;
+        pointer-events: none;
+
+        transform: translateY(-10px);
+
+
+        transition:
+                opacity .25s ease,
+                transform .25s ease;
+    }
+
+
+    .mobileMenu.active {
+        opacity: 1;
+        pointer-events: auto;
+
+        transform: translateY(0);
+    }
+
+
+    .mobileMenu .navLink {
+        width: 100%;
+
+        padding: 14px;
+
+        text-align: center;
+    }
+
+
+    .mobileMenu .login,
+    .mobileMenu .registration {
+        width: 100%;
+    }
+}

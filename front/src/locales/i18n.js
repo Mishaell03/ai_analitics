@@ -1,7 +1,8 @@
 import ruLogin from "@/locales/auth/login_ru.js";
 import ruRegister from "@/locales/auth/register_ru.js";
-import ruHome from "@/locales/home/home.js";
+import ruHome from "@/locales/home/home_ru.js";
 import ruError from "@/locales/error/error_ru.js";
+import ruHeader from "@/locales/layouts/header_ru.js";
 
 const translations = {
     ru: {
@@ -11,6 +12,9 @@ const translations = {
         },
         home: {
             home: ruHome,
+        },
+        layouts: {
+            header: ruHeader,
         },
         error: {
             error: ruError,

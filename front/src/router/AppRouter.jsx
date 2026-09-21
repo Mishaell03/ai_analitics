@@ -8,4 +8,7 @@ export const ROUTES = {
     ai: "/ai",
     teachers: '/teachers',
     careers: '/careers',
+    courses: '/courses',
+    about_us: '/about_us',
+    profile: '/profile',
 };
