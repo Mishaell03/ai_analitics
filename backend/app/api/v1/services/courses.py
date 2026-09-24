@@ -91,7 +91,7 @@ class BaseCoursesService:
     async def get_course(
             self,
             request: Request,
-            course_id: int,
+            course_slag: str,
             language: str,
             page: int = 1,
             page_size: int = 20,
@@ -111,7 +111,7 @@ class BaseCoursesService:
         course_result = await self.db.execute(
             select(Course)
             .where(
-                Course.course_id == course_id,
+                Course.slug == course_slag,
                 Course.is_published.is_(True),
             )
         )

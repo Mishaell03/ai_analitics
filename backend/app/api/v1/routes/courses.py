@@ -41,9 +41,9 @@ async def get_courses(
     return courses
 
 
-@router.get("/{course_id}", response_model=CourseDetailResponse)
+@router.get("/{course_slag}", response_model=CourseDetailResponse)
 async def get_course(
-        course_id: int,
+        course_slag: str,
         request: Request,
         page: int = Query(1, ge=1),
         page_size: int = Query(20, ge=1, le=100),
@@ -51,7 +51,7 @@ async def get_course(
         current: CurrentUserContext = Depends(get_current_user),
 ):
     course = await BaseCoursesService(db).get_course(
-        course_id=course_id,
+        course_slag=course_slag,
         page=page,
         page_size=page_size,
         request=request,
