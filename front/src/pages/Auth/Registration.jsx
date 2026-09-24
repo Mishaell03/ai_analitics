@@ -9,12 +9,13 @@ import cloud2 from "@/assets/auth/cloud2.png"
 import {API_ROUTES} from "@/api/routes.js";
 import {api} from "@/api/axios.js";
 import { getDeviceId, getDeviceName } from "@/services/device.js";
-import {Link} from "react-router-dom";
-import AuthCheck from "@/context/AuthService.js";
+import {Link, useNavigate} from "react-router-dom";import AuthCheck from "@/context/AuthService.js";
 import {ROUTES} from "@/router/AppRouter.jsx";
 import {useAuth} from "@/context/AuthContext.jsx";
 
 export function Registration() {
+    const navigate = useNavigate();
+
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
