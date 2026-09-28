@@ -14,7 +14,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
 
-# V2__backend_errors
+# V3__backend_errors
 class BackendError(Base):
     __tablename__ = "backend_errors"
     code: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -32,8 +32,6 @@ class BackendError(Base):
         viewonly=True,
     )
 
-
-# V3__backend_errors_localization
 class BackendErrorLocalization(Base):
     __tablename__ = "backend_errors_localization"
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
@@ -51,8 +49,6 @@ class BackendErrorLocalization(Base):
         ),
     )
 
-
-# V7__users_event_logs
 class UserEventLog(Base):
     __tablename__ = "users_event_logs"
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)

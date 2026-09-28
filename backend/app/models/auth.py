@@ -17,15 +17,13 @@ from app.core.database import Base
 from app.models.errors import UserEventLog
 
 
-# V4__providers
+# V2__auth
 class Provider(Base):
     __tablename__ = "providers"
 
     code: Mapped[str] = mapped_column(String(20), primary_key=True)
     name: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
 
-
-# V5__user_auth_methods
 class UserAuthMethod(Base):
     __tablename__ = "user_auth_methods"
 
@@ -45,8 +43,6 @@ class UserAuthMethod(Base):
         ),
     )
 
-
-# V6__users_sessions
 class UserSession(Base):
     __tablename__ = "users_sessions"
 

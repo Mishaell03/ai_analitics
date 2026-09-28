@@ -16,7 +16,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
 
-# V8__courses
+# V4__courses
 class Course(Base):
     __tablename__ = "courses"
 
@@ -31,8 +31,6 @@ class Course(Base):
     modules: Mapped[list["CourseModule"]] = relationship("CourseModule", back_populates="course",
                                                          cascade="all, delete-orphan")
 
-
-# V9__course_modules
 class CourseModule(Base):
     __tablename__ = "course_modules"
 
@@ -50,8 +48,6 @@ class CourseModule(Base):
 
     __table_args__ = (UniqueConstraint("course_id", "position", name="uq_course_modules_course_id_position", ), )
 
-
-# V10__lessons
 class Lesson(Base):
     __tablename__ = "lessons"
 

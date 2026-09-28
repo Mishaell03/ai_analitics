@@ -1,5 +1,6 @@
 from fastapi import Request
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import raise_backend_error
 
@@ -15,12 +16,15 @@ from app.api.v1.schemas.courses import (
     LessonInfo,
     LessonsResponse,
     ModuleInfo,
-    LessonItem
+    LessonItem,
+    EnrollmentResponse
 )
 from app.core.config import settings
 from app.core.minio_url import minio_storage
 from app.models.courses import Course, CourseModule, Lesson
 from app.core.pagination import get_pagination, get_total_pages
+from app.models.enrollments_progress import CourseEnrollment
+
 
 class BaseCoursesService:
     def __init__(self, db: AsyncSession):
@@ -30,6 +34,7 @@ class BaseCoursesService:
             self,
             page: int = 1,
             page_size: int = 10,
+            user_id: int | None = None,
     ) -> CoursesResponse:
         """MINIMAL INFORMATION OF THE COURSES"""
 
@@ -61,6 +66,19 @@ class BaseCoursesService:
 
         courses = result.scalars().all()
 
+        enrolled_ids = set()
+
+        if user_id is not None and courses:
+            enrolled_result = await self.db.execute(
+                select(CourseEnrollment.course_id)
+                .where(
+                    CourseEnrollment.user_id == user_id,
+                    CourseEnrollment.course_id.in_([course.course_id for course in courses]),
+                )
+            )
+
+            enrolled_ids = set(enrolled_result.scalars().all())
+
         course_items = []
 
         for course in courses:
@@ -78,6 +96,7 @@ class BaseCoursesService:
                     title=course.title,
                     description=course.description,
                     main_image_url=main_image_url,
+                    is_enrolled=course.course_id in enrolled_ids,
                 )
             )
 
@@ -91,7 +110,7 @@ class BaseCoursesService:
     async def get_course(
             self,
             request: Request,
-            course_slag: str,
+            course_slug: str,
             language: str,
             page: int = 1,
             page_size: int = 20,
@@ -99,7 +118,7 @@ class BaseCoursesService:
             session_id: int | None = None,
             user_id: int | None = None,
             platform: str | None = None,
-    ) -> CourseDetailResponse | None:
+    ) -> CourseDetailResponse:
         """DETAIL INFORMATION OF THE COURSE"""
 
         pagination = get_pagination(
@@ -111,7 +130,7 @@ class BaseCoursesService:
         course_result = await self.db.execute(
             select(Course)
             .where(
-                Course.slug == course_slag,
+                Course.slug == course_slug,
                 Course.is_published.is_(True),
             )
         )
@@ -129,6 +148,20 @@ class BaseCoursesService:
                 user_id=user_id,
                 platform=platform,
             )
+
+        # Is the user enrolled
+        is_enrolled = False
+
+        if user_id is not None:
+            enrolled_result = await self.db.execute(
+                select(CourseEnrollment.enrollment_id)
+                .where(
+                    CourseEnrollment.user_id == user_id,
+                    CourseEnrollment.course_id == course.course_id,
+                )
+            )
+
+            is_enrolled = enrolled_result.scalar_one_or_none() is not None
 
         # Total modules
         total_result = await self.db.execute(
@@ -160,13 +193,14 @@ class BaseCoursesService:
         module_items = []
 
         for module in modules:
-            module_content_path = f"{module.module_id}/content.md"
+            module_content_url = None
 
-            module_content_url = await minio_storage.get_url(
-                file_path=module_content_path,
-                expires=settings.content_url_ttl,
-                bucket="module-content",
-            )
+            if is_enrolled:
+                module_content_url = await minio_storage.get_url(
+                    file_path=f"{module.module_id}/content.md",
+                    expires=settings.content_url_ttl,
+                    bucket="module-content",
+                )
 
             module_items.append(
                 ModuleItem(
@@ -182,18 +216,14 @@ class BaseCoursesService:
         course_info = None
 
         if pagination.page == 1:
-            image_path = f"{course.course_id}/main.webp"
-
             main_image_url = await minio_storage.get_url(
-                file_path=image_path,
+                file_path=f"{course.course_id}/main.webp",
                 expires=settings.image_url_ttl,
                 bucket="course-content",
             )
 
-            content_path = f"{course.course_id}/content.md"
-
             content_url = await minio_storage.get_url(
-                file_path=content_path,
+                file_path=f"{course.course_id}/content.md",
                 expires=settings.content_url_ttl,
                 bucket="course-content",
             )
@@ -204,6 +234,7 @@ class BaseCoursesService:
                 description=course.description,
                 main_image_url=main_image_url,
                 content_url=content_url,
+                is_enrolled=is_enrolled,
             )
 
         return CourseDetailResponse(
@@ -217,7 +248,7 @@ class BaseCoursesService:
     async def get_lessons(
             self,
             request: Request,
-            course_id: int,
+            course_slug: str,
             module_id: int,
             language: str,
             page: int = 1,
@@ -234,10 +265,11 @@ class BaseCoursesService:
             page_size=page_size,
         )
 
+        # Course
         course_result = await self.db.execute(
             select(Course)
             .where(
-                Course.course_id == course_id,
+                Course.slug == course_slug,
                 Course.is_published.is_(True),
             )
         )
@@ -255,6 +287,7 @@ class BaseCoursesService:
                 platform=platform,
             )
 
+        # Module
         module_result = await self.db.execute(
             select(CourseModule)
             .where(
@@ -276,6 +309,20 @@ class BaseCoursesService:
                 platform=platform,
             )
 
+        # Is the user enrolled
+        is_enrolled = False
+
+        if user_id is not None:
+            enrolled_result = await self.db.execute(
+                select(CourseEnrollment.enrollment_id)
+                .where(
+                    CourseEnrollment.user_id == user_id,
+                    CourseEnrollment.course_id == course.course_id,
+                )
+            )
+            is_enrolled = enrolled_result.scalar_one_or_none() is not None
+
+        # Total lessons
         total_result = await self.db.execute(
             select(func.count(Lesson.lesson_id))
             .where(
@@ -310,16 +357,19 @@ class BaseCoursesService:
             for lesson in lessons
         ]
 
+        # Module information only on the first page
         module_info = None
 
         if pagination.page == 1:
-            module_content_path = f"{module.module_id}/content.md"
+            module_content_url = None
 
-            module_content_url = await minio_storage.get_url(
-                file_path=module_content_path,
-                expires=settings.content_url_ttl,
-                bucket="module-content",
-            )
+            # Module content only for enrolled users
+            if is_enrolled:
+                module_content_url = await minio_storage.get_url(
+                    file_path=f"{module.module_id}/content.md",
+                    expires=settings.content_url_ttl,
+                    bucket="module-content",
+                )
 
             module_info = ModuleInfo(
                 module_id=module.module_id,
@@ -338,27 +388,27 @@ class BaseCoursesService:
         )
 
     async def get_lesson(
-        self,
-        request: Request,
-        course_id: int,
-        module_id: int,
-        lesson_id: int,
-        language: str,
-        device_id: str | None = None,
-        session_id: int | None = None,
-        user_id: int | None = None,
-        platform: str | None = None,
-    ) -> LessonDetailResponse | None:
+            self,
+            request: Request,
+            course_slug: str,
+            module_id: int,
+            lesson_id: int,
+            language: str,
+            device_id: str | None = None,
+            session_id: int | None = None,
+            user_id: int | None = None,
+            platform: str | None = None,
+    ) -> LessonDetailResponse:
+        """DETAIL INFORMATION OF THE LESSON"""
 
         # Course
         course_result = await self.db.execute(
             select(Course)
             .where(
-                Course.course_id == course_id,
+                Course.slug == course_slug,
                 Course.is_published.is_(True),
             )
         )
-
         course = course_result.scalar_one_or_none()
 
         if course is None:
@@ -381,7 +431,6 @@ class BaseCoursesService:
                 CourseModule.course_id == course.course_id,
             )
         )
-
         module = module_result.scalar_one_or_none()
 
         if module is None:
@@ -404,7 +453,6 @@ class BaseCoursesService:
                 Lesson.module_id == module.module_id,
             )
         )
-
         lesson = lesson_result.scalar_one_or_none()
 
         if lesson is None:
@@ -419,14 +467,29 @@ class BaseCoursesService:
                 platform=platform,
             )
 
-        # Lesson content
-        content_path = f"{lesson.lesson_id}/content.md"
+        # Is the user enrolled
+        is_enrolled = False
 
-        content_url = await minio_storage.get_url(
-            file_path=content_path,
-            expires=settings.content_url_ttl,
-            bucket="lesson-content",
-        )
+        if user_id is not None:
+            enrolled_result = await self.db.execute(
+                select(CourseEnrollment.enrollment_id)
+                .where(
+                    CourseEnrollment.user_id == user_id,
+                    CourseEnrollment.course_id == course.course_id,
+                )
+            )
+
+            is_enrolled = enrolled_result.scalar_one_or_none() is not None
+
+        # Lesson content only for enrolled users
+        content_url = None
+
+        if is_enrolled:
+            content_url = await minio_storage.get_url(
+                file_path=f"{lesson.lesson_id}/content.md",
+                expires=settings.content_url_ttl,
+                bucket="lesson-content",
+            )
 
         return LessonDetailResponse(
             course=CourseShortInfo(
@@ -446,4 +509,88 @@ class BaseCoursesService:
                 position=lesson.position,
                 content_url=content_url,
             ),
+        )
+
+    async def enroll_course(
+            self,
+            request: Request,
+            course_slug: str,
+            user_id: int,
+            language: str,
+            device_id: str | None = None,
+            session_id: int | None = None,
+            platform: str | None = None,
+    ) -> EnrollmentResponse:
+        """ENROLL THE USER IN THE COURSE"""
+
+        # Course
+        course_result = await self.db.execute(
+            select(Course)
+            .where(
+                Course.slug == course_slug,
+                Course.is_published.is_(True),
+            )
+        )
+        course = course_result.scalar_one_or_none()
+
+        if course is None:
+            await raise_backend_error(
+                db=self.db,
+                request=request,
+                code="COURSE_NOT_FOUND",
+                language=language,
+                device_id=device_id,
+                session_id=session_id,
+                user_id=user_id,
+                platform=platform,
+            )
+
+        # Is the user already enrolled
+        enrolled_result = await self.db.execute(
+            select(CourseEnrollment.enrollment_id)
+            .where(
+                CourseEnrollment.user_id == user_id,
+                CourseEnrollment.course_id == course.course_id,
+            )
+        )
+
+        if enrolled_result.scalar_one_or_none() is not None:
+            await raise_backend_error(
+                db=self.db,
+                request=request,
+                code="COURSE_ALREADY_ENROLLED",
+                language=language,
+                device_id=device_id,
+                session_id=session_id,
+                user_id=user_id,
+                platform=platform,
+            )
+
+        # Enrollment
+        self.db.add(
+            CourseEnrollment(
+                user_id=user_id,
+                course_id=course.course_id,
+            )
+        )
+
+        try:
+            await self.db.commit()
+        except IntegrityError:
+            # Two requests at the same time: UNIQUE(user_id, course_id) fired
+            await self.db.rollback()
+
+            await raise_backend_error(
+                db=self.db,
+                request=request,
+                code="COURSE_ALREADY_ENROLLED",
+                language=language,
+                device_id=device_id,
+                session_id=session_id,
+                user_id=user_id,
+                platform=platform,
+            )
+
+        return EnrollmentResponse (
+            success=True,
         )

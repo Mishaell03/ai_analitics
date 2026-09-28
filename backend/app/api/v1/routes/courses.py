@@ -6,6 +6,7 @@ from app.api.v1.schemas.courses import (
     CourseDetailResponse,
     LessonDetailResponse,
     LessonsResponse,
+    EnrollmentResponse
 )
 from app.api.v1.services.courses import BaseCoursesService
 from app.core.database import get_db
@@ -26,6 +27,7 @@ async def get_courses(
     courses = await BaseCoursesService(db).get_courses(
         page=page,
         page_size=page_size,
+        user_id=current.user.user_id,
     )
 
     await user_event_logs(
@@ -41,9 +43,9 @@ async def get_courses(
     return courses
 
 
-@router.get("/{course_slag}", response_model=CourseDetailResponse)
+@router.get("/{course_slug}", response_model=CourseDetailResponse)
 async def get_course(
-        course_slag: str,
+        course_slug: str,
         request: Request,
         page: int = Query(1, ge=1),
         page_size: int = Query(20, ge=1, le=100),
@@ -51,7 +53,7 @@ async def get_course(
         current: CurrentUserContext = Depends(get_current_user),
 ):
     course = await BaseCoursesService(db).get_course(
-        course_slag=course_slag,
+        course_slug=course_slug,
         page=page,
         page_size=page_size,
         request=request,
@@ -75,9 +77,9 @@ async def get_course(
     return course
 
 
-@router.get("/{course_id}/modules/{module_id}", response_model=LessonsResponse )
+@router.get("/{course_slug}/modules/{module_id}", response_model=LessonsResponse )
 async def get_lessons(
-    course_id: int,
+    course_slug: str,
     module_id: int,
     request: Request,
     page: int = Query(1, ge=1),
@@ -86,7 +88,7 @@ async def get_lessons(
     current: CurrentUserContext = Depends(get_current_user),
 ):
     lessons = await BaseCoursesService(db).get_lessons(
-        course_id=course_id,
+        course_slug=course_slug,
         module_id=module_id,
         page=page,
         page_size=page_size,
@@ -111,9 +113,9 @@ async def get_lessons(
     return lessons
 
 
-@router.get("/{course_id}/modules/{module_id}/lessons/{lesson_id}", response_model=LessonDetailResponse)
+@router.get("/{course_slug}/modules/{module_id}/lessons/{lesson_id}", response_model=LessonDetailResponse)
 async def get_lesson(
-        course_id: int,
+        course_slug: str,
         module_id: int,
         lesson_id: int,
         request: Request,
@@ -121,7 +123,7 @@ async def get_lesson(
         current: CurrentUserContext = Depends(get_current_user),
 ):
     lesson = await BaseCoursesService(db).get_lesson(
-        course_id=course_id,
+        course_slug=course_slug,
         module_id=module_id,
         lesson_id=lesson_id,
         request=request,
@@ -143,3 +145,33 @@ async def get_lesson(
     )
 
     return lesson
+
+
+@router.post('/subscribe/{course_slug}', response_model=EnrollmentResponse)
+async def enroll_course(
+        course_slug: str,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_user),
+):
+    result = await BaseCoursesService(db).enroll_course(
+        course_slug=course_slug,
+        request=request,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.user.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_ENROLL_COURSE",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.user.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return result

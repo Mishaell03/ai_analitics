@@ -6,6 +6,7 @@ class CourseItem(BaseModel):
     title: str
     description: str | None = None
     main_image_url: str | None = None
+    is_enrolled: bool = False
 
 # users list of courses
 class CoursesResponse(BaseModel):
@@ -92,3 +93,7 @@ class LessonDetailResponse(BaseModel):
     course: CourseShortInfo
     module: ModuleShortInfo
     lesson: LessonInfo
+
+# result of the enrollment
+class EnrollmentResponse(BaseModel):
+    success: bool
