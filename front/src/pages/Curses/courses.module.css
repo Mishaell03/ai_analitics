@@ -924,32 +924,8 @@
         height: 210px;
     }
 
-    /*
-     * На мобильных устройствах
-     * hover обычно не нужен.
-     */
     .card:hover {
         transform: translateY(-4px);
         transition: 0.3s ease;
-    }
-}
-
-
-/* ---------- reduced motion ---------- */
-
-@media (prefers-reduced-motion: reduce) {
-    .card,
-    .cardImage img,
-    .cardArrow,
-    .cardLine,
-    .filter,
-    .search,
-    .retryButton,
-    .pageButton {
-        transition: none;
-    }
-
-    .skeleton {
-        animation: none;
     }
 }

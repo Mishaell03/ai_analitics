@@ -97,9 +97,8 @@
 
     text-decoration: none;
 
-    transition:
-            color 0.5s ease,
-            transform 0.5s ease;
+    transition: color 0.5s ease,
+    transform 0.5s ease;
 }
 
 .backLink svg {
@@ -182,12 +181,11 @@
 
     pointer-events: none;
 
-    background:
-            linear-gradient(
-                    90deg,
-                    transparent 50%,
-                    rgb(0 0 0 / 0.08)
-            );
+    background: linear-gradient(
+            90deg,
+            transparent 50%,
+            rgb(0 0 0 / 0.08)
+    );
 }
 
 
@@ -253,17 +251,23 @@
     line-height: 1.7;
 }
 
+.courseActions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 
-/* ---------- start course button ---------- */
+    margin-top: 32px;
+}
 
 .contentButton {
     width: fit-content;
 
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 10px;
 
-    margin-top: 32px;
+    margin-top: 0;
     padding: 13px 17px;
 
     border-radius: 13px;
@@ -276,10 +280,109 @@
 
     text-decoration: none;
 
-    transition:
-            background 0.6s ease,
-            transform 0.6s ease,
-            box-shadow 0.6s ease;
+    transition: background 0.6s ease,
+    transform 0.6s ease,
+    box-shadow 0.6s ease;
+}
+
+.contentButton svg {
+    width: 17px;
+    height: 17px;
+}
+
+.contentButton:hover {
+    background: var(--primary);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 30px rgb(182 95 253 / 0.2);
+}
+
+.enrollButton,
+.unsubscribeButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+
+    min-height: 44px;
+
+    padding: 13px 17px;
+
+    border: none;
+    border-radius: 13px;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition: background 0.5s ease,
+    color 0.5s ease,
+    transform 0.5s ease,
+    box-shadow 0.5s ease;
+}
+
+.enrollButton {
+    background: var(--accent);
+    color: #fff;
+}
+
+.enrollButton:hover:not(:disabled) {
+    background: var(--primary);
+
+    transform: translateY(-3px);
+
+    box-shadow: 0 12px 30px rgb(182 95 253 / 0.2);
+}
+
+.enrollButton svg {
+    width: 17px;
+    height: 17px;
+}
+
+.unsubscribeButton {
+    background: rgb(128 128 128 / 0.08);
+    color: var(--muted);
+}
+
+.unsubscribeButton:hover:not(:disabled) {
+    background: rgb(220 60 60 / 0.1);
+    color: #d94a4a;
+
+    transform: translateY(-2px);
+}
+
+.enrollButton:disabled,
+.unsubscribeButton:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+
+/* ---------- start course button ---------- */
+
+.contentButton {
+    width: fit-content;
+
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+
+    margin-top: 0;
+    padding: 13px 17px;
+
+    border-radius: 13px;
+
+    background: var(--accent);
+    color: #fff;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    text-decoration: none;
+
+    transition: background 0.6s ease,
+    transform 0.6s ease,
+    box-shadow 0.6s ease;
 }
 
 .contentButton svg {
@@ -299,8 +402,7 @@
 
     transform: translateY(-3px);
 
-    box-shadow:
-            0 12px 30px rgb(182 95 253 / 0.2);
+    box-shadow: 0 12px 30px rgb(182 95 253 / 0.2);
 }
 
 
@@ -379,10 +481,9 @@
 
     background: var(--card);
 
-    transition:
-            transform 0.7s ease,
-            border-color 0.7s ease,
-            box-shadow 0.7s ease;
+    transition: transform 0.7s ease,
+    border-color 0.7s ease,
+    box-shadow 0.7s ease;
 }
 
 .module:hover {
@@ -390,8 +491,7 @@
 
     border-color: rgb(182 95 253 / 0.14);
 
-    box-shadow:
-            0 10px 30px rgb(0 0 0 / 0.05);
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.05);
 }
 
 
@@ -487,9 +587,8 @@
 
     text-decoration: none;
 
-    transition:
-            background 0.7s ease,
-            color 0.7s ease;
+    transition: background 0.7s ease,
+    color 0.7s ease;
 }
 
 .moduleButton svg {
@@ -521,9 +620,8 @@
 
     text-decoration: none;
 
-    transition:
-            color 0.5s ease,
-            gap 0.5s ease;
+    transition: color 0.5s ease,
+    gap 0.5s ease;
 }
 
 .moduleLink svg {
@@ -658,6 +756,7 @@
 }
 
 .retryButton {
+    margin-top: 10px;
     padding: 11px 18px;
 
     border: none;
@@ -671,9 +770,8 @@
 
     cursor: pointer;
 
-    transition:
-            background 0.5s ease,
-            transform 0.5s ease;
+    transition: background 0.5s ease,
+    transform 0.5s ease;
 }
 
 .retryButton:hover {
@@ -713,11 +811,10 @@
 
     cursor: pointer;
 
-    transition:
-            background 0.5s ease,
-            color 0.5s ease,
-            border-color 0.5s ease,
-            transform 0.5s ease;
+    transition: background 0.5s ease,
+    color 0.5s ease,
+    border-color 0.5s ease,
+    transform 0.5s ease;
 }
 
 .pageButton svg {
@@ -871,35 +968,197 @@
         font-size: 32px;
     }
 
-    .contentButton {
-        width: 100%;
-
-        justify-content: center;
-    }
-
     .moduleLink {
         margin-top: 14px;
+    }
+
+    .courseActions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .contentButton,
+    .enrollButton,
+    .unsubscribeButton {
+        width: 100%;
     }
 }
 
 
-/* ---------- reduced motion ---------- */
+/* ---------- modal ---------- */
 
-@media (prefers-reduced-motion: reduce) {
-    .backLink,
-    .backLink svg,
-    .heroImage img,
-    .contentButton,
-    .module,
-    .moduleButton,
-    .moduleLink,
-    .retryButton,
-    .pageButton {
-        transition: none;
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 20px;
+
+    background: rgb(0 0 0 / 0.45);
+
+    backdrop-filter: blur(8px);
+
+    animation: modalOverlayIn 0.25s ease;
+}
+
+.modal {
+    width: min(100%, 440px);
+
+    padding: 32px;
+
+    border: 1px solid rgb(182 95 253 / 0.12);
+    border-radius: 24px;
+
+    background: var(--card);
+
+    box-shadow:
+            0 30px 80px rgb(0 0 0 / 0.2);
+
+    text-align: center;
+
+    animation: modalIn 0.3s ease;
+}
+
+.modalIcon {
+    width: 54px;
+    height: 54px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin: 0 auto 18px;
+
+    border-radius: 16px;
+
+    background: rgb(182 95 253 / 0.1);
+    color: var(--accent);
+}
+
+.modalIcon svg {
+    width: 23px;
+    height: 23px;
+}
+
+.modal h2 {
+    margin: 0;
+
+    color: var(--ink);
+
+    font-size: 22px;
+    line-height: 1.2;
+    font-weight: 800;
+}
+
+.modal p {
+    max-width: 350px;
+
+    margin: 10px auto 0;
+
+    color: var(--muted);
+
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.modalActions {
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+
+    margin-top: 26px;
+}
+
+.modalCancel,
+.modalConfirm {
+    flex: 1;
+
+    min-height: 44px;
+
+    border: none;
+    border-radius: 12px;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition:
+            background 0.3s ease,
+            color 0.3s ease,
+            transform 0.3s ease,
+            opacity 0.3s ease;
+}
+
+.modalCancel {
+    background: rgb(128 128 128 / 0.08);
+    color: var(--ink);
+}
+
+.modalCancel:hover:not(:disabled) {
+    background: rgb(128 128 128 / 0.14);
+
+    transform: translateY(-2px);
+}
+
+.modalConfirm {
+    background: rgb(220 60 60 / 0.1);
+    color: #d94a4a;
+}
+
+.modalConfirm:hover:not(:disabled) {
+    background: #d94a4a;
+    color: #fff;
+
+    transform: translateY(-2px);
+}
+
+.modalCancel:disabled,
+.modalConfirm:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+@keyframes modalOverlayIn {
+    from {
+        opacity: 0;
     }
 
-    .loadingImage,
-    .loadingContent span {
-        animation: none;
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes modalIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@media (max-width: 480px) {
+    .modal {
+        padding: 26px 20px;
+
+        border-radius: 20px;
+    }
+
+    .modalActions {
+        flex-direction: column;
+    }
+
+    .modalCancel,
+    .modalConfirm {
+        width: 100%;
     }
 }

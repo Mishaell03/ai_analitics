@@ -147,7 +147,7 @@ async def get_lesson(
     return lesson
 
 
-@router.post('/subscribe/{course_slug}', response_model=EnrollmentResponse)
+@router.post('/enroll/{course_slug}', response_model=EnrollmentResponse)
 async def enroll_course(
         course_slug: str,
         request: Request,
@@ -167,6 +167,36 @@ async def enroll_course(
     await user_event_logs(
         request=request,
         event="SUCCESS_ENROLL_COURSE",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.user.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return result
+
+
+@router.delete('/unenroll/{course_slug}', response_model=EnrollmentResponse)
+async def unenroll_course(
+        course_slug: str,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_user),
+):
+    result = await BaseCoursesService(db).unenroll_course(
+        course_slug=course_slug,
+        request=request,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.user.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_UNENROLL_COURSE",
         status_code=200,
         device_id=current.session.device_id,
         user_id=current.user.user_id,

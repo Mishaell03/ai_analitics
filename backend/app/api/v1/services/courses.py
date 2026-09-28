@@ -594,3 +594,66 @@ class BaseCoursesService:
         return EnrollmentResponse (
             success=True,
         )
+
+    async def unenroll_course(
+            self,
+            request: Request,
+            course_slug: str,
+            user_id: int,
+            language: str,
+            device_id: str | None = None,
+            session_id: int | None = None,
+            platform: str | None = None,
+    ) -> EnrollmentResponse:
+        """UNENROLL THE USER FROM THE COURSE"""
+
+        # Course
+        course_result = await self.db.execute(
+            select(Course)
+            .where(
+                Course.slug == course_slug,
+                Course.is_published.is_(True),
+            )
+        )
+        course = course_result.scalar_one_or_none()
+
+        if course is None:
+            await raise_backend_error(
+                db=self.db,
+                request=request,
+                code="COURSE_NOT_FOUND",
+                language=language,
+                device_id=device_id,
+                session_id=session_id,
+                user_id=user_id,
+                platform=platform,
+            )
+
+        # Enrollment
+        enrollment_result = await self.db.execute(
+            select(CourseEnrollment)
+            .where(
+                CourseEnrollment.user_id == user_id,
+                CourseEnrollment.course_id == course.course_id,
+            )
+        )
+        enrollment = enrollment_result.scalar_one_or_none()
+
+        if enrollment is None:
+            await raise_backend_error(
+                db=self.db,
+                request=request,
+                code="COURSE_NOT_ENROLLED",
+                language=language,
+                device_id=device_id,
+                session_id=session_id,
+                user_id=user_id,
+                platform=platform,
+            )
+
+        await self.db.delete(enrollment)
+        await self.db.commit()
+
+        return EnrollmentResponse(
+            success=True,
+        )

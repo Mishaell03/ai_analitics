@@ -13,7 +13,8 @@ VALUES
     ('COURSE_NOT_FOUND', 404),
     ('MODULE_NOT_FOUND', 404),
     ('LESSON_NOT_FOUND', 404),
-    ('COURSE_ALREADY_ENROLLED', 409)
+    ('COURSE_ALREADY_ENROLLED', 409),
+    ('COURSE_NOT_ENROLLED', 404)
 ON CONFLICT (code) DO NOTHING;
 
 -- локализации ошибок
@@ -56,5 +57,8 @@ VALUES
     ('LESSON_NOT_FOUND', 'ru', 'Урок не найден'),
 
     ('COURSE_ALREADY_ENROLLED', 'en', 'You are already enrolled in this course'),
-    ('COURSE_ALREADY_ENROLLED', 'ru', 'Вы уже записаны на этот курс')
+    ('COURSE_ALREADY_ENROLLED', 'ru', 'Вы уже записаны на этот курс'),
+
+    ('COURSE_NOT_ENROLLED', 'en', 'You are not enrolled in this course'),
+    ('COURSE_NOT_ENROLLED', 'ru', 'Вы не записаны на этот курс')
 ON CONFLICT (code, language) DO NOTHING;

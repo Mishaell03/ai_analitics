@@ -116,42 +116,24 @@ export function Courses() {
         setActiveFilter("all");
     };
 
-    /*
-     * ---------- render ----------
-     */
 
     return (
         <main className={styles.courses}>
-            {/* ---------- hero ---------- */}
-
             <section className={styles.hero}>
                 <div className={styles.heroContent}>
                     <div className={styles.badge}>
                         <span className={styles.badgeDot}/>
-
                         {t("headerBadge")}
                     </div>
-
-                    <h1>
-                        {t("headerTitle")}
-
-                        <span>
-                            {t("headerSubtitle")}
-                        </span>
+                    <h1>{t("headerTitle")}
+                        <span>{t("headerSubtitle")}</span>
                     </h1>
-
-                    <p className={styles.heroDescription}>
-                        {t("headerDescription")}
-                    </p>
+                    <p className={styles.heroDescription}>{t("headerDescription")}</p>
                 </div>
 
                 <div className={styles.heroStats}>
                     <div className={styles.stat}>
-                        <strong>
-                            {totalPages > 1
-                                ? `${totalPages}+`
-                                : courses.length}
-                        </strong>
+                        <strong>{totalPages > 1 ? `${totalPages}+` : courses.length}</strong>
 
                         <span>
                             {t("coursesCount")}
@@ -176,32 +158,18 @@ export function Courses() {
                 <label className={styles.search}>
                     <Search/>
 
-                    <input
-                        type="search"
-                        value={search}
-                        onChange={handleSearchChange}
-                        placeholder={t("searchPlaceholder")}
-                    />
+                    <input type="search" value={search} onChange={handleSearchChange}
+                           placeholder={t("searchPlaceholder")}/>
                 </label>
 
                 <div className={styles.filterWrapper}>
-                    <div className={styles.filterIcon}>
-                        <SlidersHorizontal/>
-                    </div>
+                    <div className={styles.filterIcon}><SlidersHorizontal/></div>
 
                     <div className={styles.filters}>
                         {filters.map((filter) => (
-                            <button
-                                key={filter.id}
-                                type="button"
-                                className={styles.filter}
-                                data-active={
-                                    activeFilter === filter.id
-                                }
-                                onClick={() =>
-                                    handleFilterChange(filter.id)
-                                }
-                            >
+                            <button key={filter.id} type="button" className={styles.filter}
+                                    data-active={activeFilter === filter.id}
+                                    onClick={() => handleFilterChange(filter.id)}>
                                 {filter.label}
                             </button>
                         ))}
@@ -214,20 +182,12 @@ export function Courses() {
             <section className={styles.content}>
                 <div className={styles.sectionHeading}>
                     <div>
-                        <span>
-                            {t("catalogEyebrow")}
-                        </span>
-
-                        <h2>
-                            {t("catalogTitle")}
-                        </h2>
+                        <span>{t("catalogEyebrow")}</span>
+                        <h2>{t("catalogTitle")}</h2>
                     </div>
 
                     {!loading && !error && (
-                        <p>
-                            {filteredCourses.length}{" "}
-                            {t("coursesFound")}
-                        </p>
+                        <p>{filteredCourses.length}{" "}{t("coursesFound")}</p>
                     )}
                 </div>
 
@@ -238,21 +198,9 @@ export function Courses() {
                         {Array.from(
                             {length: 8},
                             (_, index) => (
-                                <div
-                                    className={styles.skeleton}
-                                    key={index}
-                                >
-                                    <div
-                                        className={
-                                            styles.skeletonImage
-                                        }
-                                    />
-
-                                    <div
-                                        className={
-                                            styles.skeletonBody
-                                        }
-                                    >
+                                <div className={styles.skeleton} key={index}>
+                                    <div className={styles.skeletonImage}/>
+                                    <div className={styles.skeletonBody}>
                                         <span/>
                                         <span/>
                                         <span/>
@@ -267,24 +215,10 @@ export function Courses() {
 
                 {!loading && error && (
                     <div className={styles.state}>
-                        <div className={styles.stateIcon}>
-                            <ImageOff/>
-                        </div>
-
-                        <h3>
-                            {t("errorTitle")}
-                        </h3>
-
-                        <p>
-                            {t("errorDescription")}
-                        </p>
-
-                        <button
-                            type="button"
-                            className={styles.retryButton}
-                            onClick={fetchCourses}
-                            disabled={loading}
-                        >
+                        <div className={styles.stateIcon}><ImageOff/></div>
+                        <h3>{t("errorTitle")}</h3>
+                        <p>{t("errorDescription")}</p>
+                        <button type="button" className={styles.retryButton} onClick={fetchCourses} disabled={loading}>
                             {t("errorRetry")}
                         </button>
                     </div>
@@ -296,23 +230,10 @@ export function Courses() {
                     !error &&
                     filteredCourses.length === 0 && (
                         <div className={styles.state}>
-                            <div className={styles.stateIcon}>
-                                <Search/>
-                            </div>
-
-                            <h3>
-                                {t("emptyTitle")}
-                            </h3>
-
-                            <p>
-                                {t("emptyDescription")}
-                            </p>
-
-                            <button
-                                type="button"
-                                className={styles.retryButton}
-                                onClick={handleResetFilters}
-                            >
+                            <div className={styles.stateIcon}><Search/></div>
+                            <h3>{t("emptyTitle")}</h3>
+                            <p>{t("emptyDescription")}</p>
+                            <button type="button" className={styles.retryButton} onClick={handleResetFilters}>
                                 {t("emptyReset")}
                             </button>
                         </div>
@@ -325,86 +246,38 @@ export function Courses() {
                     filteredCourses.length > 0 && (
                         <div className={styles.grid}>
                             {filteredCourses.map((course) => (
-                                <Link
-                                    className={styles.card}
-                                    to={ROUTES.course + "/" + course.slug}
-                                    key={course.slug}
-                                >
-                                    <div
-                                        className={
-                                            styles.cardImage
-                                        }
-                                    >
+                                <Link className={styles.card} to={ROUTES.course + "/" + course.slug} key={course.slug}>
+                                    <div className={styles.cardImage}>
                                         {course.main_image_url ? (
                                             <>
-                                                <img
-                                                    src={
-                                                        course.main_image_url
-                                                    }
-                                                    alt=""
-                                                    loading="lazy"
-                                                />
-
-                                                <div
-                                                    className={
-                                                        styles.imageOverlay
-                                                    }
-                                                />
+                                                <img src={course.main_image_url} alt="" loading="lazy"/>
+                                                <div className={styles.imageOverlay}/>
                                             </>
                                         ) : (
                                             <ImageOff/>
                                         )}
 
-                                        <span
-                                            className={
-                                                styles.courseLabel
-                                            }
-                                        >
+                                        <span className={styles.courseLabel}>
                                             {t("cardCourse")}
                                         </span>
                                     </div>
 
-                                    <div
-                                        className={
-                                            styles.cardBody
-                                        }
-                                    >
-                                        <div
-                                            className={
-                                                styles.cardTop
-                                            }
-                                        >
+                                    <div className={styles.cardBody}>
+                                        <div className={styles.cardTop}>
                                             <h3>
                                                 {course.title}
                                             </h3>
 
-                                            <span
-                                                className={
-                                                    styles.cardArrow
-                                                }
-                                            >
+                                            <span className={styles.cardArrow}>
                                                 <ArrowRight/>
                                             </span>
                                         </div>
 
-                                        <p>
-                                            {course.description}
-                                        </p>
+                                        <p>{course.description}</p>
 
-                                        <div
-                                            className={
-                                                styles.cardFooter
-                                            }
-                                        >
-                                            <span>
-                                                {t("cardAction")}
-                                            </span>
-
-                                            <span
-                                                className={
-                                                    styles.cardLine
-                                                }
-                                            />
+                                        <div className={styles.cardFooter}>
+                                            <span>{course.is_enrolled ? t("cardContinue") : t("cardAction")}</span>
+                                            <span className={styles.cardLine}/>
                                         </div>
                                     </div>
                                 </Link>
@@ -416,49 +289,20 @@ export function Courses() {
             {/* ---------- pagination ---------- */}
 
             {!loading && !error && totalPages > 1 && (
-                <nav
-                    className={styles.pagination}
-                    aria-label={t("paginationLabel")}
-                >
-                    <button
-                        type="button"
-                        className={styles.pageButton}
-                        disabled={page <= 1}
-                        onClick={() =>
-                            setPage(
-                                (current) =>
-                                    current - 1
-                            )
-                        }
-                        aria-label={t(
-                            "paginationPrevious"
-                        )}
-                    >
+                <nav className={styles.pagination} aria-label={t("paginationLabel")}>
+                    <button type="button" className={styles.pageButton} disabled={page <= 1}
+                            onClick={() => setPage((current) => current - 1)} aria-label={t("paginationPrevious")}>
                         <ChevronLeft/>
                     </button>
 
                     <div className={styles.pageInfo}>
                         <strong>{page}</strong>
-
                         <span>/</span>
-
                         <span>{totalPages}</span>
                     </div>
 
-                    <button
-                        type="button"
-                        className={styles.pageButton}
-                        disabled={page >= totalPages}
-                        onClick={() =>
-                            setPage(
-                                (current) =>
-                                    current + 1
-                            )
-                        }
-                        aria-label={t(
-                            "paginationNext"
-                        )}
-                    >
+                    <button type="button" className={styles.pageButton} disabled={page >= totalPages}
+                            onClick={() => setPage((current) => current + 1)} aria-label={t("paginationNext")}>
                         <ChevronRight/>
                     </button>
                 </nav>

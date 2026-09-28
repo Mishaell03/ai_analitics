@@ -1,13 +1,17 @@
+import ruAbout from "@/locales/about/about_ru.js";
 import ruLogin from "@/locales/auth/login_ru.js";
 import ruRegister from "@/locales/auth/register_ru.js";
-import ruСourse from "@/locales/courses/course.js";
-import ruСourses from "@/locales/courses/courses.js";
+import ruСourse from "@/locales/courses/course_ru.js";
+import ruСourses from "@/locales/courses/courses_ru.js";
 import ruHome from "@/locales/home/home_ru.js";
 import ruError from "@/locales/error/error_ru.js";
 import ruHeader from "@/locales/layouts/header_ru.js";
 
 const translations = {
     ru: {
+        about: {
+            about: ruAbout,
+        },
         auth: {
             login: ruLogin,
             register: ruRegister,
