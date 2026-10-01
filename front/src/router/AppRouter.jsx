@@ -4,6 +4,7 @@ export const ROUTES = {
     registration: "/registration",
     courses: '/courses',
     course: '/course',
+    profile: '/profile',
 
     // TODO: adding routes
     analytics: "/analytics",
@@ -11,5 +12,4 @@ export const ROUTES = {
     teachers: '/teachers',
     careers: '/careers',
     about_us: '/about_us',
-    profile: '/profile',
 };

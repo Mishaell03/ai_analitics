@@ -14,7 +14,10 @@ VALUES
     ('MODULE_NOT_FOUND', 404),
     ('LESSON_NOT_FOUND', 404),
     ('COURSE_ALREADY_ENROLLED', 409),
-    ('COURSE_NOT_ENROLLED', 404)
+    ('COURSE_NOT_ENROLLED', 404),
+    ('INVALID_PHONE_FORMAT', 422),
+    ('PHONE_ALREADY_EXISTS', 409),
+    ('UPDATE_ME_FAILED', 409)
 ON CONFLICT (code) DO NOTHING;
 
 -- локализации ошибок
@@ -60,5 +63,14 @@ VALUES
     ('COURSE_ALREADY_ENROLLED', 'ru', 'Вы уже записаны на этот курс'),
 
     ('COURSE_NOT_ENROLLED', 'en', 'You are not enrolled in this course'),
-    ('COURSE_NOT_ENROLLED', 'ru', 'Вы не записаны на этот курс')
+    ('COURSE_NOT_ENROLLED', 'ru', 'Вы не записаны на этот курс'),
+
+    ('INVALID_PHONE_FORMAT', 'en', 'Invalid phone format. Expected +7 (XXX) XXX-XX-XX'),
+    ('INVALID_PHONE_FORMAT', 'ru', 'Неверный формат телефона. Ожидается +7 (XXX) XXX-XX-XX'),
+
+    ('PHONE_ALREADY_EXISTS', 'en', 'Phone number already exists'),
+    ('PHONE_ALREADY_EXISTS', 'ru', 'Данный номер телефона уже зарегистрирован'),
+
+    ('UPDATE_ME_FAILED', 'en', 'Failed to update profile. Please try again'),
+    ('UPDATE_ME_FAILED', 'ru', 'Не удалось обновить профиль. Попробуйте ещё раз')
 ON CONFLICT (code, language) DO NOTHING;

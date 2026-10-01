@@ -6,6 +6,7 @@ export const API_ROUTES = {
 
 // User
     USER_INFO: "/me",
+    USER_UPDATE: "/me",
     USER_PROFILE: "/user/profile",
 
 // Courses
