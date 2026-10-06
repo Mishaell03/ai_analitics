@@ -8,6 +8,7 @@ import {Courses} from "@/pages/Curses/Curses.jsx";
 import {Course} from "@/pages/Curses/Course.jsx";
 import {About} from "@/pages/About/About.jsx";
 import {Profile} from "@/pages/Profile/Profile.jsx";
+import {Teachers} from "@/pages/Teachers/Teachers.jsx";
 
 function App() {
 
@@ -20,6 +21,7 @@ function App() {
                 <Route element={<Courses/>} path={ROUTES.courses}/>
                 <Route element={<Course/>} path={ROUTES.course + "/:slug"}/>
                 <Route element={<About/>} path={ROUTES.about_us}/>
+                <Route element={<Teachers/>} path={ROUTES.teachers}/>
                 <Route element={<Profile/>} path={ROUTES.profile}/>
             </Route>
         </Routes>
