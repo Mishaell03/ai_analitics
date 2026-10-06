@@ -61,3 +61,4 @@ class UserSession(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     event_logs: Mapped[list["UserEventLog"]] = relationship("UserEventLog", back_populates="session")
+    backend_error_logs: Mapped[list["BackendErrorLog"]] = relationship("BackendErrorLog", back_populates="session")

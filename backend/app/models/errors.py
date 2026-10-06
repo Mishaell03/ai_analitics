@@ -3,6 +3,7 @@ from sqlalchemy import (
     DateTime,
     Integer,
     String,
+    Text,
     func,
     Identity,
     BigInteger,
@@ -32,6 +33,7 @@ class BackendError(Base):
         viewonly=True,
     )
 
+
 class BackendErrorLocalization(Base):
     __tablename__ = "backend_errors_localization"
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
@@ -48,6 +50,7 @@ class BackendErrorLocalization(Base):
             name="uq_backend_errors_localization_code_language",
         ),
     )
+
 
 class UserEventLog(Base):
     __tablename__ = "users_event_logs"
@@ -72,3 +75,19 @@ class UserEventLog(Base):
     backend_error: Mapped["BackendError | None"] = relationship("BackendError",
                                                                 primaryjoin="foreign(UserEventLog.event) == BackendError.code",
                                                                 foreign_keys=[event], viewonly=True)
+
+
+class BackendErrorLog(Base):
+    __tablename__ = "backend_error_logs"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    session_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("users_sessions.id", ondelete="SET NULL"),
+                                                   nullable=True)
+    status_code: Mapped[int] = mapped_column(Integer, nullable=False)
+    request_method: Mapped[str] = mapped_column(String(16), nullable=False)
+    request_path: Mapped[str] = mapped_column(String(255), nullable=False)
+    request_body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(INET, nullable=True)
+    is_proxy: Mapped[bool | None] = mapped_column(nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    session: Mapped["UserSession | None"] = relationship("UserSession", back_populates="backend_error_logs")
