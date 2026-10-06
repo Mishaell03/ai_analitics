@@ -9,146 +9,255 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
 from app.api.v1.dto.auth_service import BaseAuthContext
-from app.api.v1.schemas.auth import BaseAuthRequest
+from app.api.v1.schemas.auth import BaseAuthRequest, ConsentItem, RegisterRequest, _AuthData
 from app.core.errors import raise_backend_error
 from app.models.auth import UserAuthMethod, UserSession, Provider
-from app.models.users import User
+from app.models.users import User, UserConsent
 from app.core.clients_ip import get_client_ip
+from app.utils.phone import normalize_phone
+
+# согласия, без которых регистрация невозможна
+REQUIRED_CONSENTS = frozenset({"PERSONAL_DATA"})
+
+# версия документов, с которыми соглашается пользователь при регистрации
+POLICY_VERSION = "1.0"
+
 
 class BaseAuthService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    async def register(
+            self,
+            data: RegisterRequest,
+            request: Request,
+    ) -> BaseAuthContext:
+        """Registration with ФИО, phone, consents and mail + password"""
+        ph = PasswordHasher()
+
+        error_kwargs = {
+            "db": self.db,
+            "request": request,
+            "language": data.language,
+            "device_id": data.device_id,
+        }
+
+        existing_user = await self._get_user_by_email(email=data.email)
+
+        if existing_user is not None:
+            await raise_backend_error(
+                code="EMAIL_ALREADY_EXISTS",
+                **error_kwargs,
+            )
+
+        provider = await self._get_pass_provider(error_kwargs=error_kwargs)
+
+        consents = await self._prepare_consents(
+            consents=data.consents,
+            error_kwargs=error_kwargs,
+        )
+
+        phone = await self._prepare_phone(
+            phone=data.phone,
+            error_kwargs=error_kwargs,
+        )
+
+        random_number = random.randint(1, 11)
+
+        # create user + get it`s id
+        user = User(
+            email=data.email,
+            name=data.name,
+            phone=phone,
+            img=f'user{random_number}',
+        )
+
+        self.db.add(user)
+        await self.db.flush()
+
+        # create user login method
+        auth_method = UserAuthMethod(
+            user_id=user.user_id,
+            provider=provider.code,
+            provider_user_id=None,
+            password_hash=ph.hash(data.password),
+        )
+
+        self.db.add(auth_method)
+
+        # remember consents on data processing with ip and policy version
+        client_ip = get_client_ip(request)
+
+        for consent_code, is_accepted in consents:
+            self.db.add(
+                UserConsent(
+                    user_id=user.user_id,
+                    consent_code=consent_code,
+                    is_accepted=is_accepted,
+                    policy_version=POLICY_VERSION,
+                    ip=client_ip,
+                )
+            )
+
+        return await self._create_session(
+            user=user,
+            provider=provider,
+            data=data,
+            request=request,
+            error_code="REGISTRATION_FAILED",
+            error_kwargs=error_kwargs,
+        )
+
     async def auth(
             self,
             data: BaseAuthRequest,
             request: Request,
-            is_register: bool,
     ) -> BaseAuthContext:
         """Authorization with mail + password"""
         ph = PasswordHasher()
 
-        # test user has registration or not
-        user_result = await self.db.execute(
-            select(User)
-            .where(User.email == data.email)
+        error_kwargs = {
+            "db": self.db,
+            "request": request,
+            "language": data.language,
+            "device_id": data.device_id,
+        }
+
+        user = await self._get_user_by_email(email=data.email)
+
+        if user is None:
+            await raise_backend_error(
+                code="USER_NOT_FOUND",
+                **error_kwargs,
+            )
+
+        provider = await self._get_pass_provider(error_kwargs=error_kwargs)
+
+        result_auth_method = await self.db.execute(
+            select(UserAuthMethod).where(
+                UserAuthMethod.user_id == user.user_id,
+                UserAuthMethod.provider == provider.code,
+            )
         )
 
-        existing_user = user_result.scalar_one_or_none()
+        auth_method = result_auth_method.scalar_one_or_none()
 
-        if is_register:
-
-            if existing_user is not None:
-                await raise_backend_error(
-                    db=self.db,
-                    request=request,
-                    code="EMAIL_ALREADY_EXISTS",
-                    language=data.language,
-                    device_id=data.device_id,
-                )
-
-            result_provider = await self.db.execute(
-                select(Provider).where(
-                    Provider.code == "pass"
-                )
+        if auth_method is None:
+            await raise_backend_error(
+                code="INCORRECT_AUTH_METHOD",
+                **error_kwargs,
             )
 
-            provider = result_provider.scalar_one_or_none()
+        try:
+            ph.verify(auth_method.password_hash, data.password)
 
-            if provider is None:
-                await raise_backend_error(
-                    db=self.db,
-                    request=request,
-                    code="AUTH_PROVIDER_NOT_FOUND",
-                    language=data.language,
-                    device_id=data.device_id,
-                )
-
-            password_hash = ph.hash(data.password)
-            random_number = random.randint(1, 11)
-            # create user + get it`s id
-            user = User(
-                email=data.email,
-                img=f'user{random_number}',
+        except Exception:
+            await raise_backend_error(
+                code="LOGIN_FAILED",
+                **error_kwargs,
             )
 
-            self.db.add(user)
-            await self.db.flush()
+        return await self._create_session(
+            user=user,
+            provider=provider,
+            data=data,
+            request=request,
+            error_code="LOGIN_FAILED",
+            error_kwargs=error_kwargs,
+            revoke_device_sessions=True,
+        )
 
-            # create user login method
-            auth_method = UserAuthMethod(
-                user_id=user.user_id,
-                provider=provider.code,
-                provider_user_id=None,
-                password_hash=password_hash,
+    async def _get_user_by_email(self, *, email: str) -> User | None:
+        result = await self.db.execute(
+            select(User).where(User.email == email)
+        )
+
+        return result.scalar_one_or_none()
+
+    async def _get_pass_provider(self, *, error_kwargs: dict) -> Provider:
+        result = await self.db.execute(
+            select(Provider).where(
+                Provider.code == "pass"
+            )
+        )
+
+        provider = result.scalar_one_or_none()
+
+        if provider is None:
+            await raise_backend_error(
+                code="AUTH_PROVIDER_NOT_FOUND",
+                **error_kwargs,
             )
 
-            self.db.add(auth_method)
+        return provider
 
-            now = datetime.now(timezone.utc)
-            error_fail = "REGISTRATION_FAILED"
+    async def _prepare_phone(self, *, phone: str, error_kwargs: dict) -> str:
+        """Приводит телефон к каноническому виду и проверяет, что он свободен."""
+        try:
+            normalized = normalize_phone(phone)
 
-        else:
-            user = existing_user
+        except ValueError:
+            normalized = None
 
-            if user is None:
-                await raise_backend_error(
-                    db=self.db,
-                    request=request,
-                    code="USER_NOT_FOUND",
-                    language=data.language,
-                    device_id=data.device_id,
-                )
-
-            result_provider = await self.db.execute(
-                select(Provider).where(
-                    Provider.code == "pass"
-                )
+        if normalized is None:
+            await raise_backend_error(
+                code="INVALID_PHONE_FORMAT",
+                **error_kwargs,
             )
 
-            provider = result_provider.scalar_one_or_none()
+        result = await self.db.execute(
+            select(User.user_id)
+            .where(User.phone == normalized)
+            .limit(1)
+        )
 
-            if provider is None:
-                await raise_backend_error(
-                    db=self.db,
-                    request=request,
-                    code="AUTH_PROVIDER_NOT_FOUND",
-                    language=data.language,
-                    device_id=data.device_id,
-                )
-
-            result_auth_method = await self.db.execute(
-                select(UserAuthMethod).where(
-                    UserAuthMethod.user_id == user.user_id,
-                    UserAuthMethod.provider == provider.code,
-                )
+        if result.scalar_one_or_none() is not None:
+            await raise_backend_error(
+                code="PHONE_ALREADY_EXISTS",
+                **error_kwargs,
             )
 
-            auth_method = result_auth_method.scalar_one_or_none()
+        return normalized
 
-            if auth_method is None:
+    async def _prepare_consents(
+            self,
+            *,
+            consents: list[ConsentItem],
+            error_kwargs: dict,
+    ) -> list[tuple[str, bool]]:
+        """Проверяет, что все обязательные согласия приняты.
+
+        Повторяющиеся коды схлопываются, чтобы не упереться в UNIQUE(user_id, consent_code).
+        """
+        accepted = {
+            consent.code.value: consent.is_accepted
+            for consent in consents
+        }
+
+        for consent_code in REQUIRED_CONSENTS:
+            if not accepted.get(consent_code, False):
                 await raise_backend_error(
-                    db=self.db,
-                    request=request,
-                    code="INCORRECT_AUTH_METHOD",
-                    language=data.language,
-                    device_id=data.device_id,
+                    code="CONSENT_REQUIRED",
+                    **error_kwargs,
                 )
 
-            try:
-                ph.verify(auth_method.password_hash, data.password)
-            except Exception:
-                await raise_backend_error(
-                    db=self.db,
-                    request=request,
-                    code="LOGIN_FAILED",
-                    language=data.language,
-                    device_id=data.device_id,
-                )
+        return list(accepted.items())
 
-            now = datetime.now(timezone.utc)
+    async def _create_session(
+            self,
+            *,
+            user: User,
+            provider: Provider,
+            data: _AuthData,
+            request: Request,
+            error_code: str,
+            error_kwargs: dict,
+            revoke_device_sessions: bool = False,
+    ) -> BaseAuthContext:
+        now = datetime.now(timezone.utc)
 
-            result_device_id = await self.db.execute(
+        if revoke_device_sessions:
+            result_device_sessions = await self.db.execute(
                 select(UserSession).where(
                     UserSession.user_id == user.user_id,
                     UserSession.device_id == data.device_id,
@@ -157,28 +266,21 @@ class BaseAuthService:
                 )
             )
 
-            device_id = result_device_id.scalars().all()
-
-            for session in device_id:
+            for session in result_device_sessions.scalars().all():
                 session.revoked_at = now
 
-            error_fail = "LOGIN_FAILED"
-
-        client_ip = get_client_ip(request)
         session_token = secrets.token_urlsafe(64)
-
-        expires_at = now + timedelta(days=180)
 
         user_session = UserSession(
             device_id=data.device_id,
             platform='web',
             user_id=user.user_id,
             session=session_token,
-            ip=client_ip,
+            ip=get_client_ip(request),
             language=data.language,
             provider=provider.code,
             device_name=data.device_name,
-            expires_at=expires_at,
+            expires_at=now + timedelta(days=180),
         )
 
         self.db.add(user_session)
@@ -190,11 +292,8 @@ class BaseAuthService:
             await self.db.rollback()
 
             await raise_backend_error(
-                db=self.db,
-                request=request,
-                code=error_fail,
-                language=data.language,
-                device_id=data.device_id,
+                code=error_code,
+                **error_kwargs,
             )
 
         return BaseAuthContext(

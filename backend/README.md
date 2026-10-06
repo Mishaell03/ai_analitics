@@ -83,30 +83,25 @@ make fresh
 ### 4. Python зависимости
 
 ```bash
-python -m venv venv
-
 # Windows
+python -m venv venv
 venv\Scripts\activate
+pip install -r requirements.txt
+```
 
+```bash
 # Linux / macOS
+python3 -m venv venv
 source venv/bin/activate
-
 pip install -r requirements.txt
 ```
 
 ### 5. Запуск сервера
-
+в корне backend сервиса
 ```bash
-cd app
-python3 main.py
+python -m uvicorn app.main:app --reload
 ```
 
-Или через uvicorn:
-
-```bash
-cd app
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-```
 
 **API:** http://localhost:8000/api/v1  
 **Swagger:** http://localhost:8000/docs

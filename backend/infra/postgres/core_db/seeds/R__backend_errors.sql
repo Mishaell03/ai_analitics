@@ -17,6 +17,7 @@ VALUES
     ('COURSE_NOT_ENROLLED', 404),
     ('INVALID_PHONE_FORMAT', 422),
     ('PHONE_ALREADY_EXISTS', 409),
+    ('CONSENT_REQUIRED', 422),
     ('UPDATE_ME_FAILED', 409)
 ON CONFLICT (code) DO NOTHING;
 
@@ -72,5 +73,8 @@ VALUES
     ('PHONE_ALREADY_EXISTS', 'ru', 'Данный номер телефона уже зарегистрирован'),
 
     ('UPDATE_ME_FAILED', 'en', 'Failed to update profile. Please try again'),
-    ('UPDATE_ME_FAILED', 'ru', 'Не удалось обновить профиль. Попробуйте ещё раз')
+    ('UPDATE_ME_FAILED', 'ru', 'Не удалось обновить профиль. Попробуйте ещё раз'),
+
+    ('CONSENT_REQUIRED', 'en', 'You must accept the personal data processing consent'),
+    ('CONSENT_REQUIRED', 'ru', 'Необходимо согласие на обработку персональных данных')
 ON CONFLICT (code, language) DO NOTHING;
