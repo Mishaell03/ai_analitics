@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS lessons (
 
     title VARCHAR(255) NOT NULL,
     description TEXT,
+    answer TEXT,
 
     position INTEGER NOT NULL,
 
