@@ -18,4 +18,7 @@ export const API_ROUTES = {
 // Lessons
     LESSONS: "/lessons",
     LESSON_BY_ID: (id) => `/lessons/${id}`,
+
+// Admin
+    ADMIN_DASHBOARD: "/admin/dashboard",
 };

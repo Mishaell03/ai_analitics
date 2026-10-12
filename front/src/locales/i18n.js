@@ -8,6 +8,7 @@ import ruError from "@/locales/error/error_ru.js";
 import ruHeader from "@/locales/layouts/header_ru.js";
 import ruProfile from "@/locales/profile/profile_ru.js";
 import ruTeachers from "@/locales/teachers/teachers_ru.js";
+import ruAdmin from "@/locales/admin/admin_ru.js";
 
 const translations = {
     ru: {
@@ -27,6 +28,9 @@ const translations = {
         },
         profile: {
             profile: ruProfile,
+        },
+        admin: {
+            admin: ruAdmin,
         },
         teachers: {
             teachers: ruTeachers,

@@ -32,6 +32,11 @@ function Header() {
             title: t("about_us"),
             path: ROUTES.about_us,
         },
+
+        // доступно только администраторам
+        ...(user?.is_admin
+            ? [{title: t("admin"), path: ROUTES.admin}]
+            : []),
     ];
 
 

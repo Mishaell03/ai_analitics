@@ -5,6 +5,7 @@ export const ROUTES = {
     courses: '/courses',
     course: '/course',
     profile: '/profile',
+    admin: '/admin',
 
     // TODO: adding routes
     analytics: "/analytics",

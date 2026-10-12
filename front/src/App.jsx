@@ -9,6 +9,7 @@ import {Course} from "@/pages/Curses/Course.jsx";
 import {About} from "@/pages/About/About.jsx";
 import {Profile} from "@/pages/Profile/Profile.jsx";
 import {Teachers} from "@/pages/Teachers/Teachers.jsx";
+import {Dashboard} from "@/pages/Admin/Dashboard.jsx";
 
 function App() {
 
@@ -23,6 +24,8 @@ function App() {
                 <Route element={<About/>} path={ROUTES.about_us}/>
                 <Route element={<Teachers/>} path={ROUTES.teachers}/>
                 <Route element={<Profile/>} path={ROUTES.profile}/>
+
+                <Route element={<Dashboard/>} path={ROUTES.admin}/>
             </Route>
         </Routes>
     )

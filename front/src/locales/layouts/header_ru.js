@@ -4,6 +4,8 @@ export default {
     teachers: 'Преподаватели',
     about_us: 'О нас',
 
+    admin: 'Админ-панель',
+
     login: "Войти",
     registration: "Регистрация",
 
