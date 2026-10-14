@@ -10,6 +10,7 @@ import {About} from "@/pages/About/About.jsx";
 import {Profile} from "@/pages/Profile/Profile.jsx";
 import {Teachers} from "@/pages/Teachers/Teachers.jsx";
 import {Dashboard} from "@/pages/Admin/Dashboard.jsx";
+import AdminLayout from "@/pages/Admin/AdminLayout.jsx";
 
 function App() {
 
@@ -25,7 +26,11 @@ function App() {
                 <Route element={<Teachers/>} path={ROUTES.teachers}/>
                 <Route element={<Profile/>} path={ROUTES.profile}/>
 
-                <Route element={<Dashboard/>} path={ROUTES.admin}/>
+                {/* ---------- admin ---------- */}
+
+                <Route element={<AdminLayout/>}>
+                    <Route element={<Dashboard/>} path={ROUTES.admin}/>
+                </Route>
             </Route>
         </Routes>
     )

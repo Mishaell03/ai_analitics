@@ -3,6 +3,21 @@ export default {
     title: "Дашборд",
     subtitle: "Ключевые метрики платформы",
 
+    // ---------- sidebar ----------
+
+    sidebarGroupMain: "Основное",
+    sidebarGroupManage: "Управление",
+
+    sidebarAnalytics: "Аналитика",
+    sidebarUsers: "Пользователи",
+    sidebarAssignments: "Задания",
+    sidebarReports: "Отчёты",
+    sidebarSettings: "Настройки",
+
+    sidebarSoon: "скоро",
+    sidebarRole: "Администратор",
+    sidebarBack: "Вернуться на сайт",
+
     refreshButton: "Обновить данные",
     refreshProcess: "Обновляем...",
 

@@ -1,18 +1,12 @@
 .dashboard {
-    width: 100%;
-
-    min-height: 100vh;
-
-    padding: 48px 24px 100px;
+    min-width: 0;
 }
 
 
 /* ---------- heading ---------- */
 
 .heading {
-    max-width: 1280px;
-
-    margin: 0 auto 28px;
+    margin: 0 0 28px;
 }
 
 .badge {
@@ -130,10 +124,6 @@
 /* ---------- stats ---------- */
 
 .stats {
-    max-width: 1280px;
-
-    margin: 0 auto;
-
     display: grid;
 
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -145,13 +135,11 @@
 /* ---------- panels ---------- */
 
 .columns {
-    max-width: 1280px;
-
-    margin: 22px auto 0;
+    margin: 22px 0 0;
 
     display: grid;
 
-    grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-columns: minmax(0, 1fr) 340px;
 
     align-items: start;
 
@@ -268,23 +256,17 @@
     border-top: none;
 }
 
-.userAvatar {
+.userSkeletonAvatar {
     flex-shrink: 0;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
 
     width: 38px;
     height: 38px;
 
     border-radius: 50%;
 
-    background: rgb(182 95 253 / 0.1);
-    color: var(--accent);
+    background: rgb(128 128 128 / 0.12);
 
-    font-size: 14px;
-    font-weight: 800;
+    animation: pulse 1.4s ease-in-out infinite;
 }
 
 .userBody {
@@ -348,14 +330,6 @@
 
 /* ---------- skeleton ---------- */
 
-.user[data-skeleton="true"] > span:first-child {
-    border-radius: 50%;
-
-    background: rgb(128 128 128 / 0.12);
-
-    animation: pulse 1.4s ease-in-out infinite;
-}
-
 .user[data-skeleton="true"] .userBody > span {
     display: block;
 
@@ -385,10 +359,6 @@
 /* ---------- states ---------- */
 
 .state {
-    max-width: 1280px;
-
-    margin: 0 auto;
-
     min-height: 60vh;
 
     display: flex;
@@ -462,10 +432,6 @@
 }
 
 @media (max-width: 700px) {
-    .dashboard {
-        padding: 24px 16px 70px;
-    }
-
     .headingRow {
         align-items: flex-start;
 

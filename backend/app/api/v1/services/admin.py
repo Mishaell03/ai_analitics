@@ -1,3 +1,4 @@
+import asyncio
 from datetime import date, datetime, timezone
 
 from sqlalchemy import func, select
@@ -8,6 +9,7 @@ from app.api.v1.schemas.admin import (
     DashboardResponse,
     DashboardTopCourse,
 )
+from app.core.avatars import get_avatar_url
 from app.models.auth import UserSession
 from app.models.courses import Course, Lesson
 from app.models.enrollments_progress import CourseEnrollment
@@ -95,11 +97,21 @@ class AdminService:
                 User.user_id,
                 User.name,
                 User.email,
+                User.img,
+                User.is_default_img,
                 User.created_at,
             )
             .order_by(User.created_at.desc(), User.user_id.desc())
             .limit(users_count)
         )
+
+        rows = result.all()
+
+        # на каждый аватар уходит stat + presign, поэтому подписываем параллельно
+        img_urls = await asyncio.gather(*(
+            get_avatar_url(img=img, is_default_img=bool(is_default_img))
+            for _, _, _, img, is_default_img, _ in rows
+        ))
 
         return [
             DashboardLatestUser(
@@ -107,8 +119,9 @@ class AdminService:
                 name=name,
                 email=email,
                 created_at=created_at,
+                img_url=img_url,
             )
-            for user_id, name, email, created_at in result.all()
+            for (user_id, name, email, _, _, created_at), img_url in zip(rows, img_urls)
         ]
 
     async def _get_top_courses(self, top_courses: int) -> list[DashboardTopCourse]:

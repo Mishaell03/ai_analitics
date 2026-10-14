@@ -1,0 +1,24 @@
+.admin {
+    width: 100%;
+    max-width: 1250px;
+    min-height: 100vh;
+    /* хедер фиксированный и занимает ~90px сверху */
+    padding: 50px 24px 100px;
+    display: grid;
+    grid-template-columns: 264px minmax(0, 1fr);
+    align-items: start;
+    gap: 24px;
+    margin: auto;
+}
+
+.content {
+    min-width: 0;
+}
+
+@media (max-width: 1080px) {
+    .admin {
+        grid-template-columns: 1fr;
+        padding: 10px 16px 70px;
+        gap: 18px;
+    }
+}

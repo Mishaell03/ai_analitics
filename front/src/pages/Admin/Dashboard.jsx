@@ -21,6 +21,7 @@ import {formatDateTime, formatNumber} from "@/services/format.js";
 import StatCard from "@/components/StatCard/StatCard.jsx";
 import BarChart from "@/components/BarChart/BarChart.jsx";
 import EmptyState from "@/components/EmptyState/EmptyState.jsx";
+import UserAvatar from "@/components/UserAvatar/UserAvatar.jsx";
 import styles from "./dashboard.module.css";
 
 const language = "ru";
@@ -47,11 +48,6 @@ const EMPTY_DASHBOARD = {
     latest_users: [],
     top_courses: [],
 };
-
-// первая буква имени для аватара, иначе — первая буква почты
-function getInitial(user) {
-    return (user.name || user.email || "?").trim().charAt(0).toUpperCase();
-}
 
 export function Dashboard() {
     const {user, loading: authLoading} = useAuth();
@@ -97,7 +93,7 @@ export function Dashboard() {
     );
 
     const forbiddenState = (
-        <main className={styles.dashboard}>
+        <div className={styles.dashboard}>
             <div className={styles.state}>
                 <EmptyState
                     icon={ShieldCheck}
@@ -110,7 +106,7 @@ export function Dashboard() {
                     }
                 />
             </div>
-        </main>
+        </div>
     );
 
     // прав нет ни у гостя, ни у пользователя, ни по ответу бэкенда
@@ -120,7 +116,7 @@ export function Dashboard() {
 
     if (error) {
         return (
-            <main className={styles.dashboard}>
+            <div className={styles.dashboard}>
                 <div className={styles.state}>
                     <EmptyState
                         icon={TriangleAlert}
@@ -137,7 +133,7 @@ export function Dashboard() {
                         }
                     />
                 </div>
-            </main>
+            </div>
         );
     }
 
@@ -147,7 +143,7 @@ export function Dashboard() {
     const latestUsers = dashboard.latest_users;
 
     return (
-        <main className={styles.dashboard}>
+        <div className={styles.dashboard}>
 
             {/* ---------- heading ---------- */}
 
@@ -257,7 +253,7 @@ export function Dashboard() {
                                 {length: LATEST_USERS},
                                 (_, index) => (
                                     <li className={styles.user} data-skeleton="true" key={index}>
-                                        <span className={styles.userAvatar}/>
+                                        <span className={styles.userSkeletonAvatar}/>
                                         <div className={styles.userBody}>
                                             <span/>
                                             <span/>
@@ -280,9 +276,11 @@ export function Dashboard() {
                         <ul className={styles.users}>
                             {latestUsers.map((latestUser) => (
                                 <li className={styles.user} key={latestUser.user_id}>
-                                    <span className={styles.userAvatar}>
-                                        {getInitial(latestUser)}
-                                    </span>
+                                    <UserAvatar
+                                        url={latestUser.img_url}
+                                        name={latestUser.name}
+                                        email={latestUser.email}
+                                    />
 
                                     <div className={styles.userBody}>
                                         <div className={styles.userTop}>
@@ -312,6 +310,6 @@ export function Dashboard() {
                     )}
                 </aside>
             </div>
-        </main>
+        </div>
     );
 }

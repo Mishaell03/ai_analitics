@@ -1,0 +1,374 @@
+.sidebar {
+    position: sticky;
+
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 22px;
+
+    padding: 20px;
+
+    border: 1px solid rgb(182 95 253 / 0.08);
+    border-radius: var(--radius-lg);
+
+    background: var(--card);
+
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.03);
+}
+
+
+/* ---------- brand ---------- */
+
+.brand {
+    display: flex;
+    align-items: center;
+
+    gap: 12px;
+}
+
+.brandIcon {
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 40px;
+    height: 40px;
+
+    border-radius: 13px;
+
+    background: rgb(182 95 253 / 0.1);
+    color: var(--accent);
+}
+
+.brandIcon svg {
+    width: 19px;
+    height: 19px;
+}
+
+.brandText {
+    min-width: 0;
+}
+
+.brandText strong {
+    display: block;
+
+    color: var(--ink);
+
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+}
+
+.brandText span {
+    display: block;
+
+    margin-top: 2px;
+
+    color: var(--muted);
+
+    font-size: 12px;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+
+/* ---------- nav ---------- */
+
+.nav {
+    display: flex;
+    flex-direction: column;
+
+    gap: 20px;
+}
+
+.group {
+    display: flex;
+    flex-direction: column;
+
+    gap: 8px;
+}
+
+.groupTitle {
+    padding: 0 13px;
+
+    color: var(--muted);
+
+    font-size: 10px;
+    font-weight: 800;
+
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+
+    opacity: 0.8;
+}
+
+.groupItems {
+    display: flex;
+    flex-direction: column;
+
+    gap: 4px;
+}
+
+.item {
+    position: relative;
+
+    display: flex;
+    align-items: center;
+
+    gap: 12px;
+
+    padding: 11px 13px;
+
+    border-radius: 13px;
+
+    color: var(--muted);
+
+    font-size: 14px;
+    font-weight: 650;
+
+    text-decoration: none;
+
+    transition: background 0.25s ease,
+    color 0.25s ease,
+    transform 0.25s ease;
+}
+
+.item svg {
+    flex-shrink: 0;
+
+    width: 18px;
+    height: 18px;
+}
+
+.itemText {
+    min-width: 0;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.item:hover {
+    background: rgb(182 95 253 / 0.07);
+    color: var(--ink);
+
+    transform: translateX(2px);
+}
+
+.item:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.item.active {
+    background: var(--accent);
+    color: #fff;
+
+    box-shadow: 0 10px 24px rgb(182 95 253 / 0.22);
+
+    transform: none;
+}
+
+.item.active:hover {
+    background: var(--primary);
+    color: #fff;
+
+    transform: none;
+}
+
+/* ещё не готовые разделы: видны, но не кликаются */
+.item[data-soon="true"] {
+    cursor: default;
+    opacity: 0.55;
+}
+
+.item[data-soon="true"]:hover {
+    background: none;
+    color: var(--muted);
+
+    transform: none;
+}
+
+.soon {
+    flex-shrink: 0;
+
+    margin-left: auto;
+
+    padding: 3px 8px;
+
+    border-radius: 7px;
+
+    background: rgb(128 128 128 / 0.1);
+
+    color: var(--muted);
+
+    font-size: 9px;
+    font-weight: 800;
+
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+
+/* ---------- footer ---------- */
+
+.footer {
+    margin-top: auto;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 12px;
+}
+
+.user {
+    min-width: 0;
+
+    display: flex;
+    align-items: center;
+
+    gap: 11px;
+
+    padding: 11px;
+
+    border-radius: 15px;
+
+    background: rgb(128 128 128 / 0.05);
+}
+
+.userText {
+    min-width: 0;
+}
+
+.userText strong {
+    display: block;
+
+    color: var(--ink);
+
+    font-size: 13px;
+    font-weight: 700;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.userText span {
+    display: block;
+
+    margin-top: 2px;
+
+    color: var(--muted);
+
+    font-size: 11px;
+}
+
+.back {
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+
+    padding: 11px 13px;
+
+    border-radius: 13px;
+
+    color: var(--muted);
+
+    font-size: 13px;
+    font-weight: 650;
+
+    text-decoration: none;
+
+    transition: background 0.25s ease,
+    color 0.25s ease;
+}
+
+.back svg {
+    width: 16px;
+    height: 16px;
+}
+
+.back:hover {
+    background: rgb(128 128 128 / 0.08);
+    color: var(--ink);
+}
+
+
+/* ---------- responsive ---------- */
+
+/* узкие экраны: панель превращается в горизонтальную ленту */
+@media (max-width: 1080px) {
+    .sidebar {
+        top: 140px;
+
+        flex-direction: row;
+        align-items: center;
+
+        gap: 14px;
+
+        padding: 12px 14px;
+
+        overflow-x: auto;
+
+        scrollbar-width: none;
+    }
+
+    .sidebar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .brand,
+    .footer {
+        display: none;
+    }
+
+    .nav {
+        flex-direction: row;
+
+        gap: 14px;
+    }
+
+    .group {
+        flex-direction: row;
+
+        gap: 6px;
+    }
+
+    .groupTitle {
+        display: none;
+    }
+
+    .groupItems {
+        flex-direction: row;
+
+        gap: 6px;
+    }
+
+    .item {
+        flex-shrink: 0;
+
+        white-space: nowrap;
+    }
+
+    .item:hover {
+        transform: none;
+    }
+}
+
+@media (max-width: 560px) {
+    .item {
+        padding: 10px 12px;
+    }
+
+    .item svg {
+        width: 16px;
+        height: 16px;
+    }
+}

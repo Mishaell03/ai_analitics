@@ -5,9 +5,8 @@ from sqlalchemy.sql.elements import ColumnElement
 from starlette.requests import Request
 
 from app.api.v1.schemas.users import MeResponse, MeUpdateRequest
-from app.core.config import settings
+from app.core.avatars import get_avatar_url
 from app.core.errors import raise_backend_error
-from app.core.minio_url import minio_storage
 from app.core.session import CurrentUserContext
 from app.models.users import User
 from app.utils.phone import normalize_phone
@@ -25,14 +24,10 @@ class UserService:
         user = current_user.user
         session = current_user.session
 
-        img_url = None
-
-        if user.img:
-            img_url = await minio_storage.get_url(
-                file_path=user.img + ".webp",
-                bucket="avatars" if not user.is_default_img else "default-avatars",
-                expires=settings.image_url_ttl,
-            )
+        img_url = await get_avatar_url(
+            img=user.img,
+            is_default_img=bool(user.is_default_img),
+        )
 
         return MeResponse(
             name=user.name,

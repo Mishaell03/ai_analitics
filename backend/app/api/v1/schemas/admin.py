@@ -9,6 +9,7 @@ class DashboardLatestUser(BaseModel):
     name: str | None = None
     email: str
     created_at: datetime
+    img_url: str | None = None
 
 
 # самый популярный курс по количеству записей
