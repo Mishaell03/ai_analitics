@@ -15,10 +15,24 @@
     min-width: 0;
 }
 
+/* панель ушла из потока, но колонка под неё остаётся */
+@media (min-width: 1081px) {
+    .content {
+        grid-column: 2;
+    }
+}
+
 @media (max-width: 1080px) {
     .admin {
-        grid-template-columns: 1fr;
+        /* одна колонка: в гриде панель занимала бы свою строку
+           и position: sticky некуда было бы ехать — блок тянется
+           на всю высоту ленты и контента, поэтому лента залипает */
+        display: block;
+
         padding: 10px 16px 70px;
-        gap: 18px;
+    }
+
+    .content {
+        margin-top: 18px;
     }
 }

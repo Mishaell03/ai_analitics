@@ -21,4 +21,6 @@ export const API_ROUTES = {
 
 // Admin
     ADMIN_DASHBOARD: "/admin/dashboard",
+    ADMIN_USERS: "/admin/users",
+    ADMIN_USER_DETAIL: (id) => `/admin/users/${id}`,
 };

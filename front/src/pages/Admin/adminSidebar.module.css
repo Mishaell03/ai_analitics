@@ -303,9 +303,38 @@
 
 /* ---------- responsive ---------- */
 
+/* широкие экраны: панель зафиксирована, как хедер */
+@media (min-width: 1081px) {
+    .sidebar {
+        position: fixed;
+
+        /* под хедером: он фиксирован и занимает ~90px сверху */
+        top: 160px;
+
+        /* по левому краю контейнера админки: max-width 1250 + padding 24 */
+        left: max(24px, calc((100vw - 1250px) / 2 + 24px));
+
+        width: 264px;
+
+        z-index: 900;
+
+        /* если панель выше экрана — скроллится внутри, а не вместе со страницей */
+        max-height: calc(100vh - 140px);
+        overflow-y: auto;
+
+        scrollbar-width: none;
+    }
+
+    .sidebar::-webkit-scrollbar {
+        display: none;
+    }
+}
+
 /* узкие экраны: панель превращается в горизонтальную ленту */
 @media (max-width: 1080px) {
     .sidebar {
+        /* остаётся под хедером и не уезжает при прокрутке страницы */
+        position: sticky;
         top: 140px;
 
         flex-direction: row;
@@ -315,7 +344,12 @@
 
         padding: 12px 14px;
 
+        /* лента прокручивается по горизонтали, стратсбар скрыт */
         overflow-x: auto;
+        overflow-y: hidden;
+
+        overscroll-behavior-x: contain;
+        -webkit-overflow-scrolling: touch;
 
         scrollbar-width: none;
     }
@@ -329,13 +363,18 @@
         display: none;
     }
 
+    /* лента не сжимается, иначе вместо прокрутки пункты просто сплющатся */
     .nav {
+        flex: 0 0 auto;
+
         flex-direction: row;
 
         gap: 14px;
     }
 
     .group {
+        flex: 0 0 auto;
+
         flex-direction: row;
 
         gap: 6px;

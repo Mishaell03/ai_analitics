@@ -25,8 +25,8 @@ export const ADMIN_NAV = [
             },
             {
                 title: "sidebarUsers",
+                path: ROUTES.admin_users,
                 icon: Users,
-                soon: true,
             },
         ],
     },

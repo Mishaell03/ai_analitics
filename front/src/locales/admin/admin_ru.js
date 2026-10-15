@@ -1,6 +1,6 @@
 export default {
     badge: "Админ-панель",
-    title: "Дашборд",
+    title: "Аналитика",
     subtitle: "Ключевые метрики платформы",
 
     // ---------- sidebar ----------
@@ -50,6 +50,84 @@ export default {
 
     usersEmptyTitle: "Пользователей пока нет",
     usersEmptyDescription: "Новые регистрации будут появляться здесь автоматически.",
+
+    // ---------- users page ----------
+
+    usersPageEyebrow: "Реестр",
+    usersPageTitle: "Пользователи",
+    usersPageSubtitle: "Все зарегистрированные пользователи платформы",
+
+    usersColumnId: "ID",
+    usersColumnName: "Пользователь",
+    usersColumnEmail: "Email",
+    usersColumnPhone: "Телефон",
+    usersColumnStatus: "Статус",
+
+    usersRoleAdmin: "Администратор",
+    usersRoleUser: "Пользователь",
+    usersRoleBlocked: "Заблокирован",
+    usersPhoneEmpty: "Не указан",
+
+    usersPageEmptyTitle: "Пользователей пока нет",
+    usersPageEmptyDescription: "Список пуст — зарегистрируйте первого пользователя.",
+
+    usersPageErrorTitle: "Не удалось загрузить пользователей",
+    usersPageErrorRetry: "Попробовать снова",
+
+    paginationPrev: "Назад",
+    paginationNext: "Вперёд",
+    paginationInfo: "Страница {page} из {total}",
+
+    // ---------- user modal ----------
+
+    userModalTitle: "Пользователь",
+    userModalClose: "Закрыть",
+    userModalLoading: "Загружаем данные пользователя",
+    userModalErrorTitle: "Не удалось загрузить данные",
+    userModalErrorDescription: "Проверьте подключение к интернету и попробуйте ещё раз.",
+    userModalErrorRetry: "Попробовать снова",
+
+    userModalRegistered: "Зарегистрирован",
+    userModalPhone: "Телефон",
+    userModalEmail: "Email",
+    userModalSessions: "Сессии",
+    userModalSessionsTotal: "всего сессий",
+    userModalSessionsActive: "активных",
+    userModalLearning: "Обучение",
+    userModalEnrollments: "записей на курсы",
+    userModalAttempts: "попыток",
+    userModalSolved: "решено уроков",
+    userModalLastAttempt: "Последняя попытка",
+
+    userModalAuthTitle: "Способы входа",
+    userModalAuthEmpty: "Способы входа не найдены",
+
+    userModalConsentsTitle: "Согласия",
+    userModalConsentsEmpty: "Согласий нет",
+    userModalConsentAccepted: "Принято",
+    userModalConsentNotAccepted: "Не принято",
+    userModalConsentVersion: "Версия {version}",
+
+    userModalSessionsTitle: "Сессии",
+    userModalSessionsEmpty: "Сессий нет",
+    userModalLastSeen: "активность",
+    userModalProxy: "прокси",
+    userModalDirect: "прямое подключение",
+
+    userModalAttemptLesson: "Урок",
+    userModalAttemptCorrectness: "Правильность",
+    userModalAttemptSpeed: "Скорость",
+    userModalAttemptDate: "Дата",
+
+    userModalCoursesTitle: "Курсы",
+    userModalCoursesEmpty: "Пользователь не записан ни на один курс",
+    userModalCourseUnpublished: "не опубликован",
+    userModalCourseProgress: "{solved} из {total} уроков",
+    userModalCourseAttempts: "{count} попыток",
+    userModalCourseEnrolled: "записан {date}",
+
+    userModalAttemptsTitle: "Последние попытки",
+    userModalAttemptsEmpty: "Попыток решения уроков не было",
 
     // ---------- states ----------
 

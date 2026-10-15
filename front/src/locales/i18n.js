@@ -56,7 +56,7 @@ export function setLanguage(language) {
     localStorage.setItem("language", language);
 }
 
-export function getTranslation(path, language = getLanguage()) {
+export function getTranslation(path, language = getLanguage(), params) {
     const keys = path.split(".");
 
     let value = translations[language];
@@ -65,5 +65,17 @@ export function getTranslation(path, language = getLanguage()) {
         value = value?.[key];
     }
 
-    return value ?? path;
+    if (typeof value !== "string") {
+        return path;
+    }
+
+    if (!params) {
+        return value;
+    }
+
+    // подстановка {placeholder} из params
+    return value.replace(
+        /\{(\w+)}/g,
+        (match, key) => (key in params ? String(params[key]) : match)
+    );
 }
