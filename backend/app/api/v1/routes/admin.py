@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.admin import (
     AdminQuantityUsers,
+    AdminUserBlockResponse,
     AdminUserDetail,
     DashboardResponse,
 )
@@ -102,3 +103,65 @@ async def get_user_detail(
     )
 
     return detail
+
+
+@router.post("/users/{user_id}/block", response_model=AdminUserBlockResponse)
+async def block_user(
+        request: Request,
+        user_id: int,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    result = await AdminService(db).set_user_blocked(
+        request=request,
+        user_id=user_id,
+        is_blocked=True,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        admin_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_BLOCK_ADMIN_USER",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return result
+
+
+@router.delete("/users/{user_id}/block", response_model=AdminUserBlockResponse)
+async def unblock_user(
+        request: Request,
+        user_id: int,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    result = await AdminService(db).set_user_blocked(
+        request=request,
+        user_id=user_id,
+        is_blocked=False,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        admin_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_UNBLOCK_ADMIN_USER",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return result

@@ -137,3 +137,9 @@ class AdminQuantityUsers(BaseModel):
     page_size: int
     total_pages: int
     users: list[_UsersBaseInfo] = Field(default_factory=list)
+
+
+# результат блокировки / разблокировки
+class AdminUserBlockResponse(BaseModel):
+    user_id: int
+    is_blocked: bool

@@ -73,6 +73,15 @@ export function Users() {
         setSelectedUserId(null);
     }, []);
 
+    // статус в строке списка должен совпадать с карточкой
+    const handleUserUpdated = useCallback((userId, isBlocked) => {
+        setUsers((current) => current.map((item) =>
+            item.user_id === userId
+                ? {...item, is_blocked: isBlocked}
+                : item
+        ));
+    }, []);
+
     // прав нет ни у гостя, ни у пользователя, ни по ответу бэкенда
     if (error === "forbidden" || (!authLoading && !user?.is_admin)) {
         return (
@@ -298,8 +307,10 @@ export function Users() {
 
             {selectedUserId !== null && (
                 <UserModal
+                    key={selectedUserId}
                     userId={selectedUserId}
                     onClose={handleCloseModal}
+                    onUserUpdated={handleUserUpdated}
                 />
             )}
         </dev>

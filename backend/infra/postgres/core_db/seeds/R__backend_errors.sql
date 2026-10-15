@@ -21,7 +21,9 @@ VALUES
     ('INVALID_PHONE_FORMAT', 422),
     ('PHONE_ALREADY_EXISTS', 409),
     ('CONSENT_REQUIRED', 422),
-    ('UPDATE_ME_FAILED', 409)
+    ('UPDATE_ME_FAILED', 409),
+    ('CANNOT_BLOCK_SELF', 409),
+    ('USER_BLOCK_FAILED', 409)
 ON CONFLICT (code) DO NOTHING;
 
 -- локализации ошибок
@@ -88,5 +90,11 @@ VALUES
     ('UPDATE_ME_FAILED', 'ru', 'Не удалось обновить профиль. Попробуйте ещё раз'),
 
     ('CONSENT_REQUIRED', 'en', 'You must accept the personal data processing consent'),
-    ('CONSENT_REQUIRED', 'ru', 'Необходимо согласие на обработку персональных данных')
+    ('CONSENT_REQUIRED', 'ru', 'Необходимо согласие на обработку персональных данных'),
+
+    ('CANNOT_BLOCK_SELF', 'en', 'You cannot block yourself'),
+    ('CANNOT_BLOCK_SELF', 'ru', 'Нельзя заблокировать самого себя'),
+
+    ('USER_BLOCK_FAILED', 'en', 'Failed to change the block status. Please try again'),
+    ('USER_BLOCK_FAILED', 'ru', 'Не удалось изменить статус блокировки. Попробуйте ещё раз')
 ON CONFLICT (code, language) DO NOTHING;

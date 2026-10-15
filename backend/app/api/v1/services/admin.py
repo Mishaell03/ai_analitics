@@ -2,12 +2,14 @@ import asyncio
 from datetime import date, datetime, timezone
 
 from fastapi import Request
-from sqlalchemy import distinct, func, select
+from sqlalchemy import distinct, func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.admin import (
     AdminQuantityUsers,
     AdminUserAuthMethod,
+    AdminUserBlockResponse,
     AdminUserConsent,
     AdminUserCourseProgress,
     AdminUserDetail,
@@ -345,6 +347,93 @@ class AdminService:
             sessions=sessions,
             courses=courses,
             recent_attempts=recent_attempts,
+        )
+
+    async def set_user_blocked(
+            self,
+            request: Request,
+            user_id: int,
+            is_blocked: bool,
+            language: str = "en",
+            device_id: str | None = None,
+            session_id: int | None = None,
+            admin_id: int | None = None,
+            platform: str | None = None,
+    ) -> AdminUserBlockResponse:
+        """БЛОКИРОВКА / РАЗБЛОКИРОВКА ПОЛЬЗОВАТЕЛЯ
+
+        Флаг is_blocked проверяется в app.core.session.get_current_user
+        на каждом запросе, поэтому доступ закрывается сразу.
+        Дополнительно отзываем живые сессии, иначе в админке
+        у заблокированного пользователя оставались бы активные входы.
+        """
+
+        result = await self.db.execute(
+            select(User)
+            .where(User.user_id == user_id)
+        )
+
+        user = result.scalar_one_or_none()
+
+        if user is None:
+            await raise_backend_error(
+                db=self.db,
+                request=request,
+                code="USER_NOT_FOUND",
+                language=language,
+                device_id=device_id,
+                session_id=session_id,
+                user_id=admin_id,
+                platform=platform,
+            )
+
+        # себя блокировать нельзя: админ потеряет доступ к админке
+        if is_blocked and user_id == admin_id:
+            await raise_backend_error(
+                db=self.db,
+                request=request,
+                code="CANNOT_BLOCK_SELF",
+                language=language,
+                device_id=device_id,
+                session_id=session_id,
+                user_id=admin_id,
+                platform=platform,
+            )
+
+        now = datetime.now(timezone.utc)
+
+        user.is_blocked = is_blocked
+
+        if is_blocked:
+            await self.db.execute(
+                update(UserSession)
+                .where(
+                    UserSession.user_id == user_id,
+                    UserSession.revoked_at.is_(None),
+                )
+                .values(revoked_at=now)
+            )
+
+        try:
+            await self.db.commit()
+
+        except IntegrityError:
+            await self.db.rollback()
+
+            await raise_backend_error(
+                db=self.db,
+                request=request,
+                code="USER_BLOCK_FAILED",
+                language=language,
+                device_id=device_id,
+                session_id=session_id,
+                user_id=admin_id,
+                platform=platform,
+            )
+
+        return AdminUserBlockResponse(
+            user_id=user_id,
+            is_blocked=is_blocked,
         )
 
     # ---------- внутренние методы ----------

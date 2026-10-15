@@ -68,6 +68,20 @@ export default {
     usersRoleBlocked: "Заблокирован",
     usersPhoneEmpty: "Не указан",
 
+    // ---------- blocking ----------
+
+    userModalSelf: "Это вы",
+    userModalBlock: "Заблокировать",
+    userModalUnblock: "Разблокировать",
+    userModalBlocking: "Блокируем...",
+    userModalUnblocking: "Разблокируем...",
+    userModalBlockConfirmTitle: "Заблокировать пользователя?",
+    userModalBlockConfirmDescription:
+        "Пользователь потеряет доступ к платформе, все его активные сессии будут отозваны.",
+    userModalBlockConfirmCancel: "Отмена",
+    userModalBlockConfirmOk: "Заблокировать",
+    userModalBlockError: "Не удалось изменить статус блокировки",
+
     usersPageEmptyTitle: "Пользователей пока нет",
     usersPageEmptyDescription: "Список пуст — зарегистрируйте первого пользователя.",
 
@@ -93,6 +107,7 @@ export default {
     userModalSessions: "Сессии",
     userModalSessionsTotal: "всего сессий",
     userModalSessionsActive: "активных",
+    userModalSessionsRatio: "активных / всего",
     userModalLearning: "Обучение",
     userModalEnrollments: "записей на курсы",
     userModalAttempts: "попыток",
@@ -110,6 +125,8 @@ export default {
 
     userModalSessionsTitle: "Сессии",
     userModalSessionsEmpty: "Сессий нет",
+    userModalSessionsShowAll: "Показать ещё {count}",
+    userModalSessionsHide: "Свернуть",
     userModalLastSeen: "активность",
     userModalProxy: "прокси",
     userModalDirect: "прямое подключение",
