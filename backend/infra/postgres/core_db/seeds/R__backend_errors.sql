@@ -13,6 +13,9 @@ VALUES
     ('COURSE_NOT_FOUND', 404),
     ('MODULE_NOT_FOUND', 404),
     ('LESSON_NOT_FOUND', 404),
+    ('COURSE_NOT_PUBLISHED', 404),
+    ('MODULE_NOT_PUBLISHED', 404),
+    ('LESSON_NOT_PUBLISHED', 404),
     ('COURSE_ALREADY_ENROLLED', 409),
     ('COURSE_NOT_ENROLLED', 404),
     ('INVALID_PHONE_FORMAT', 422),
@@ -59,6 +62,15 @@ VALUES
 
     ('LESSON_NOT_FOUND', 'en', 'Lesson not found'),
     ('LESSON_NOT_FOUND', 'ru', 'Урок не найден'),
+
+    ('COURSE_NOT_PUBLISHED', 'en', 'Course is not published'),
+    ('COURSE_NOT_PUBLISHED', 'ru', 'Курс не опубликован'),
+
+    ('MODULE_NOT_PUBLISHED', 'en', 'Module is not published'),
+    ('MODULE_NOT_PUBLISHED', 'ru', 'Модуль не опубликован'),
+
+    ('LESSON_NOT_PUBLISHED', 'en', 'Lesson is not published'),
+    ('LESSON_NOT_PUBLISHED', 'ru', 'Урок не опубликован'),
 
     ('COURSE_ALREADY_ENROLLED', 'en', 'You are already enrolled in this course'),
     ('COURSE_ALREADY_ENROLLED', 'ru', 'Вы уже записаны на этот курс'),

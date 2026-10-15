@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS course_modules (
     description TEXT,
 
     position INTEGER NOT NULL,
+    is_published BOOLEAN NOT NULL DEFAULT FALSE,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -45,6 +46,7 @@ CREATE TABLE IF NOT EXISTS lessons (
     answer TEXT,
 
     position INTEGER NOT NULL,
+    is_published BOOLEAN NOT NULL DEFAULT FALSE,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
