@@ -99,7 +99,7 @@ pip install -r requirements.txt
 ### 5. Запуск сервера
 в корне backend сервиса
 ```bash
-python -m uvicorn app.main:app --reload
+python -m app.main
 ```
 
 

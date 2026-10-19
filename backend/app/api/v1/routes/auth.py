@@ -36,7 +36,7 @@ async def register_user(
         value=session.session,
         httponly=True,
         secure=settings.is_product,
-        samesite="lax",
+        samesite="none" if settings.is_product else "lax",
         path="/",
         max_age=60 * 60 * 24 * 180,
     )
@@ -72,7 +72,7 @@ async def auth_user(
         value=session.session,
         httponly=True,
         secure=settings.is_product,
-        samesite="lax",
+        samesite="none" if settings.is_product else "lax",
         path="/",
         max_age=60 * 60 * 24 * 180,
     )

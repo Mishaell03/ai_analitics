@@ -38,12 +38,9 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        # "http://localhost:8000",
-        # "http://127.0.0.1:8000",
-    ],
+    # Allow the Vite dev server on any localhost/127.0.0.1 port so that a busy
+    # port (which makes Vite pick the next one) does not break CORS/auth.
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -57,7 +54,7 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
-        "main:app",
+        "app.main:app",
         host=settings.api_host,
         port=settings.api_port,
         reload=settings.api_reload,

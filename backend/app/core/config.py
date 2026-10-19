@@ -5,8 +5,9 @@ from dotenv import load_dotenv
 from minio import Minio
 
 BASE_DIR = Path(__file__).resolve().parents[1]
-load_dotenv(BASE_DIR / ".env")
-load_dotenv()
+ENV_FILE = BASE_DIR / ".env"
+
+load_dotenv(ENV_FILE, override=True)
 
 class Settings:
     # DATABASE
@@ -17,6 +18,8 @@ class Settings:
     db_password: str = os.getenv("DB_PASSWORD")
 
     # API
+    api_host: str = os.getenv("API_HOST", "127.0.0.1")
+    api_port: int = int(os.getenv("API_PORT", "8000"))
     api_reload: bool = os.getenv("API_RELOAD", "false").lower() == "true"
     is_product: bool = os.getenv("IS_PRODUCT", "false").lower() == "true"
 
