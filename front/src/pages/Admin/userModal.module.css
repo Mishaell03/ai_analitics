@@ -196,9 +196,9 @@
 /* ---------- confirm ---------- */
 
 .confirmOverlay {
-    position: absolute;
+    position: fixed;
     inset: 0;
-    z-index: 20;
+    z-index: 1300;
 
     display: flex;
     align-items: center;
@@ -206,12 +206,10 @@
 
     padding: 20px;
 
-    background: rgb(15 14 20 / 0.5);
+    background: rgb(15 14 20 / 0.55);
 
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-
-    border-radius: inherit;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 
     animation: overlayIn 0.2s ease;
 }

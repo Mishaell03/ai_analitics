@@ -1,4 +1,5 @@
 import {
+    BookOpen,
     ChartColumn,
     ClipboardList,
     Flag,
@@ -27,6 +28,11 @@ export const ADMIN_NAV = [
                 title: "sidebarUsers",
                 path: ROUTES.admin_users,
                 icon: Users,
+            },
+            {
+                title: "sidebarCourses",
+                path: ROUTES.admin_courses,
+                icon: BookOpen,
             },
         ],
     },

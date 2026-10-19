@@ -10,6 +10,7 @@ export default {
 
     sidebarAnalytics: "Аналитика",
     sidebarUsers: "Пользователи",
+    sidebarCourses: "Курсы и модули",
     sidebarAssignments: "Задания",
     sidebarReports: "Отчёты",
     sidebarSettings: "Настройки",

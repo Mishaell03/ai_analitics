@@ -9,6 +9,19 @@ from app.api.v1.schemas.admin import (
     AdminUserDetail,
     DashboardResponse,
 )
+from app.api.v1.schemas.courses import (
+    CourseAdminResponse,
+    CourseCreateRequest,
+    CourseUpdateRequest,
+    CoursesAdminResponse,
+    EnrollmentResponse,
+    ModuleAdminResponse,
+    ModuleCreateRequest,
+    ModuleReorderRequest,
+    ModuleUpdateRequest,
+    ModulesAdminResponse,
+)
+from app.api.v1.services.courses import BaseCoursesService
 from app.api.v1.services.admin import AdminService
 from app.core.database import get_db
 from app.core.session import CurrentUserContext, get_current_admin
@@ -136,6 +149,656 @@ async def block_user(
     return result
 
 
+# ---------- COURSES: DELETE / DEACTIVATE / ACTIVATE ----------
+
+@router.delete("/courses/{course_slug}", response_model=EnrollmentResponse)
+async def delete_admin_course(
+        course_slug: str,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    result = await BaseCoursesService(db).delete_course(
+        request=request,
+        course_slug=course_slug,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_DELETE_ADMIN_COURSE",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return result
+
+
+@router.post("/courses/{course_slug}/deactivate", response_model=CourseAdminResponse)
+async def deactivate_admin_course(
+        course_slug: str,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    course = await BaseCoursesService(db).deactivate_course(
+        request=request,
+        course_slug=course_slug,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_DEACTIVATE_ADMIN_COURSE",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return course
+
+
+@router.post("/courses/{course_slug}/activate", response_model=CourseAdminResponse)
+async def activate_admin_course(
+        course_slug: str,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    course = await BaseCoursesService(db).activate_course(
+        request=request,
+        course_slug=course_slug,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_ACTIVATE_ADMIN_COURSE",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return course
+
+
+# ---------- MODULES ----------
+
+@router.get("/courses/{course_slug}/modules", response_model=ModulesAdminResponse)
+async def get_admin_modules(
+        course_slug: str,
+        request: Request,
+        page: int = Query(default=1, ge=1),
+        page_size: int = Query(default=20, ge=1, le=100),
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    modules = await BaseCoursesService(db).get_modules_admin(
+        course_slug=course_slug,
+        request=request,
+        page=page,
+        page_size=page_size,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_GET_ADMIN_MODULES",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return modules
+
+
+@router.post("/courses/{course_slug}/modules", response_model=ModuleAdminResponse)
+async def create_admin_module_nested(
+        course_slug: str,
+        request: Request,
+        data: ModuleCreateRequest,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    module = await BaseCoursesService(db).create_module(
+        request=request,
+        course_slug=course_slug,
+        data=data,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_CREATE_ADMIN_MODULE",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return module
+
+
+@router.post("/modules", response_model=ModuleAdminResponse)
+async def create_admin_module_flat(
+        request: Request,
+        data: ModuleCreateRequest,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    module = await BaseCoursesService(db).create_module(
+        request=request,
+        course_slug=None,
+        data=data,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_CREATE_ADMIN_MODULE",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return module
+
+
+@router.patch("/modules/{module_id}", response_model=ModuleAdminResponse)
+async def update_admin_module_flat(
+        module_id: int,
+        request: Request,
+        data: ModuleUpdateRequest,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    module = await BaseCoursesService(db).update_module(
+        request=request,
+        module_id=module_id,
+        data=data,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_UPDATE_ADMIN_MODULE",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return module
+
+
+@router.put("/modules/{module_id}", response_model=ModuleAdminResponse)
+async def replace_admin_module_flat(
+        module_id: int,
+        request: Request,
+        data: ModuleUpdateRequest,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    return await update_admin_module_flat(
+        module_id=module_id,
+        request=request,
+        data=data,
+        db=db,
+        current=current,
+    )
+
+
+@router.put("/courses/{course_slug}/modules/reorder", response_model=EnrollmentResponse)
+async def reorder_admin_modules(
+        course_slug: str,
+        request: Request,
+        data: ModuleReorderRequest,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    result = await BaseCoursesService(db).reorder_modules(
+        request=request,
+        course_slug=course_slug,
+        data=data,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.user.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_REORDER_ADMIN_MODULES",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.user.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return result
+
+
+@router.patch("/courses/{course_slug}/modules/{module_id}", response_model=ModuleAdminResponse)
+async def update_admin_module_nested(
+        course_slug: str,
+        module_id: int,
+        request: Request,
+        data: ModuleUpdateRequest,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    return await update_admin_module_flat(
+        module_id=module_id,
+        request=request,
+        data=data,
+        db=db,
+        current=current,
+    )
+
+
+@router.put("/courses/{course_slug}/modules/{module_id}", response_model=ModuleAdminResponse)
+async def replace_admin_module_nested(
+        course_slug: str,
+        module_id: int,
+        request: Request,
+        data: ModuleUpdateRequest,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    return await update_admin_module_flat(
+        module_id=module_id,
+        request=request,
+        data=data,
+        db=db,
+        current=current,
+    )
+
+
+@router.delete("/modules/{module_id}", response_model=EnrollmentResponse)
+async def delete_admin_module_flat(
+        module_id: int,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    result = await BaseCoursesService(db).delete_module(
+        request=request,
+        module_id=module_id,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_DELETE_ADMIN_MODULE",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return result
+
+
+@router.delete("/courses/{course_slug}/modules/{module_id}", response_model=EnrollmentResponse)
+async def delete_admin_module_nested(
+        course_slug: str,
+        module_id: int,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    return await delete_admin_module_flat(
+        module_id=module_id,
+        request=request,
+        db=db,
+        current=current,
+    )
+
+
+@router.post("/modules/{module_id}/deactivate", response_model=ModuleAdminResponse)
+async def deactivate_admin_module_flat(
+        module_id: int,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    module = await BaseCoursesService(db).deactivate_module(
+        request=request,
+        module_id=module_id,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_DEACTIVATE_ADMIN_MODULE",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return module
+
+
+@router.post("/modules/{module_id}/activate", response_model=ModuleAdminResponse)
+async def activate_admin_module_flat(
+        module_id: int,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    module = await BaseCoursesService(db).activate_module(
+        request=request,
+        module_id=module_id,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_ACTIVATE_ADMIN_MODULE",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return module
+
+
+@router.post("/courses/{course_slug}/modules/{module_id}/deactivate", response_model=ModuleAdminResponse)
+async def deactivate_admin_module_nested(
+        course_slug: str,
+        module_id: int,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    return await deactivate_admin_module_flat(
+        module_id=module_id,
+        request=request,
+        db=db,
+        current=current,
+    )
+
+
+@router.post("/courses/{course_slug}/modules/{module_id}/activate", response_model=ModuleAdminResponse)
+async def activate_admin_module_nested(
+        course_slug: str,
+        module_id: int,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    return await activate_admin_module_flat(
+        module_id=module_id,
+        request=request,
+        db=db,
+        current=current,
+    )
+@router.get("/courses", response_model=CoursesAdminResponse)
+async def get_admin_courses(
+        request: Request,
+        page: int = Query(default=1, ge=1),
+        page_size: int = Query(default=20, ge=1, le=100),
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    courses = await BaseCoursesService(db).get_courses_admin(
+        page=page,
+        page_size=page_size,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_GET_ADMIN_COURSES",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return courses
+
+
+@router.post("/courses", response_model=CourseAdminResponse)
+async def create_admin_course(
+        request: Request,
+        data: CourseCreateRequest,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    course = await BaseCoursesService(db).create_course(
+        request=request,
+        data=data,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_CREATE_ADMIN_COURSE",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return course
+
+
+@router.patch("/courses/{course_slug}", response_model=CourseAdminResponse)
+async def update_admin_course(
+        course_slug: str,
+        request: Request,
+        data: CourseUpdateRequest,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    course = await BaseCoursesService(db).update_course(
+        request=request,
+        course_slug=course_slug,
+        data=data,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_UPDATE_ADMIN_COURSE",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return course
+
+
+@router.put("/courses/{course_slug}", response_model=CourseAdminResponse)
+async def replace_admin_course(
+        course_slug: str,
+        request: Request,
+        data: CourseUpdateRequest,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    return await update_admin_course(
+        course_slug=course_slug,
+        request=request,
+        data=data,
+        db=db,
+        current=current,
+    )
+@router.get("/courses", response_model=CoursesAdminResponse)
+async def get_admin_courses(
+        request: Request,
+        page: int = Query(default=1, ge=1),
+        page_size: int = Query(default=20, ge=1, le=100),
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    courses = await BaseCoursesService(db).get_courses_admin(
+        page=page,
+        page_size=page_size,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_GET_ADMIN_COURSES",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return courses
+
+
+@router.post("/courses", response_model=CourseAdminResponse)
+async def create_admin_course(
+        request: Request,
+        data: CourseCreateRequest,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    course = await BaseCoursesService(db).create_course(
+        request=request,
+        data=data,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_CREATE_ADMIN_COURSE",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return course
+
+
+@router.patch("/courses/{course_slug}", response_model=CourseAdminResponse)
+async def update_admin_course(
+        course_slug: str,
+        request: Request,
+        data: CourseUpdateRequest,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    course = await BaseCoursesService(db).update_course(
+        request=request,
+        course_slug=course_slug,
+        data=data,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_UPDATE_ADMIN_COURSE",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return course
+
+
+@router.put("/courses/{course_slug}", response_model=CourseAdminResponse)
+async def replace_admin_course(
+        course_slug: str,
+        request: Request,
+        data: CourseUpdateRequest,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    return await update_admin_course(
+        course_slug=course_slug,
+        request=request,
+        data=data,
+        db=db,
+        current=current,
+    )
 @router.delete("/users/{user_id}/block", response_model=AdminUserBlockResponse)
 async def unblock_user(
         request: Request,

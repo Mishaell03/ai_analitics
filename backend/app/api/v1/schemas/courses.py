@@ -97,3 +97,77 @@ class LessonDetailResponse(BaseModel):
 # result of the enrollment
 class EnrollmentResponse(BaseModel):
     success: bool
+# request for creating a course (admin)
+class CourseCreateRequest(BaseModel):
+    slug: str | None = Field(default=None, max_length=255)
+    title: str = Field(..., min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=5000)
+    is_published: bool | None = None
+    is_active: bool | None = None
+
+
+# request for editing a course (admin)
+class CourseUpdateRequest(BaseModel):
+    slug: str | None = Field(default=None, max_length=255)
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=5000)
+    is_published: bool | None = None
+    is_active: bool | None = None
+
+
+# response for admin course create/edit
+class CourseAdminResponse(CourseAdminItem):
+    success: bool = True
+    course_id: int
+    id: int
+    is_published: bool
+
+# request for creating a module (admin)
+class ModuleCreateRequest(BaseModel):
+    course_id: int | None = None
+    course_slug: str | None = Field(default=None, max_length=255)
+    title: str = Field(..., min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=5000)
+    position: int | None = None
+    is_published: bool | None = None
+    is_active: bool | None = None
+
+
+# request for editing a module (admin)
+class ModuleUpdateRequest(BaseModel):
+    course_id: int | None = None
+    course_slug: str | None = Field(default=None, max_length=255)
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=5000)
+    position: int | None = None
+    is_published: bool | None = None
+    is_active: bool | None = None
+
+
+# response for admin module create/edit/deactivate
+class ModuleAdminResponse(BaseModel):
+    success: bool = True
+    module_id: int
+    id: int
+    course_id: int
+    title: str
+    description: str | None = None
+    position: int
+    is_published: bool
+    is_active: bool
+
+# admins list of modules
+class ModulesAdminResponse(BaseModel):
+    modules: list[ModuleAdminResponse] = Field(default_factory=list)
+    total_pages: int
+    current_page: int
+    page_size: int
+
+
+# запрос на перестановку модулей курса
+class ModuleReorderRequest(BaseModel):
+    module_ids: list[int] = Field(..., min_length=1)
+
+# request for reordering modules (admin)
+class ModuleReorderRequest(BaseModel):
+    module_ids: list[int] = Field(..., min_length=1)
