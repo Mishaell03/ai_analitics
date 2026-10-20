@@ -147,6 +147,70 @@ export default {
     userModalAttemptsTitle: "Последние попытки",
     userModalAttemptsEmpty: "Попыток решения уроков не было",
 
+    // ---------- lessons ----------
+
+    adminLessonsTitle: "Уроки",
+    adminLessonsHint: "Выберите модуль, чтобы увидеть его уроки",
+    adminLessonsSelectModuleTitle: "Модуль не выбран",
+    adminLessonsSelectModuleDescription: "Сначала выберите модуль в списке выше",
+    adminLessonsEmptyTitle: "Уроков пока нет",
+    adminLessonsEmptyDescription: "В выбранном модуле ещё нет уроков.",
+
+    adminLessonsColumnPosition: "Позиция",
+    adminLessonsColumnTitle: "Название",
+    adminLessonsColumnStatus: "Статус",
+    adminLessonsColumnContent: "Содержимое",
+    adminLessonsColumnActions: "Действия",
+
+    adminLessonsPublished: "Опубликован",
+    adminLessonsDraft: "Черновик",
+    adminLessonsContentYes: "Есть",
+    adminLessonsContentNo: "Нет",
+    adminLessonsOpen: "Открыть урок",
+    adminLessonsEdit: "Редактировать урок",
+    adminLessonsCreate: "Создать урок",
+    adminLessonsCreated: "Урок создан",
+    adminLessonsSaved: "Урок сохранён",
+
+    // ---------- lesson editor ----------
+
+    adminLessonEditorTitle: "Редактор урока",
+    adminLessonEditorNewTitle: "Новый урок",
+    adminLessonEditorSubtitle: "Текст урока хранится в Markdown и показывается ученикам после очистки",
+    adminLessonEditorTitleField: "Название урока (до 255 символов)",
+    adminLessonEditorTitlePlaceholder: "Например: Переменные и типы данных",
+    adminLessonEditorDescriptionField: "Описание (до 5000 символов)",
+    adminLessonEditorPublished: "Опубликован",
+    adminLessonEditorTabEdit: "Редактор",
+    adminLessonEditorTabPreview: "Предпросмотр",
+    adminLessonEditorPlaceholder: "# Заголовок\n\nТекст урока…",
+    adminLessonEditorEmpty: "Урок пока пуст",
+    adminLessonEditorSize: "{size} из {limit}",
+    adminLessonEditorSave: "Сохранить",
+    adminLessonEditorSaving: "Сохраняем...",
+    adminLessonEditorCancel: "Отмена",
+    adminLessonEditorClose: "Закрыть",
+    adminLessonEditorLoading: "Загружаем содержимое урока",
+    adminLessonEditorTitleError: "Название урока обязательно и не длиннее 255 символов",
+    adminLessonEditorUploadError: "Не удалось загрузить Markdown в хранилище",
+    adminLessonEditorErrorTitle: "Не удалось загрузить содержимое",
+    adminLessonEditorErrorDescription: "Проверьте подключение к интернету и попробуйте ещё раз.",
+    adminLessonEditorErrorRetry: "Попробовать снова",
+
+    // ---------- lesson content ----------
+
+    lessonContentTitle: "Содержимое урока",
+    lessonContentClose: "Закрыть",
+    lessonContentEdit: "Редактировать",
+    lessonContentEmpty: "Урок пока пуст",
+    lessonContentBlocksTitle: "Кастомные блоки",
+    lessonContentBlocksEmpty: "Кастомных блоков в уроке нет",
+    lessonContentAssetsTitle: "Медиафайлы",
+    lessonContentAssetsEmpty: "Медиафайлов в уроке нет",
+    lessonContentErrorTitle: "Не удалось загрузить содержимое",
+    lessonContentErrorDescription: "Проверьте подключение к интернету и попробуйте ещё раз.",
+    lessonContentErrorRetry: "Попробовать снова",
+
     // ---------- states ----------
 
     forbiddenTitle: "Доступ только для администратора",

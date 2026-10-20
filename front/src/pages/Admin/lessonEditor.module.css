@@ -1,0 +1,432 @@
+/* ---------- header ---------- */
+
+.header {
+    display: flex;
+    align-items: flex-start;
+
+    gap: 14px;
+
+    margin-bottom: 20px;
+}
+
+.headerIcon {
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 44px;
+    height: 44px;
+
+    border-radius: 13px;
+
+    background: rgb(182 95 253 / 0.1);
+    color: var(--accent);
+}
+
+.headerIcon svg {
+    width: 20px;
+    height: 20px;
+}
+
+.headerContent {
+    min-width: 0;
+}
+
+.headerContent h2 {
+    margin: 0;
+
+    color: var(--ink);
+
+    font-size: 21px;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+
+    overflow-wrap: anywhere;
+}
+
+.headerContent p {
+    margin: 8px 0 0;
+
+    color: var(--muted);
+
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+
+/* ---------- body ---------- */
+
+.body {
+    min-width: 0;
+}
+
+.section {
+    margin-bottom: 20px;
+}
+
+
+/* ---------- fields ---------- */
+
+.field {
+    display: flex;
+    flex-direction: column;
+
+    gap: 7px;
+
+    margin-bottom: 14px;
+}
+
+.field span {
+    color: var(--muted);
+
+    font-size: 11px;
+    font-weight: 750;
+
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.field input,
+.field textarea {
+    width: 100%;
+
+    padding: 13px 15px;
+
+    border: 1px solid var(--line);
+    border-radius: 12px;
+
+    background: rgb(128 128 128 / 0.04);
+    color: var(--ink);
+
+    font: inherit;
+    font-size: 14px;
+
+    outline: none;
+
+    box-sizing: border-box;
+
+    transition: border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible {
+    border-color: var(--accent);
+
+    box-shadow: 0 0 0 4px rgb(182 95 253 / 0.08);
+}
+
+.checkboxField {
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+
+    color: var(--ink);
+
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.checkboxField input {
+    width: 18px;
+    height: 18px;
+
+    margin: 0;
+
+    accent-color: var(--accent);
+}
+
+
+/* ---------- tabs ---------- */
+
+.tabs {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    margin-bottom: 12px;
+}
+
+.tab {
+    display: inline-flex;
+    align-items: center;
+
+    gap: 7px;
+
+    padding: 9px 14px;
+
+    border: 1px solid var(--line);
+    border-radius: 11px;
+
+    background: rgb(128 128 128 / 0.04);
+    color: var(--muted);
+
+    font-size: 12px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition: background 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease;
+}
+
+.tab svg {
+    width: 15px;
+    height: 15px;
+}
+
+.tab:hover {
+    color: var(--ink);
+}
+
+.tab[data-active="true"] {
+    border-color: transparent;
+
+    background: rgb(182 95 253 / 0.12);
+    color: var(--accent);
+}
+
+.size {
+    margin-left: auto;
+
+    color: var(--muted);
+
+    font-size: 11px;
+    font-weight: 600;
+}
+
+
+/* ---------- editor ---------- */
+
+.editor {
+    width: 100%;
+
+    min-height: 320px;
+
+    padding: 16px 18px;
+
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+
+    background: rgb(128 128 128 / 0.04);
+    color: var(--ink);
+
+    font-family: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+
+    outline: none;
+    resize: vertical;
+
+    box-sizing: border-box;
+
+    transition: border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.editor:focus-visible {
+    border-color: var(--accent);
+
+    box-shadow: 0 0 0 4px rgb(182 95 253 / 0.08);
+}
+
+.preview {
+    min-height: 320px;
+
+    padding: 18px 20px;
+
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+
+    background: rgb(128 128 128 / 0.03);
+}
+
+.empty {
+    margin: 0;
+
+    color: var(--muted);
+
+    font-size: 13px;
+}
+
+
+/* ---------- errors ---------- */
+
+.error {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    margin: 0 0 16px;
+
+    padding: 12px 14px;
+
+    border-radius: var(--radius-md);
+
+    background: rgb(220 60 60 / 0.1);
+    color: #d94a4a;
+
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.error svg {
+    flex-shrink: 0;
+
+    width: 17px;
+    height: 17px;
+}
+
+
+/* ---------- actions ---------- */
+
+.actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+
+    gap: 10px;
+}
+
+.cancelButton,
+.saveButton {
+    min-height: 44px;
+
+    padding: 12px 20px;
+
+    border: none;
+    border-radius: 12px;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition: background 0.3s ease,
+    transform 0.3s ease,
+    opacity 0.3s ease;
+}
+
+.cancelButton {
+    background: rgb(128 128 128 / 0.08);
+    color: var(--muted);
+}
+
+.cancelButton:hover:not(:disabled) {
+    background: rgb(128 128 128 / 0.14);
+    color: var(--ink);
+}
+
+.saveButton {
+    display: inline-flex;
+    align-items: center;
+
+    gap: 9px;
+
+    background: var(--accent);
+    color: #fff;
+}
+
+.saveButton svg {
+    width: 16px;
+    height: 16px;
+}
+
+.saveButton:hover:not(:disabled) {
+    background: var(--primary);
+
+    transform: translateY(-2px);
+}
+
+.cancelButton:disabled,
+.saveButton:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+
+/* ---------- states ---------- */
+
+.state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    gap: 10px;
+
+    padding: 50px 20px;
+
+    text-align: center;
+}
+
+.stateIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 46px;
+    height: 46px;
+
+    border-radius: 14px;
+
+    background: rgb(128 128 128 / 0.08);
+    color: var(--muted);
+}
+
+.stateIcon[data-tone="error"] {
+    background: rgb(220 60 60 / 0.1);
+    color: #d94a4a;
+}
+
+.stateIcon svg {
+    width: 22px;
+    height: 22px;
+}
+
+.state h3 {
+    margin: 0;
+
+    color: var(--ink);
+
+    font-size: 17px;
+    font-weight: 750;
+}
+
+.state p {
+    margin: 0;
+
+    color: var(--muted);
+
+    font-size: 13px;
+}
+
+.retryButton {
+    padding: 11px 20px;
+
+    border: none;
+    border-radius: 12px;
+
+    background: var(--accent);
+    color: #fff;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition: background 0.3s ease,
+    transform 0.3s ease;
+}
+
+.retryButton:hover {
+    background: var(--primary);
+
+    transform: translateY(-2px);
+}

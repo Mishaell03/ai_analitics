@@ -1,0 +1,308 @@
+/* ---------- body ---------- */
+
+.body {
+    min-width: 0;
+}
+
+
+/* ---------- header ---------- */
+
+.head {
+    display: flex;
+    align-items: flex-start;
+
+    gap: 14px;
+
+    margin-bottom: 20px;
+}
+
+.headIcon {
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 44px;
+    height: 44px;
+
+    border-radius: 13px;
+
+    background: rgb(182 95 253 / 0.1);
+    color: var(--accent);
+}
+
+.headIcon svg {
+    width: 21px;
+    height: 21px;
+}
+
+.headContent {
+    min-width: 0;
+}
+
+.headContent h2 {
+    margin: 0;
+
+    color: var(--ink);
+
+    font-size: 21px;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+
+    overflow-wrap: anywhere;
+}
+
+.headContent p {
+    margin: 8px 0 0;
+
+    color: var(--muted);
+
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.headTags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+
+    gap: 8px;
+
+    margin-top: 12px;
+}
+
+.editButton {
+    display: inline-flex;
+    align-items: center;
+
+    gap: 7px;
+
+    padding: 6px 12px;
+
+    border: none;
+    border-radius: 10px;
+
+    background: rgb(182 95 253 / 0.12);
+    color: var(--accent);
+
+    font-size: 11px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition: background 0.3s ease,
+    color 0.3s ease;
+}
+
+.editButton svg {
+    width: 14px;
+    height: 14px;
+}
+
+.editButton:hover {
+    background: var(--accent);
+    color: #fff;
+}
+
+
+/* ---------- content ---------- */
+
+.content {
+    padding: 20px 22px;
+
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+
+    background: rgb(128 128 128 / 0.03);
+}
+
+
+/* ---------- sections ---------- */
+
+.section {
+    margin-top: 22px;
+}
+
+.section h3 {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    margin: 0 0 12px;
+
+    color: var(--ink);
+
+    font-size: 15px;
+    font-weight: 750;
+}
+
+.section h3 svg {
+    width: 16px;
+    height: 16px;
+
+    color: var(--muted);
+}
+
+.empty {
+    margin: 0;
+
+    color: var(--muted);
+
+    font-size: 13px;
+}
+
+.blocks {
+    display: flex;
+    flex-direction: column;
+
+    gap: 8px;
+}
+
+.block {
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+
+    padding: 10px 12px;
+
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+
+    background: rgb(128 128 128 / 0.03);
+
+    font-size: 13px;
+}
+
+.block span {
+    min-width: 0;
+
+    color: var(--ink);
+
+    overflow-wrap: anywhere;
+}
+
+
+/* ---------- states ---------- */
+
+.state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    gap: 10px;
+
+    padding: 40px 20px;
+
+    text-align: center;
+}
+
+.stateIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 46px;
+    height: 46px;
+
+    border-radius: 14px;
+
+    background: rgb(220 60 60 / 0.1);
+    color: #d94a4a;
+}
+
+.stateIcon svg {
+    width: 22px;
+    height: 22px;
+}
+
+.state h3 {
+    margin: 0;
+
+    color: var(--ink);
+
+    font-size: 17px;
+    font-weight: 750;
+}
+
+.state p {
+    margin: 0;
+
+    color: var(--muted);
+
+    font-size: 13px;
+}
+
+.retryButton {
+    padding: 11px 20px;
+
+    border: none;
+    border-radius: 12px;
+
+    background: var(--accent);
+    color: #fff;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition: background 0.4s ease,
+    transform 0.4s ease;
+}
+
+.retryButton:hover {
+    background: var(--primary);
+
+    transform: translateY(-2px);
+}
+
+
+/* ---------- skeleton ---------- */
+
+.skeletonBody {
+    display: flex;
+    flex-direction: column;
+
+    gap: 14px;
+
+    padding: 8px 0;
+}
+
+.skeletonLine {
+    display: block;
+
+    height: 14px;
+
+    border-radius: 7px;
+
+    background: rgb(128 128 128 / 0.12);
+
+    animation: pulse 1.4s ease-in-out infinite;
+}
+
+.skeletonLine[data-width="40"] {
+    width: 40%;
+}
+
+.skeletonLine[data-width="60"] {
+    width: 60%;
+}
+
+.skeletonLine[data-width="80"] {
+    width: 80%;
+}
+
+.skeletonLine[data-width="90"] {
+    width: 90%;
+}
+
+
+@keyframes pulse {
+    50% {
+        opacity: 0.5;
+    }
+}

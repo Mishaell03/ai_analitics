@@ -38,4 +38,13 @@ export const API_ROUTES = {
     ADMIN_MODULE_BY_ID: (id) => `/admin/modules/${id}`,
     ADMIN_MODULE_ACTIVATE: (id) => `/admin/modules/${id}/activate`,
     ADMIN_MODULE_DEACTIVATE: (id) => `/admin/modules/${id}/deactivate`,
+
+// Admin lessons
+    ADMIN_COURSE_LESSONS: (courseId, moduleId) => `/admin/courses/${courseId}/modules/${moduleId}/lessons`,
+    ADMIN_LESSON: (courseId, moduleId, lessonId) =>
+        `/admin/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`,
+    ADMIN_LESSON_CONTENT: (courseId, moduleId, lessonId) =>
+        `/admin/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/content`,
+    ADMIN_LESSON_UPLOAD_URL: (courseId, moduleId, lessonId) =>
+        `/admin/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/upload-url`,
 };

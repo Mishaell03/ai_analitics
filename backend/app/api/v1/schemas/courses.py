@@ -18,6 +18,9 @@ class CoursesResponse(BaseModel):
 # admins courses data inheritance basic
 class CourseAdminItem(CourseItem):
     is_active: bool
+    # сколько модулей и уроков внутри курса
+    modules_count: int = 0
+    lessons_count: int = 0
 
 # admins list of courses
 class CoursesAdminResponse(BaseModel):
@@ -94,6 +97,32 @@ class LessonDetailResponse(BaseModel):
     module: ModuleShortInfo
     lesson: LessonInfo
 
+
+# кастомный блок внутри Markdown урока (тест, видео, задание)
+class CustomBlockResponse(BaseModel):
+    type: str
+    content: str
+    # логика блока пока не реализована, содержимое отдаётся как есть
+    implemented: bool = False
+
+
+# ссылка на медиафайл, упомянутый в уроке
+class LessonAssetResponse(BaseModel):
+    asset_id: str
+    kind: str = "image"
+    alt: str | None = None
+    # presigned URL появится на этапе выдачи медиафайлов
+    url: str | None = None
+
+
+# содержимое урока, прочитанное из MinIO
+class LessonContentResponse(BaseModel):
+    lesson: LessonInfo
+    content: str
+    content_type: str = "markdown"
+    custom_blocks: list[CustomBlockResponse] = Field(default_factory=list)
+    assets: list[LessonAssetResponse] = Field(default_factory=list)
+
 # result of the enrollment
 class EnrollmentResponse(BaseModel):
     success: bool
@@ -159,6 +188,63 @@ class ModuleAdminResponse(BaseModel):
 # admins list of modules
 class ModulesAdminResponse(BaseModel):
     modules: list[ModuleAdminResponse] = Field(default_factory=list)
+    total_pages: int
+    current_page: int
+    page_size: int
+
+
+# ссылка для прямой загрузки Markdown урока в MinIO
+class LessonUploadResponse(BaseModel):
+    # адрес, куда клиент отправляет файл
+    url: str
+    # поля формы: их нужно отправить вместе с файлом
+    fields: dict[str, str]
+    # путь файла в баке
+    file_path: str
+    # максимальный размер файла, который примет MinIO
+    max_size: int
+    # через сколько секунд ссылка перестанет работать
+    expires_in: int
+
+
+# response for admin lesson list
+class LessonAdminResponse(BaseModel):
+    success: bool = True
+    lesson_id: int
+    id: int
+    module_id: int
+    title: str
+    description: str | None = None
+    position: int
+    is_published: bool
+    is_active: bool
+    # есть ли Markdown урока в хранилище
+    has_content: bool = False
+    # ссылка на загрузку Markdown, если урок только что создан
+    upload: LessonUploadResponse | None = None
+
+
+# request for creating a lesson (admin)
+class LessonCreateRequest(BaseModel):
+    title: str = Field(..., min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=5000)
+    position: int | None = None
+    is_published: bool | None = None
+    is_active: bool | None = None
+
+
+# request for editing a lesson (admin)
+class LessonUpdateRequest(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=5000)
+    position: int | None = None
+    is_published: bool | None = None
+    is_active: bool | None = None
+
+
+# admins list of lessons of the module
+class LessonsAdminResponse(BaseModel):
+    lessons: list[LessonAdminResponse] = Field(default_factory=list)
     total_pages: int
     current_page: int
     page_size: int

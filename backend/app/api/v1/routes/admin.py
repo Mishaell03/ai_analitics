@@ -15,6 +15,12 @@ from app.api.v1.schemas.courses import (
     CourseUpdateRequest,
     CoursesAdminResponse,
     EnrollmentResponse,
+    LessonAdminResponse,
+    LessonContentResponse,
+    LessonCreateRequest,
+    LessonUpdateRequest,
+    LessonUploadResponse,
+    LessonsAdminResponse,
     ModuleAdminResponse,
     ModuleCreateRequest,
     ModuleReorderRequest,
@@ -22,6 +28,8 @@ from app.api.v1.schemas.courses import (
     ModulesAdminResponse,
 )
 from app.api.v1.services.courses import BaseCoursesService
+from app.api.v1.services.lesson_admin import LessonAdminService
+from app.api.v1.services.lesson_content import LessonContentService
 from app.api.v1.services.admin import AdminService
 from app.core.database import get_db
 from app.core.session import CurrentUserContext, get_current_admin
@@ -696,22 +704,36 @@ async def replace_admin_course(
         db=db,
         current=current,
     )
-@router.get("/courses", response_model=CoursesAdminResponse)
-async def get_admin_courses(
+
+
+# ---------- LESSONS ----------
+
+@router.get("/courses/{course_slug}/modules/{module_id}/lessons", response_model=LessonsAdminResponse)
+async def get_admin_lessons(
+        course_slug: str,
+        module_id: int,
         request: Request,
         page: int = Query(default=1, ge=1),
         page_size: int = Query(default=20, ge=1, le=100),
         db: AsyncSession = Depends(get_db),
         current: CurrentUserContext = Depends(get_current_admin),
 ):
-    courses = await BaseCoursesService(db).get_courses_admin(
+    lessons = await BaseCoursesService(db).get_lessons_admin(
+        course_slug=course_slug,
+        module_id=module_id,
+        request=request,
         page=page,
         page_size=page_size,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
     )
 
     await user_event_logs(
         request=request,
-        event="SUCCESS_GET_ADMIN_COURSES",
+        event="SUCCESS_GET_ADMIN_LESSONS",
         status_code=200,
         device_id=current.session.device_id,
         user_id=current.session.user_id,
@@ -719,17 +741,136 @@ async def get_admin_courses(
         platform=current.session.platform,
     )
 
-    return courses
+    return lessons
 
 
-@router.post("/courses", response_model=CourseAdminResponse)
-async def create_admin_course(
+@router.get(
+    "/courses/{course_slug}/modules/{module_id}/lessons/{lesson_id}/content",
+    response_model=LessonContentResponse,
+)
+async def get_admin_lesson_content(
+        course_slug: str,
+        module_id: int,
+        lesson_id: int,
         request: Request,
-        data: CourseCreateRequest,
         db: AsyncSession = Depends(get_db),
         current: CurrentUserContext = Depends(get_current_admin),
 ):
-    course = await BaseCoursesService(db).create_course(
+    content = await LessonContentService(db).get_lesson_content_admin(
+        course_slug=course_slug,
+        module_id=module_id,
+        lesson_id=lesson_id,
+        request=request,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_GET_ADMIN_LESSON_CONTENT",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return content
+
+
+@router.post(
+    "/courses/{course_slug}/modules/{module_id}/lessons",
+    response_model=LessonAdminResponse,
+)
+async def create_admin_lesson(
+        course_slug: str,
+        module_id: int,
+        request: Request,
+        data: LessonCreateRequest,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    lesson = await LessonAdminService(db).create_lesson(
+        course_slug=course_slug,
+        module_id=module_id,
+        data=data,
+        request=request,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_CREATE_ADMIN_LESSON",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return lesson
+
+
+@router.post(
+    "/courses/{course_slug}/modules/{module_id}/lessons/{lesson_id}/upload-url",
+    response_model=LessonUploadResponse,
+)
+async def get_admin_lesson_upload_url(
+        course_slug: str,
+        module_id: int,
+        lesson_id: int,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    upload = await LessonAdminService(db).get_lesson_upload_url(
+        course_slug=course_slug,
+        module_id=module_id,
+        lesson_id=lesson_id,
+        request=request,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_GET_ADMIN_LESSON_UPLOAD_URL",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return upload
+
+
+@router.patch(
+    "/courses/{course_slug}/modules/{module_id}/lessons/{lesson_id}",
+    response_model=LessonAdminResponse,
+)
+async def update_admin_lesson(
+        course_slug: str,
+        module_id: int,
+        lesson_id: int,
+        request: Request,
+        data: LessonUpdateRequest,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    lesson = await BaseCoursesService(db).update_lesson(
+        module_id=module_id,
+        lesson_id=lesson_id,
         request=request,
         data=data,
         language=current.session.language,
@@ -741,7 +882,7 @@ async def create_admin_course(
 
     await user_event_logs(
         request=request,
-        event="SUCCESS_CREATE_ADMIN_COURSE",
+        event="SUCCESS_UPDATE_ADMIN_LESSON",
         status_code=200,
         device_id=current.session.device_id,
         user_id=current.session.user_id,
@@ -749,56 +890,9 @@ async def create_admin_course(
         platform=current.session.platform,
     )
 
-    return course
+    return lesson
 
 
-@router.patch("/courses/{course_slug}", response_model=CourseAdminResponse)
-async def update_admin_course(
-        course_slug: str,
-        request: Request,
-        data: CourseUpdateRequest,
-        db: AsyncSession = Depends(get_db),
-        current: CurrentUserContext = Depends(get_current_admin),
-):
-    course = await BaseCoursesService(db).update_course(
-        request=request,
-        course_slug=course_slug,
-        data=data,
-        language=current.session.language,
-        device_id=current.session.device_id,
-        session_id=current.session.id,
-        user_id=current.session.user_id,
-        platform=current.session.platform,
-    )
-
-    await user_event_logs(
-        request=request,
-        event="SUCCESS_UPDATE_ADMIN_COURSE",
-        status_code=200,
-        device_id=current.session.device_id,
-        user_id=current.session.user_id,
-        session_id=current.session.id,
-        platform=current.session.platform,
-    )
-
-    return course
-
-
-@router.put("/courses/{course_slug}", response_model=CourseAdminResponse)
-async def replace_admin_course(
-        course_slug: str,
-        request: Request,
-        data: CourseUpdateRequest,
-        db: AsyncSession = Depends(get_db),
-        current: CurrentUserContext = Depends(get_current_admin),
-):
-    return await update_admin_course(
-        course_slug=course_slug,
-        request=request,
-        data=data,
-        db=db,
-        current=current,
-    )
 @router.delete("/users/{user_id}/block", response_model=AdminUserBlockResponse)
 async def unblock_user(
         request: Request,

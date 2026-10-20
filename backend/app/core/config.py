@@ -42,6 +42,14 @@ class Settings:
     video_url_ttl: int = int(os.getenv("VIDEO_URL_TTL", "7200"))
     upload_url_ttl: int = int(os.getenv("UPLOAD_URL_TTL", "900"))
 
+    # максимальный размер текстового файла, который читаем из MinIO
+    max_text_file_size: int = int(os.getenv("MAX_TEXT_FILE_SIZE", "1048576"))
+
+    # максимальный размер Markdown урока, который можно загрузить (500 КБ)
+    lesson_content_max_upload_size: int = int(
+        os.getenv("LESSON_CONTENT_MAX_UPLOAD_SIZE", "512000")
+    )
+
     # IP
     trusted_proxies: list = [
         ip_network(network.strip())

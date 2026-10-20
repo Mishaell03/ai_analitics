@@ -356,6 +356,19 @@
     height: 20px;
 }
 
+.courseImage {
+    flex-shrink: 0;
+
+    width: 42px;
+    height: 42px;
+
+    border-radius: 13px;
+
+    object-fit: cover;
+
+    background: rgb(128 128 128 / 0.08);
+}
+
 .courseMeta {
     min-width: 0;
 }
@@ -572,6 +585,39 @@
 .actionButton[data-tone="danger"]:hover:not(:disabled) {
     background: rgb(220 60 60 / 0.1);
     color: #d94a4a;
+}
+
+.actionButtonActive {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 34px;
+    height: 34px;
+
+    padding: 0;
+
+    border: none;
+    border-radius: 11px;
+
+    background: rgb(182 95 253 / 0.14);
+    color: var(--accent);
+
+    cursor: pointer;
+
+    transition: background 0.3s ease,
+    transform 0.3s ease;
+}
+
+.actionButtonActive svg {
+    width: 16px;
+    height: 16px;
+}
+
+.actionButtonActive:hover {
+    background: rgb(182 95 253 / 0.2);
+
+    transform: translateY(-2px);
 }
 
 .actionButton:disabled {

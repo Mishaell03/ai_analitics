@@ -18,6 +18,9 @@ VALUES
     ('LESSON_NOT_PUBLISHED', 404),
     ('COURSE_ALREADY_ENROLLED', 409),
     ('COURSE_NOT_ENROLLED', 404),
+    ('COURSE_ACCESS_REQUIRED', 403),
+    ('LESSON_CONTENT_NOT_FOUND', 404),
+    ('INVALID_COURSE_SLUG', 409),
     ('INVALID_PHONE_FORMAT', 422),
     ('PHONE_ALREADY_EXISTS', 409),
     ('CONSENT_REQUIRED', 422),
@@ -79,6 +82,15 @@ VALUES
 
     ('COURSE_NOT_ENROLLED', 'en', 'You are not enrolled in this course'),
     ('COURSE_NOT_ENROLLED', 'ru', 'Вы не записаны на этот курс'),
+
+    ('COURSE_ACCESS_REQUIRED', 'en', 'You are not enrolled in this course'),
+    ('COURSE_ACCESS_REQUIRED', 'ru', 'Вы не записаны на этот курс'),
+
+    ('LESSON_CONTENT_NOT_FOUND', 'en', 'Lesson content not found'),
+    ('LESSON_CONTENT_NOT_FOUND', 'ru', 'Содержимое урока не найдено'),
+
+    ('INVALID_COURSE_SLUG', 'en', 'Course slug cannot be used to store lesson files'),
+    ('INVALID_COURSE_SLUG', 'ru', 'Slug курса нельзя использовать для хранения файлов урока'),
 
     ('INVALID_PHONE_FORMAT', 'en', 'Invalid phone format. Expected +7 (XXX) XXX-XX-XX'),
     ('INVALID_PHONE_FORMAT', 'ru', 'Неверный формат телефона. Ожидается +7 (XXX) XXX-XX-XX'),

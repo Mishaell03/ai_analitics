@@ -1,9 +1,8 @@
 import {useCallback, useEffect, useMemo, useState} from "react";
 import {
     BookOpen,
+    BookOpenCheck,
     CheckCircle2,
-    ChevronDown,
-    ChevronRight,
     Pencil,
     Plus,
     Power,
@@ -20,6 +19,7 @@ import {getTranslation} from "@/locales/i18n.js";
 import {formatNumber} from "@/services/format.js";
 import EmptyState from "@/components/EmptyState/EmptyState.jsx";
 import Badge from "@/components/Badge/Badge.jsx";
+import AdminLessons from "@/pages/Admin/AdminLessons.jsx";
 import styles from "./adminCourses.module.css";
 import modalStyles from "./userModal.module.css";
 
@@ -41,6 +41,9 @@ function AdminCourses() {
     const [modules, setModules] = useState([]);
     const [modulesLoading, setModulesLoading] = useState(false);
     const [modulesError, setModulesError] = useState(null);
+
+    // модуль, уроки которого показываются в панели уроков
+    const [selectedModuleId, setSelectedModuleId] = useState(null);
 
     const [message, setMessage] = useState(null);
 
@@ -84,6 +87,10 @@ function AdminCourses() {
         setModulesError(null);
         setModulesLoading(true);
 
+        // список очищаем сразу: пока грузятся модули другого курса,
+        // нельзя показывать уроки от старого
+        setModules([]);
+
         try {
             const {data} = await api.get(API_ROUTES.ADMIN_COURSE_MODULES(courseSlug), {
                 params: {page: 1, page_size: 100},
@@ -117,6 +124,13 @@ function AdminCourses() {
     const handlePreviousPage = () => {
         setPage((current) => Math.max(1, current - 1));
     };
+
+    // при смене курса выбранный модуль сбрасывается:
+    // уроки другого курса показывать нельзя
+    const selectCourse = useCallback((courseSlug) => {
+        setSelectedCourseSlug(courseSlug);
+        setSelectedModuleId(null);
+    }, []);
 
     const openCreateCourse = () => {
         setCourseModal({
@@ -246,7 +260,7 @@ function AdminCourses() {
                 showMessage("success", "Курс удалён");
 
                 if (selectedCourseSlug === deleteTarget.target.slug) {
-                    setSelectedCourseSlug("");
+                    selectCourse("");
                 }
             } else {
                 await api.delete(API_ROUTES.ADMIN_MODULE_BY_ID(deleteTarget.target.id || deleteTarget.target.module_id));
@@ -431,7 +445,7 @@ function AdminCourses() {
     };
 
     const forbiddenState = (
-        <main className={styles.users}>
+        <main className={styles.adminCourses}>
             <EmptyState
                 icon={ShieldCheck}
                 title={t("forbiddenTitle")}
@@ -445,13 +459,30 @@ function AdminCourses() {
         [courses, selectedCourseSlug]
     );
 
+    // выбранный модуль берём из загруженного списка: после смены
+    // курса или удаления модуля выделение сбрасывается само
+    const selectedModule = useMemo(
+        () => modules.find((module) => (module.id ?? module.module_id) === selectedModuleId) || null,
+        [modules, selectedModuleId]
+    );
+
+    const isModuleSelected = useCallback(
+        (module) => Boolean(selectedModule)
+            && (selectedModule.id ?? selectedModule.module_id) === (module.id ?? module.module_id),
+        [selectedModule]
+    );
+
+    const selectModule = useCallback((module) => {
+        setSelectedModuleId(module.id ?? module.module_id);
+    }, []);
+
     if (error === "forbidden" || (!authLoading && !user?.is_admin)) {
         return forbiddenState;
     }
 
     if (error) {
         return (
-            <main className={styles.users}>
+            <main className={styles.adminCourses}>
                 <EmptyState
                     icon={TriangleAlert}
                     title={t("errorTitle")}
@@ -469,7 +500,7 @@ function AdminCourses() {
     const pending = authLoading || loading;
 
     return (
-        <div className={styles.users}>
+        <div className={styles.adminCourses}>
 
             {/* ---------- heading ---------- */}
 
@@ -528,6 +559,8 @@ function AdminCourses() {
                             <tr>
                                 <th>Название</th>
                                 <th>Slug</th>
+                                <th data-align="right">Модулей</th>
+                                <th data-align="right">Уроков</th>
                                 <th>Статус</th>
                                 <th data-align="right">Действия</th>
                             </tr>
@@ -537,6 +570,8 @@ function AdminCourses() {
                                 <tr className={styles.row} key={index}>
                                     <td><span className={styles.skeletonCell} data-width="60%"/></td>
                                     <td><span className={styles.skeletonCell} data-width="40%"/></td>
+                                    <td><span className={styles.skeletonCell} data-width="20%"/></td>
+                                    <td><span className={styles.skeletonCell} data-width="20%"/></td>
                                     <td><span className={styles.skeletonCell} data-width="30%"/></td>
                                     <td><span className={styles.skeletonCell} data-width="50%"/></td>
                                 </tr>
@@ -561,6 +596,8 @@ function AdminCourses() {
                             <tr>
                                 <th>Название</th>
                                 <th>Slug</th>
+                                <th data-align="right">Модулей</th>
+                                <th data-align="right">Уроков</th>
                                 <th>Статус</th>
                                 <th data-align="right">Действия</th>
                             </tr>
@@ -570,21 +607,29 @@ function AdminCourses() {
                                 <tr
                                     className={styles.row}
                                     key={course.slug}
-                                    onClick={() => setSelectedCourseSlug(course.slug)}
+                                    onClick={() => selectCourse(course.slug)}
                                     tabIndex={0}
                                     role="button"
                                     aria-label={course.title}
                                     onKeyDown={(event) => {
                                         if (event.key === "Enter") {
-                                            setSelectedCourseSlug(course.slug);
+                                            selectCourse(course.slug);
                                         }
                                     }}
                                 >
                                     <td>
                                         <div className={styles.courseCell}>
-                                            <span className={styles.courseIcon}>
-                                                <BookOpen/>
-                                            </span>
+                                            {course.main_image_url ? (
+                                                <img
+                                                    className={styles.courseImage}
+                                                    src={course.main_image_url}
+                                                    alt={course.title}
+                                                />
+                                            ) : (
+                                                <span className={styles.courseIcon}>
+                                                    <BookOpen/>
+                                                </span>
+                                            )}
 
                                             <div className={styles.courseMeta}>
                                                 <strong>{course.title}</strong>
@@ -596,6 +641,14 @@ function AdminCourses() {
                                     </td>
 
                                     <td className={styles.cellMuted}>{course.slug}</td>
+
+                                    <td className={styles.cellMuted} data-align="right">
+                                        {formatNumber(course.modules_count ?? 0)}
+                                    </td>
+
+                                    <td className={styles.cellMuted} data-align="right">
+                                        {formatNumber(course.lessons_count ?? 0)}
+                                    </td>
 
                                     <td>
                                         <Badge tone={course.is_active ? "focus" : "muted"}>
@@ -700,7 +753,7 @@ function AdminCourses() {
                         <select
                             className={styles.select}
                             value={selectedCourseSlug}
-                            onChange={(event) => setSelectedCourseSlug(event.target.value)}
+                            onChange={(event) => selectCourse(event.target.value)}
                         >
                             <option value="">Выберите курс</option>
                             {courses.map((course) => (
@@ -835,6 +888,19 @@ function AdminCourses() {
                                         <div className={styles.actions}>
                                             <button
                                                 type="button"
+                                                className={
+                                                    isModuleSelected(module)
+                                                        ? styles.actionButtonActive
+                                                        : styles.actionButton
+                                                }
+                                                onClick={() => selectModule(module)}
+                                                title="Уроки модуля"
+                                            >
+                                                <BookOpenCheck/>
+                                            </button>
+
+                                            <button
+                                                type="button"
                                                 className={styles.actionButton}
                                                 onClick={() => openEditModule(module)}
                                                 title="Редактировать"
@@ -878,6 +944,14 @@ function AdminCourses() {
                     />
                 )}
             </section>
+
+            {/* ---------- lessons ---------- */}
+
+            <AdminLessons
+                key={`${selectedCourseSlug}:${selectedModuleId}`}
+                courseSlug={selectedCourseSlug}
+                module={selectedModule}
+            />
 
             {/* ---------- course modal ---------- */}
 

@@ -5,6 +5,7 @@ sqlalchemy
 asyncpg
 alembic
 minio
+markdown-it-py
 
 pydantic
 pydantic-settings

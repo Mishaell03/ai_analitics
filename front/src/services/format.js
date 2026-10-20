@@ -43,3 +43,24 @@ export function formatDateTime(value, fallback = DASH) {
 
     return dateFormatter.format(date);
 }
+
+/**
+ * Размер файла в человекочитаемом виде: 12,3 КБ.
+ */
+export function formatBytes(value) {
+    const size = Number(value);
+
+    if (!Number.isFinite(size) || size < 0) {
+        return DASH;
+    }
+
+    if (size < 1024) {
+        return `${size} Б`;
+    }
+
+    if (size < 1024 * 1024) {
+        return `${(size / 1024).toFixed(1).replace(".", ",")} КБ`;
+    }
+
+    return `${(size / (1024 * 1024)).toFixed(1).replace(".", ",")} МБ`;
+}

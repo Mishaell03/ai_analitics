@@ -1,0 +1,106 @@
+import MarkdownCode from "@/components/Markdown/MarkdownCode.jsx";
+import MarkdownCustomBlock from "@/components/Markdown/MarkdownCustomBlock.jsx";
+import MarkdownInline from "@/components/Markdown/MarkdownInline.jsx";
+import MarkdownTable from "@/components/Markdown/MarkdownTable.jsx";
+import styles from "./markdown.module.css";
+
+/**
+ * БЛОКИ УРОКА
+ *
+ * Отрисовка дерева блоков, которое подготовил сервис разбора
+ * Markdown. Здесь нет логики разбора: только соответствие типа
+ * блока элементу интерфейса.
+ */
+function MarkdownBlocks({blocks = []}) {
+    return (
+        <>
+            {blocks.map((block, index) => (
+                <MarkdownBlock block={block} key={index}/>
+            ))}
+        </>
+    );
+}
+
+function MarkdownBlock({block}) {
+    switch (block.type) {
+        case "heading": {
+            const Heading = `h${Math.min(Math.max(block.level, 1), 6)}`;
+
+            return (
+                <Heading className={styles.heading} data-level={block.level}>
+                    <MarkdownInline nodes={block.children}/>
+                </Heading>
+            );
+        }
+
+        case "paragraph":
+            return (
+                <p className={styles.paragraph}>
+                    <MarkdownInline nodes={block.children}/>
+                </p>
+            );
+
+        case "list":
+            return renderList(block);
+
+        case "table":
+            return (
+                <MarkdownTable
+                    header={block.header}
+                    rows={block.rows}
+                />
+            );
+
+        case "quote":
+            return (
+                <blockquote className={styles.quote}>
+                    <MarkdownBlocks blocks={block.children}/>
+                </blockquote>
+            );
+
+        case "code":
+            return (
+                <MarkdownCode
+                    language={block.language}
+                    code={block.code}
+                    tokens={block.tokens}
+                />
+            );
+
+        case "divider":
+            return <hr className={styles.divider}/>;
+
+        case "custom":
+            return (
+                <MarkdownCustomBlock block={block}>
+                    <MarkdownBlocks blocks={block.children}/>
+                </MarkdownCustomBlock>
+            );
+
+        default:
+            return null;
+    }
+}
+
+function renderList(block) {
+    const ListTag = block.ordered ? "ol" : "ul";
+    const start = block.ordered && block.start !== 1 ? {start: block.start} : undefined;
+
+    return (
+        <ListTag className={styles.list} data-ordered={block.ordered} {...start}>
+            {block.items.map((item, index) => (
+                <li className={styles.listItem} key={index}>
+                    {item.children.length > 0 && (
+                        <MarkdownInline nodes={item.children}/>
+                    )}
+
+                    {item.blocks.length > 0 && (
+                        <MarkdownBlocks blocks={item.blocks}/>
+                    )}
+                </li>
+            ))}
+        </ListTag>
+    );
+}
+
+export default MarkdownBlocks;

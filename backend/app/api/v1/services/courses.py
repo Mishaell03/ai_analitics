@@ -1,3 +1,5 @@
+from typing import NoReturn
+
 from fastapi import Request
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -21,6 +23,7 @@ from app.api.v1.schemas.courses import (
 )
 from app.core.config import settings
 from app.core.minio_url import minio_storage
+from app.core.storage_paths import LESSON_CONTENT_BUCKET, lesson_content_path
 from app.models.courses import Course, CourseModule, Lesson
 from app.core.pagination import get_pagination, get_total_pages
 from app.models.enrollments_progress import CourseEnrollment
@@ -64,7 +67,7 @@ class BaseCoursesService:
             request: Request,
             code: str,
             error: dict,
-    ) -> None:
+    ) -> NoReturn:
         await raise_backend_error(
             db=self.db,
             request=request,
@@ -572,11 +575,17 @@ class BaseCoursesService:
         # Lesson content only for enrolled users
         content_url = None
 
-        if is_enrolled:
+        lesson_file_path = lesson_content_path(
+            course_slug=course.slug,
+            module_id=module.module_id,
+            lesson_id=lesson.lesson_id,
+        )
+
+        if is_enrolled and lesson_file_path is not None:
             content_url = await minio_storage.get_url(
-                file_path=f"{lesson.lesson_id}/content.md",
+                file_path=lesson_file_path,
                 expires=settings.content_url_ttl,
-                bucket="lesson-content",
+                bucket=LESSON_CONTENT_BUCKET,
             )
 
         return LessonDetailResponse(
@@ -739,18 +748,35 @@ class BaseCoursesService:
             page_size=pagination.page_size,
         )
 
+        # сколько модулей и уроков внутри курса — админу это нужно
+        # сразу, без дополнительных запросов по каждому курсу
+        modules_count = (
+            select(func.count(CourseModule.module_id))
+            .where(CourseModule.course_id == Course.course_id)
+            .correlate(Course)
+            .scalar_subquery()
+        )
+
+        lessons_count = (
+            select(func.count(Lesson.lesson_id))
+            .join(CourseModule, CourseModule.module_id == Lesson.module_id)
+            .where(CourseModule.course_id == Course.course_id)
+            .correlate(Course)
+            .scalar_subquery()
+        )
+
         result = await self.db.execute(
-            select(Course)
+            select(Course, modules_count, lessons_count)
             .order_by(Course.course_id)
             .offset(pagination.offset)
             .limit(pagination.page_size)
         )
 
-        courses = result.scalars().all()
+        courses = result.all()
 
         course_items = []
 
-        for course in courses:
+        for course, course_modules_count, course_lessons_count in courses:
             image_path = f"{course.course_id}/main.webp"
 
             main_image_url = await minio_storage.get_url(
@@ -767,6 +793,8 @@ class BaseCoursesService:
                     main_image_url=main_image_url,
                     is_enrolled=False,
                     is_active=course.is_published,
+                    modules_count=course_modules_count,
+                    lessons_count=course_lessons_count,
                 )
             )
 
@@ -952,246 +980,6 @@ class BaseCoursesService:
             id=course.course_id,
             is_published=course.is_published,
         )
-
-    # ---------- ADMIN: COURSES ----------
-
-    async def get_courses_admin(
-            self,
-            page: int = 1,
-            page_size: int = 20,
-    ):
-        from app.api.v1.schemas.courses import CoursesAdminResponse, CourseAdminItem
-
-        pagination = get_pagination(
-            page=page,
-            page_size=page_size,
-        )
-
-        total_result = await self.db.execute(
-            select(func.count(Course.course_id))
-        )
-
-        total = total_result.scalar_one()
-
-        total_pages = get_total_pages(
-            total=total,
-            page_size=pagination.page_size,
-        )
-
-        result = await self.db.execute(
-            select(Course)
-            .order_by(Course.course_id)
-            .offset(pagination.offset)
-            .limit(pagination.page_size)
-        )
-
-        courses = result.scalars().all()
-
-        course_items = []
-
-        for course in courses:
-            image_path = f"{course.course_id}/main.webp"
-
-            main_image_url = await minio_storage.get_url(
-                file_path=image_path,
-                expires=settings.image_url_ttl,
-                bucket="course-content",
-            )
-
-            course_items.append(
-                CourseAdminItem(
-                    slug=course.slug,
-                    title=course.title,
-                    description=course.description,
-                    main_image_url=main_image_url,
-                    is_enrolled=False,
-                    is_active=course.is_published,
-                )
-            )
-
-        return CoursesAdminResponse(
-            courses=course_items,
-            total_pages=total_pages,
-            current_page=pagination.page,
-            page_size=pagination.page_size,
-        )
-
-    async def create_course(
-            self,
-            request: Request,
-            data,
-            language: str = "en",
-            device_id: str | None = None,
-            session_id: int | None = None,
-            user_id: int | None = None,
-            platform: str | None = None,
-    ):
-        import uuid
-        import re
-
-        error = self._error(
-            language=language,
-            device_id=device_id,
-            session_id=session_id,
-            user_id=user_id,
-            platform=platform,
-        )
-
-        slug = data.slug
-
-        if not slug:
-            base = re.sub(r"[^a-z0-9]+", "-", (data.title or "").lower()).strip("-")
-            if not base:
-                base = "course"
-            slug = f"{base}-{uuid.uuid4().hex[:8]}"
-
-        is_published = data.is_published
-        if is_published is None:
-            is_published = data.is_active if data.is_active is not None else False
-
-        course = Course(
-            slug=slug,
-            title=data.title,
-            description=data.description,
-            is_published=is_published,
-        )
-
-        self.db.add(course)
-
-        try:
-            await self.db.commit()
-            await self.db.refresh(course)
-        except IntegrityError:
-            await self.db.rollback()
-
-            await self._raise(
-                request=request,
-                code="REGISTRATION_FAILED",
-                error=error,
-            )
-
-        main_image_url = await minio_storage.get_url(
-            file_path=f"{course.course_id}/main.webp",
-            expires=settings.image_url_ttl,
-            bucket="course-content",
-        )
-
-        from app.api.v1.schemas.courses import CourseAdminResponse
-
-        return CourseAdminResponse(
-            slug=course.slug,
-            title=course.title,
-            description=course.description,
-            main_image_url=main_image_url,
-            is_enrolled=False,
-            is_active=course.is_published,
-            success=True,
-            course_id=course.course_id,
-            id=course.course_id,
-            is_published=course.is_published,
-        )
-
-    async def _get_course_admin(
-            self,
-            request: Request,
-            course_slug: str,
-            error: dict,
-    ) -> Course:
-        if str(course_slug).isdigit():
-            condition = Course.course_id == int(course_slug)
-        else:
-            condition = Course.slug == course_slug
-
-        result = await self.db.execute(
-            select(Course).where(condition)
-        )
-
-        course = result.scalar_one_or_none()
-
-        if course is None:
-            await self._raise(
-                request=request,
-                code="COURSE_NOT_FOUND",
-                error=error,
-            )
-
-        return course
-
-    async def update_course(
-            self,
-            request: Request,
-            course_slug: str,
-            data,
-            language: str = "en",
-            device_id: str | None = None,
-            session_id: int | None = None,
-            user_id: int | None = None,
-            platform: str | None = None,
-    ):
-        from app.api.v1.schemas.courses import CourseAdminResponse
-
-        error = self._error(
-            language=language,
-            device_id=device_id,
-            session_id=session_id,
-            user_id=user_id,
-            platform=platform,
-        )
-
-        course = await self._get_course_admin(
-            request=request,
-            course_slug=course_slug,
-            error=error,
-        )
-
-        update_data = data.model_dump(exclude_unset=True)
-
-        if "slug" in update_data and update_data["slug"] is not None:
-            course.slug = update_data["slug"]
-
-        if "title" in update_data and update_data["title"] is not None:
-            course.title = update_data["title"]
-
-        if "description" in update_data:
-            course.description = update_data["description"]
-
-        if "is_published" in update_data and update_data["is_published"] is not None:
-            course.is_published = update_data["is_published"]
-
-        if "is_active" in update_data and update_data["is_active"] is not None:
-            course.is_published = update_data["is_active"]
-
-        try:
-            await self.db.commit()
-            await self.db.refresh(course)
-        except IntegrityError:
-            await self.db.rollback()
-
-            await self._raise(
-                request=request,
-                code="UPDATE_ME_FAILED",
-                error=error,
-            )
-
-        main_image_url = await minio_storage.get_url(
-            file_path=f"{course.course_id}/main.webp",
-            expires=settings.image_url_ttl,
-            bucket="course-content",
-        )
-
-        return CourseAdminResponse(
-            slug=course.slug,
-            title=course.title,
-            description=course.description,
-            main_image_url=main_image_url,
-            is_enrolled=False,
-            is_active=course.is_published,
-            success=True,
-            course_id=course.course_id,
-            id=course.course_id,
-            is_published=course.is_published,
-        )
-
 
     # ---------- ADMIN: COURSES DELETE / DEACTIVATE ----------
 
@@ -1376,6 +1164,44 @@ class BaseCoursesService:
             )
 
         return module
+
+    async def _get_lesson_admin(
+            self,
+            request: Request,
+            module: CourseModule,
+            lesson_id: int | str,
+            error: dict,
+    ) -> Lesson:
+        """УРОК МОДУЛЯ ДЛЯ АДМИНКИ
+
+        Урок ищется только внутри своего модуля и может быть черновиком:
+        админ должен видеть всё, что есть в базе.
+        """
+
+        if not str(lesson_id).isdigit():
+            await self._raise(
+                request=request,
+                code="LESSON_NOT_FOUND",
+                error=error,
+            )
+
+        result = await self.db.execute(
+            select(Lesson).where(
+                Lesson.lesson_id == int(lesson_id),
+                Lesson.module_id == module.module_id,
+            )
+        )
+
+        lesson = result.scalar_one_or_none()
+
+        if lesson is None:
+            await self._raise(
+                request=request,
+                code="LESSON_NOT_FOUND",
+                error=error,
+            )
+
+        return lesson
 
     async def get_modules_admin(
             self,
@@ -1788,4 +1614,203 @@ class BaseCoursesService:
             total_pages=1,
             current_page=1,
             page_size=len(items),
+        )
+
+    # ---------- ADMIN: LESSONS ----------
+
+    async def get_lessons_admin(
+            self,
+            course_slug: str,
+            module_id: int,
+            request: Request,
+            page: int = 1,
+            page_size: int = 20,
+            language: str = "en",
+            device_id: str | None = None,
+            session_id: int | None = None,
+            user_id: int | None = None,
+            platform: str | None = None,
+    ):
+        """СПИСОК УРОКОВ МОДУЛЯ ДЛЯ АДМИНКИ
+
+        В отличие от пользовательского списка, админ видит и черновики
+        """
+
+        from app.api.v1.schemas.courses import LessonAdminResponse, LessonsAdminResponse
+
+        error = self._error(
+            language=language,
+            device_id=device_id,
+            session_id=session_id,
+            user_id=user_id,
+            platform=platform,
+        )
+
+        course = await self._get_course_admin(
+            request=request,
+            course_slug=course_slug,
+            error=error,
+        )
+
+        module = await self._get_module_admin(
+            request=request,
+            module_id=module_id,
+            error=error,
+        )
+
+        # модуль должен принадлежать курсу
+        if module.course_id != course.course_id:
+            await self._raise(
+                request=request,
+                code="MODULE_NOT_FOUND",
+                error=error,
+            )
+
+        pagination = get_pagination(
+            page=page,
+            page_size=page_size,
+        )
+
+        total_result = await self.db.execute(
+            select(func.count(Lesson.lesson_id))
+            .where(Lesson.module_id == module.module_id)
+        )
+
+        total = total_result.scalar_one()
+
+        total_pages = get_total_pages(
+            total=total,
+            page_size=pagination.page_size,
+        )
+
+        result = await self.db.execute(
+            select(Lesson)
+            .where(Lesson.module_id == module.module_id)
+            .order_by(Lesson.position)
+            .offset(pagination.offset)
+            .limit(pagination.page_size)
+        )
+
+        lessons = result.scalars().all()
+
+        items = []
+
+        for lesson in lessons:
+            file_path = lesson_content_path(
+                course_slug=course.slug,
+                module_id=module.module_id,
+                lesson_id=lesson.lesson_id,
+            )
+
+            # есть ли Markdown урока в хранилище
+            has_content = False
+
+            if file_path is not None:
+                has_content = await minio_storage.exists(
+                    file_path=file_path,
+                    bucket=LESSON_CONTENT_BUCKET,
+                )
+
+            items.append(
+                LessonAdminResponse(
+                    success=True,
+                    lesson_id=lesson.lesson_id,
+                    id=lesson.lesson_id,
+                    module_id=lesson.module_id,
+                    title=lesson.title,
+                    description=lesson.description,
+                    position=lesson.position,
+                    is_published=lesson.is_published,
+                    is_active=lesson.is_published,
+                    has_content=has_content,
+                )
+            )
+
+        return LessonsAdminResponse(
+            lessons=items,
+            total_pages=total_pages,
+            current_page=pagination.page,
+            page_size=pagination.page_size,
+        )
+
+    async def update_lesson(
+            self,
+            request: Request,
+            module_id: int,
+            lesson_id: int,
+            data,
+            language: str = "en",
+            device_id: str | None = None,
+            session_id: int | None = None,
+            user_id: int | None = None,
+            platform: str | None = None,
+    ):
+        """ПРАВКА МЕТАДАННЫХ УРОКА
+
+        Текст урока лежит в хранилище, поэтому здесь меняются только
+        название, описание, позиция и статус публикации.
+        """
+
+        from app.api.v1.schemas.courses import LessonAdminResponse
+
+        error = self._error(
+            language=language,
+            device_id=device_id,
+            session_id=session_id,
+            user_id=user_id,
+            platform=platform,
+        )
+
+        module = await self._get_module_admin(
+            request=request,
+            module_id=module_id,
+            error=error,
+        )
+
+        lesson = await self._get_lesson_admin(
+            request=request,
+            module=module,
+            lesson_id=lesson_id,
+            error=error,
+        )
+
+        update_data = data.model_dump(exclude_unset=True)
+
+        if "title" in update_data and update_data["title"] is not None:
+            lesson.title = update_data["title"]
+
+        if "description" in update_data:
+            lesson.description = update_data["description"]
+
+        if "position" in update_data and update_data["position"] is not None:
+            lesson.position = update_data["position"]
+
+        if "is_published" in update_data and update_data["is_published"] is not None:
+            lesson.is_published = update_data["is_published"]
+
+        if "is_active" in update_data and update_data["is_active"] is not None:
+            lesson.is_published = update_data["is_active"]
+
+        try:
+            await self.db.commit()
+            await self.db.refresh(lesson)
+        except IntegrityError:
+            await self.db.rollback()
+
+            await self._raise(
+                request=request,
+                code="UPDATE_ME_FAILED",
+                error=error,
+            )
+
+        return LessonAdminResponse(
+            success=True,
+            lesson_id=lesson.lesson_id,
+            id=lesson.lesson_id,
+            module_id=lesson.module_id,
+            title=lesson.title,
+            description=lesson.description,
+            position=lesson.position,
+            is_published=lesson.is_published,
+            is_active=lesson.is_published,
         )

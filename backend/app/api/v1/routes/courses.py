@@ -5,6 +5,7 @@ from app.api.v1.schemas.courses import (
     CoursesResponse,
     CourseDetailResponse,
     LessonDetailResponse,
+    LessonContentResponse,
     LessonsResponse,
     EnrollmentResponse,
     CourseAdminResponse,
@@ -19,6 +20,7 @@ from app.api.v1.schemas.courses import (
     ModulesAdminResponse,
 )
 from app.api.v1.services.courses import BaseCoursesService
+from app.api.v1.services.lesson_content import LessonContentService
 from app.core.database import get_db
 from app.core.session import CurrentUserContext, get_current_admin, get_current_user
 from app.core.users_events_logs import user_event_logs
@@ -155,6 +157,41 @@ async def get_lesson(
     )
 
     return lesson
+
+
+@router.get("/{course_slug}/modules/{module_id}/lessons/{lesson_id}/content", response_model=LessonContentResponse)
+async def get_lesson_content(
+        course_slug: str,
+        module_id: int,
+        lesson_id: int,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_user),
+):
+    lesson_content = await LessonContentService(db).get_lesson_content(
+        course_slug=course_slug,
+        module_id=module_id,
+        lesson_id=lesson_id,
+        request=request,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.user.user_id,
+        platform=current.session.platform,
+        is_admin=current.user.is_admin,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_GET_LESSON_CONTENT",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.user.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return lesson_content
 
 
 @router.post('/enroll/{course_slug}', response_model=EnrollmentResponse)

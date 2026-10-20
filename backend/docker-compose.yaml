@@ -74,6 +74,7 @@ services:
       
       mc cp --recursive /seeds/default-avatars/ local/default-avatars;
       mc cp --recursive /seeds/course-content/ local/course-content;
+      mc cp --recursive /seeds/lesson-content/ local/lesson-content;
       "
 
 volumes:
