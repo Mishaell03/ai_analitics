@@ -19,8 +19,15 @@ from app.api.v1.schemas.courses import (
     ModuleUpdateRequest,
     ModulesAdminResponse,
 )
+from app.api.v1.schemas.media import (
+    CourseImageResponse,
+    MediaListResponse,
+    MediaUrlResponse,
+)
 from app.api.v1.services.courses import BaseCoursesService
+from app.api.v1.services.course_image import CourseImageService
 from app.api.v1.services.lesson_content import LessonContentService
+from app.api.v1.services.lesson_media import LessonMediaService
 from app.core.database import get_db
 from app.core.session import CurrentUserContext, get_current_admin, get_current_user
 from app.core.users_events_logs import user_event_logs
@@ -192,6 +199,116 @@ async def get_lesson_content(
     )
 
     return lesson_content
+
+
+@router.get("/{course_slug}/image", response_model=CourseImageResponse)
+async def get_course_image(
+        course_slug: str,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_user),
+):
+    image = await CourseImageService(db).get_image(
+        course_slug=course_slug,
+        request=request,
+        is_admin=current.user.is_admin,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.user.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_GET_COURSE_IMAGE",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.user.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return image
+
+
+@router.get(
+    "/{course_slug}/modules/{module_id}/lessons/{lesson_id}/media",
+    response_model=MediaListResponse,
+)
+async def get_lesson_media(
+        course_slug: str,
+        module_id: int,
+        lesson_id: int,
+        request: Request,
+        page: int = Query(default=1, ge=1),
+        page_size: int = Query(default=20, ge=1, le=100),
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_user),
+):
+    media = await LessonMediaService(db).list_media(
+        course_slug=course_slug,
+        module_id=module_id,
+        lesson_id=lesson_id,
+        request=request,
+        page=page,
+        page_size=page_size,
+        is_admin=current.user.is_admin,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.user.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_GET_LESSON_MEDIA",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.user.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return media
+
+
+@router.get(
+    "/{course_slug}/modules/{module_id}/lessons/{lesson_id}/media/{media_key}/url",
+    response_model=MediaUrlResponse,
+)
+async def get_lesson_media_url(
+        course_slug: str,
+        module_id: int,
+        lesson_id: int,
+        media_key: str,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_user),
+):
+    url = await LessonMediaService(db).get_media_url(
+        media_key=media_key,
+        request=request,
+        is_admin=current.user.is_admin,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.user.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_GET_LESSON_MEDIA_URL",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.user.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return url
 
 
 @router.post('/enroll/{course_slug}', response_model=EnrollmentResponse)
@@ -414,7 +531,7 @@ async def create_module_flat_alias3(
     return module
 
 
-@router.put("/{course_slug}/modules/reorder", response_model=EnrollmentResponse)
+@router.put("/{course_slug}/modules/reorder", response_model=ModulesAdminResponse)
 async def reorder_modules_alias3(
         course_slug: str,
         request: Request,

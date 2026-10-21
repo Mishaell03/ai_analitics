@@ -1,0 +1,438 @@
+/* ---------- header ---------- */
+
+.header {
+    display: flex;
+    align-items: flex-start;
+
+    gap: 14px;
+
+    margin-bottom: 18px;
+}
+
+.headerIcon {
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 44px;
+    height: 44px;
+
+    border-radius: 13px;
+
+    background: rgb(182 95 253 / 0.1);
+    color: var(--accent);
+}
+
+.headerIcon svg {
+    width: 21px;
+    height: 21px;
+}
+
+.headerContent {
+    min-width: 0;
+}
+
+.headerContent h2 {
+    margin: 0;
+
+    color: var(--ink);
+
+    font-size: 21px;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+.headerContent p {
+    margin: 8px 0 0;
+
+    color: var(--muted);
+
+    font-size: 13px;
+
+    overflow-wrap: anywhere;
+}
+
+
+/* ---------- toolbar ---------- */
+
+.toolbar {
+    display: flex;
+    align-items: center;
+
+    gap: 12px;
+
+    margin-bottom: 14px;
+}
+
+.fileInput {
+    display: none;
+}
+
+.uploadButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 9px;
+
+    min-height: 44px;
+
+    padding: 12px 20px;
+
+    border: none;
+    border-radius: 12px;
+
+    background: var(--accent);
+    color: #fff;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition: background 0.3s ease,
+    transform 0.3s ease;
+}
+
+.uploadButton:hover:not(:disabled) {
+    background: var(--primary);
+
+    transform: translateY(-2px);
+}
+
+.uploadButton:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+.uploadButton svg {
+    width: 16px;
+    height: 16px;
+}
+
+.hint {
+    color: var(--muted);
+
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+
+/* ---------- progress ---------- */
+
+.progress {
+    margin-bottom: 14px;
+}
+
+.progressBar {
+    height: 6px;
+
+    border-radius: 999px;
+
+    background: rgb(128 128 128 / 0.1);
+
+    overflow: hidden;
+}
+
+.progressBar span {
+    display: block;
+
+    height: 100%;
+
+    border-radius: 999px;
+
+    background: var(--accent);
+
+    transition: width 0.2s ease;
+}
+
+.progressText {
+    display: block;
+
+    margin-top: 6px;
+
+    color: var(--muted);
+
+    font-size: 11px;
+    font-weight: 600;
+}
+
+
+/* ---------- states ---------- */
+
+.error {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    margin: 0 0 14px;
+
+    padding: 12px 14px;
+
+    border-radius: var(--radius-md);
+
+    background: rgb(220 60 60 / 0.1);
+    color: #d94a4a;
+
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.error svg {
+    flex-shrink: 0;
+
+    width: 17px;
+    height: 17px;
+}
+
+.skeleton {
+    display: flex;
+    flex-direction: column;
+
+    gap: 12px;
+}
+
+.skeleton span {
+    display: block;
+
+    height: 90px;
+
+    border-radius: var(--radius-md);
+
+    background: rgb(128 128 128 / 0.08);
+
+    animation: pulse 1.4s ease-in-out infinite;
+}
+
+
+/* ---------- list ---------- */
+
+.list {
+    display: flex;
+    flex-direction: column;
+
+    gap: 12px;
+}
+
+.item {
+    display: flex;
+    align-items: flex-start;
+
+    gap: 16px;
+
+    padding: 14px;
+
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+
+    background: rgb(128 128 128 / 0.02);
+}
+
+.preview {
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 132px;
+    height: 92px;
+
+    border-radius: var(--radius-sm);
+
+    background: rgb(128 128 128 / 0.06);
+
+    overflow: hidden;
+}
+
+.preview img,
+.preview video {
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+}
+
+.preview[data-state="empty"] {
+    flex-direction: column;
+
+    gap: 6px;
+
+    color: var(--muted);
+
+    font-size: 11px;
+    text-align: center;
+}
+
+.preview[data-state="empty"] svg {
+    width: 24px;
+    height: 24px;
+
+    opacity: 0.5;
+}
+
+.itemBody {
+    flex: 1;
+    min-width: 0;
+}
+
+.meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+
+    gap: 8px;
+
+    margin-bottom: 10px;
+}
+
+.meta span {
+    padding: 4px 9px;
+
+    border-radius: 8px;
+
+    background: rgb(128 128 128 / 0.06);
+    color: var(--muted);
+
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.keyRow {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    margin-bottom: 10px;
+}
+
+.key {
+    padding: 5px 10px;
+
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+
+    background: rgb(128 128 128 / 0.04);
+    color: var(--ink);
+
+    font-family: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+    font-size: 11px;
+
+    cursor: pointer;
+
+    overflow-wrap: anywhere;
+
+    transition: border-color 0.3s ease,
+    color 0.3s ease;
+}
+
+.key:hover {
+    border-color: var(--accent);
+
+    color: var(--accent);
+}
+
+.copied {
+    display: inline-flex;
+    align-items: center;
+
+    gap: 5px;
+
+    color: var(--focus);
+
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.copied svg {
+    width: 13px;
+    height: 13px;
+}
+
+.itemActions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+
+    gap: 8px;
+}
+
+.actionButton {
+    display: inline-flex;
+    align-items: center;
+
+    gap: 7px;
+
+    padding: 8px 12px;
+
+    border: none;
+    border-radius: 10px;
+
+    background: rgb(128 128 128 / 0.08);
+    color: var(--muted);
+
+    font-size: 12px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition: background 0.3s ease,
+    color 0.3s ease;
+}
+
+.actionButton:hover:not(:disabled) {
+    background: rgb(182 95 253 / 0.1);
+    color: var(--accent);
+}
+
+.actionButton[data-tone="danger"]:hover:not(:disabled) {
+    background: rgb(220 60 60 / 0.1);
+    color: #d94a4a;
+}
+
+.actionButton:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+.actionButton svg {
+    width: 14px;
+    height: 14px;
+}
+
+
+/* ---------- animations ---------- */
+
+@keyframes pulse {
+    50% {
+        opacity: 0.5;
+    }
+}
+
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 700px) {
+    .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .uploadButton {
+        width: 100%;
+    }
+
+    .item {
+        flex-direction: column;
+    }
+
+    .preview {
+        width: 100%;
+        height: 160px;
+    }
+}

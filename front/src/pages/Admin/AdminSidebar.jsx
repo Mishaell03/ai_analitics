@@ -1,13 +1,11 @@
 import {Link, NavLink} from "react-router-dom";
 import {ArrowLeft, Flag} from "lucide-react";
 import {useAuth} from "@/context/AuthContext.jsx";
-import {getTranslation} from "@/locales/i18n.js";
 import {ROUTES} from "@/router/AppRouter.jsx";
 import Avatar from "@/components/Avatar/Avatar.jsx";
 import {ADMIN_NAV} from "@/pages/Admin/adminNav.js";
+import {useAdminTranslation} from "@/pages/Admin/hooks/useAdminTranslation.js";
 import styles from "./adminSidebar.module.css";
-
-const language = "ru";
 
 /**
  * Боковая панель админки.
@@ -19,7 +17,7 @@ const language = "ru";
 function AdminSidebar() {
     const {user} = useAuth();
 
-    const t = (key) => getTranslation(`admin.admin.${key}`, language);
+    const t = useAdminTranslation();
 
     const renderItem = (item) => {
         const {icon: Icon} = item;

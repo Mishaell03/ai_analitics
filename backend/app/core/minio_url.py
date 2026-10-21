@@ -3,7 +3,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from fastapi import UploadFile
-from minio.datatypes import PostPolicy
+from minio.datatypes import Object, PostPolicy
 from minio.error import S3Error
 
 from app.core.config import settings
@@ -137,6 +137,49 @@ class MinioStorageService:
             content_type=content_type,
         )
 
+    async def put_stream(
+        self,
+        data,
+        length: int,
+        bucket: str,
+        file_path: str,
+        content_type: str,
+    ) -> None:
+        """ЗАГРУЖАЕТ ПОТОК В БАКЕТ
+
+        Данные не читаются в память целиком: MinIO тянет их из
+        переданного потока частями, поэтому так можно грузить видео.
+        """
+
+        await asyncio.to_thread(
+            settings.minio_client.put_object,
+            bucket_name=bucket,
+            object_name=file_path,
+            data=data,
+            length=length,
+            content_type=content_type,
+        )
+
+    async def stat(
+        self,
+        file_path: str,
+        bucket: str,
+    ) -> Object | None:
+        """МЕТАДАННЫЕ ОБЪЕКТА В БАКЕТЕ
+
+        None, если объекта нет.
+        """
+
+        try:
+            return await asyncio.to_thread(
+                settings.minio_client.stat_object,
+                bucket_name=bucket,
+                object_name=file_path,
+            )
+
+        except S3Error:
+            return None
+
     async def get_upload_url(
         self,
         bucket: str,
@@ -206,5 +249,30 @@ class MinioStorageService:
         scheme = "https" if settings.minio_secure else "http"
 
         return f"{scheme}://{settings.minio_endpoint}/{bucket}"
+
+    async def delete_file(
+        self,
+        file_path: str,
+        bucket: str,
+    ) -> bool:
+        """УДАЛЯЕТ ФАЙЛ ИЗ БАКЕТА
+
+        True, если файл удалён или его не было. Ошибка хранилища
+        не ломает операцию: файл можно удалить и позже.
+        """
+
+        try:
+            await asyncio.to_thread(
+                settings.minio_client.remove_object,
+                bucket_name=bucket,
+                object_name=file_path,
+            )
+
+        except S3Error:
+            logging.warning(f"failed to delete file: {bucket}/{file_path}")
+
+            return False
+
+        return True
 
 minio_storage = MinioStorageService()

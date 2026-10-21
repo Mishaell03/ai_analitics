@@ -284,19 +284,19 @@
     animation: pulse 1.4s ease-in-out infinite;
 }
 
-.skeletonLine[data-width="40"] {
+.skeletonLine[data-width="40%"] {
     width: 40%;
 }
 
-.skeletonLine[data-width="60"] {
+.skeletonLine[data-width="60%"] {
     width: 60%;
 }
 
-.skeletonLine[data-width="80"] {
+.skeletonLine[data-width="80%"] {
     width: 80%;
 }
 
-.skeletonLine[data-width="90"] {
+.skeletonLine[data-width="90%"] {
     width: 90%;
 }
 

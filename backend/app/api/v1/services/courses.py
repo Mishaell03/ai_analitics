@@ -1,4 +1,4 @@
-from typing import NoReturn
+from typing import Any, NoReturn
 
 from fastapi import Request
 from sqlalchemy import func, select
@@ -16,14 +16,21 @@ from app.api.v1.schemas.courses import (
     LessonDetailResponse,
     LessonInfo,
     LessonItem,
+    LessonReorderRequest,
+    LessonsAdminResponse,
     LessonsResponse,
     ModuleInfo,
     ModuleItem,
+    ModuleReorderRequest,
     ModuleShortInfo
 )
 from app.core.config import settings
 from app.core.minio_url import minio_storage
-from app.core.storage_paths import LESSON_CONTENT_BUCKET, lesson_content_path
+from app.core.storage_paths import (
+    LESSON_CONTENT_BUCKET,
+    MEDIA_BUCKET,
+    lesson_content_path,
+)
 from app.models.courses import Course, CourseModule, Lesson
 from app.core.pagination import get_pagination, get_total_pages
 from app.models.enrollments_progress import CourseEnrollment
@@ -190,6 +197,46 @@ class BaseCoursesService:
 
         return lesson
 
+    async def _get_cover_urls(self, course_ids: list[int]) -> dict[int, str | None]:
+        """ССЫЛКИ НА ОБЛОЖКИ КУРСОВ
+
+        Если у курса есть загруженная обложка, берётся она,
+        иначе — старый файл из бака course-content.
+        """
+
+        from app.models.media import CourseImage
+
+        covers: dict[int, CourseImage] = {}
+
+        if course_ids:
+            result = await self.db.execute(
+                select(CourseImage).where(CourseImage.course_id.in_(course_ids))
+            )
+
+            covers = {image.course_id: image for image in result.scalars().all()}
+
+        urls: dict[int, str | None] = {}
+
+        for course_id in course_ids:
+            cover = covers.get(course_id)
+
+            if cover is not None:
+                urls[course_id] = await minio_storage.get_url(
+                    file_path=cover.object_key,
+                    expires=settings.media_url_ttl,
+                    bucket=MEDIA_BUCKET,
+                )
+
+                continue
+
+            urls[course_id] = await minio_storage.get_url(
+                file_path=f"{course_id}/main.webp",
+                expires=settings.image_url_ttl,
+                bucket="course-content",
+            )
+
+        return urls
+
     async def _is_enrolled(self, user_id: int | None, course_id: int) -> bool:
         """ЗАПИСАН ЛИ ПОЛЬЗОВАТЕЛЬ НА КУРС"""
 
@@ -259,21 +306,17 @@ class BaseCoursesService:
 
         course_items = []
 
+        cover_urls = await self._get_cover_urls(
+            course_ids=[course.course_id for course in courses],
+        )
+
         for course in courses:
-            image_path = f"{course.course_id}/main.webp"
-
-            main_image_url = await minio_storage.get_url(
-                file_path=image_path,
-                expires=settings.image_url_ttl,
-                bucket="course-content",
-            )
-
             course_items.append(
                 CourseItem(
                     slug=course.slug,
                     title=course.title,
                     description=course.description,
-                    main_image_url=main_image_url,
+                    main_image_url=cover_urls.get(course.course_id),
                     is_enrolled=course.course_id in enrolled_ids,
                 )
             )
@@ -379,11 +422,11 @@ class BaseCoursesService:
         course_info = None
 
         if pagination.page == 1:
-            main_image_url = await minio_storage.get_url(
-                file_path=f"{course.course_id}/main.webp",
-                expires=settings.image_url_ttl,
-                bucket="course-content",
+            cover_urls = await self._get_cover_urls(
+                course_ids=[course.course_id],
             )
+
+            main_image_url = cover_urls.get(course.course_id)
 
             content_url = await minio_storage.get_url(
                 file_path=f"{course.course_id}/content.md",
@@ -776,21 +819,18 @@ class BaseCoursesService:
 
         course_items = []
 
+        # обложки курсов: сначала загруженная, иначе старый файл
+        cover_urls = await self._get_cover_urls(
+            course_ids=[course.course_id for course, _, _ in courses],
+        )
+
         for course, course_modules_count, course_lessons_count in courses:
-            image_path = f"{course.course_id}/main.webp"
-
-            main_image_url = await minio_storage.get_url(
-                file_path=image_path,
-                expires=settings.image_url_ttl,
-                bucket="course-content",
-            )
-
             course_items.append(
                 CourseAdminItem(
                     slug=course.slug,
                     title=course.title,
                     description=course.description,
-                    main_image_url=main_image_url,
+                    main_image_url=cover_urls.get(course.course_id),
                     is_enrolled=False,
                     is_active=course.is_published,
                     modules_count=course_modules_count,
@@ -1203,6 +1243,32 @@ class BaseCoursesService:
 
         return lesson
 
+    async def _apply_positions(
+            self,
+            entities: dict[int, Any],
+            ordered_ids: list[int],
+    ) -> None:
+        """ПЕРЕНАЗНАЧАЕТ ПОЗИЦИИ 1..N
+
+        Позиции ставятся в два шага: сначала временные, потом финальные.
+        Иначе уникальный индекс (курс/модуль, позиция) ругается на
+        промежуточное состояние — например, при перестановке двух
+        модулей местами.
+        """
+
+        max_position = max(
+            (entity.position for entity in entities.values()),
+            default=0,
+        )
+
+        for position, entity_id in enumerate(ordered_ids, start=1):
+            entities[entity_id].position = max_position + position
+
+        await self.db.flush()
+
+        for position, entity_id in enumerate(ordered_ids, start=1):
+            entities[entity_id].position = position
+
     async def get_modules_admin(
             self,
             course_slug: str,
@@ -1536,7 +1602,7 @@ class BaseCoursesService:
             self,
             request: Request,
             course_slug: str,
-            module_ids: list[int],
+            data: ModuleReorderRequest,
             language: str = "en",
             device_id: str | None = None,
             session_id: int | None = None,
@@ -1570,6 +1636,8 @@ class BaseCoursesService:
         )
         modules = {module.module_id: module for module in result.scalars().all()}
 
+        module_ids = data.module_ids
+
         # все переданные id должны существовать и принадлежать этому курсу
         if len(module_ids) != len(set(module_ids)) or set(module_ids) != set(modules.keys()):
             await self._raise(
@@ -1578,8 +1646,10 @@ class BaseCoursesService:
                 error=error,
             )
 
-        for position, module_id in enumerate(module_ids, start=1):
-            modules[module_id].position = position
+        await self._apply_positions(
+            entities=modules,
+            ordered_ids=module_ids,
+        )
 
         try:
             await self.db.commit()
@@ -1814,3 +1884,290 @@ class BaseCoursesService:
             is_published=lesson.is_published,
             is_active=lesson.is_published,
         )
+
+    async def reorder_lessons(
+            self,
+            request: Request,
+            module_id: int,
+            data: LessonReorderRequest,
+            course_slug: str | None = None,
+            language: str = "en",
+            device_id: str | None = None,
+            session_id: int | None = None,
+            user_id: int | None = None,
+            platform: str | None = None,
+    ) -> LessonsAdminResponse:
+        """ПЕРЕСТАНОВКА УРОКОВ МОДУЛЯ
+
+        Работает так же, как перестановка модулей: клиент присылает
+        id уроков в новом порядке, позиции переназначаются 1..N
+        одной транзакцией.
+        """
+
+        from app.api.v1.schemas.courses import LessonAdminResponse
+
+        error = self._error(
+            language=language,
+            device_id=device_id,
+            session_id=session_id,
+            user_id=user_id,
+            platform=platform,
+        )
+
+        module = await self._get_module_admin(
+            request=request,
+            module_id=module_id,
+            error=error,
+        )
+
+        # если курс указан, модуль должен принадлежать ему
+        if course_slug is not None:
+            course = await self._get_course_admin(
+                request=request,
+                course_slug=course_slug,
+                error=error,
+            )
+
+            if module.course_id != course.course_id:
+                await self._raise(
+                    request=request,
+                    code="MODULE_NOT_FOUND",
+                    error=error,
+                )
+
+        else:
+            # курс нужен для пути файла урока
+            course = await self._get_course_admin(
+                request=request,
+                course_slug=str(module.course_id),
+                error=error,
+            )
+
+        result = await self.db.execute(
+            select(Lesson)
+            .where(Lesson.module_id == module.module_id)
+        )
+        lessons = {lesson.lesson_id: lesson for lesson in result.scalars().all()}
+
+        lesson_ids = data.lesson_ids
+
+        # все переданные id должны существовать и принадлежать этому модулю
+        if len(lesson_ids) != len(set(lesson_ids)) or set(lesson_ids) != set(lessons.keys()):
+            await self._raise(
+                request=request,
+                code="UPDATE_ME_FAILED",
+                error=error,
+            )
+
+        await self._apply_positions(
+            entities=lessons,
+            ordered_ids=lesson_ids,
+        )
+
+        try:
+            await self.db.commit()
+
+        except IntegrityError:
+            await self.db.rollback()
+
+            await self._raise(
+                request=request,
+                code="UPDATE_ME_FAILED",
+                error=error,
+            )
+
+        items = []
+
+        for lesson in sorted(lessons.values(), key=lambda item: item.position):
+            file_path = lesson_content_path(
+                course_slug=course.slug,
+                module_id=module.module_id,
+                lesson_id=lesson.lesson_id,
+            )
+
+            has_content = False
+
+            if file_path is not None:
+                has_content = await minio_storage.exists(
+                    file_path=file_path,
+                    bucket=LESSON_CONTENT_BUCKET,
+                )
+
+            items.append(
+                LessonAdminResponse(
+                    success=True,
+                    lesson_id=lesson.lesson_id,
+                    id=lesson.lesson_id,
+                    module_id=lesson.module_id,
+                    title=lesson.title,
+                    description=lesson.description,
+                    position=lesson.position,
+                    is_published=lesson.is_published,
+                    is_active=lesson.is_published,
+                    has_content=has_content,
+                )
+            )
+
+        return LessonsAdminResponse(
+            lessons=items,
+            total_pages=1,
+            current_page=1,
+            page_size=len(items),
+        )
+
+    async def delete_lesson(
+            self,
+            request: Request,
+            lesson_id: int,
+            module_id: int | None = None,
+            course_slug: str | None = None,
+            language: str = "en",
+            device_id: str | None = None,
+            session_id: int | None = None,
+            user_id: int | None = None,
+            platform: str | None = None,
+    ) -> EnrollmentResponse:
+        """УДАЛЯЕТ УРОК И ЕГО ФАЙЛ В ХРАНИЛИЩЕ
+
+        Запись в БД удаляется первой: если файл в хранилище почему-то
+        не удалится, останется лишний файл, а не урок без текста.
+        """
+
+        error = self._error(
+            language=language,
+            device_id=device_id,
+            session_id=session_id,
+            user_id=user_id,
+            platform=platform,
+        )
+
+        if module_id is not None:
+            module = await self._get_module_admin(
+                request=request,
+                module_id=module_id,
+                error=error,
+            )
+
+        else:
+            # модуль нужен для проверки прав и пути файла
+            module = await self._get_lesson_module(
+                request=request,
+                lesson_id=lesson_id,
+                error=error,
+            )
+
+        # если курс указан, модуль должен принадлежать ему
+        if course_slug is not None:
+            course = await self._get_course_admin(
+                request=request,
+                course_slug=course_slug,
+                error=error,
+            )
+
+            if module.course_id != course.course_id:
+                await self._raise(
+                    request=request,
+                    code="MODULE_NOT_FOUND",
+                    error=error,
+                )
+
+        else:
+            # курс нужен для пути файла урока
+            course = await self._get_course_admin(
+                request=request,
+                course_slug=str(module.course_id),
+                error=error,
+            )
+
+        lesson = await self._get_lesson_admin(
+            request=request,
+            module=module,
+            lesson_id=lesson_id,
+            error=error,
+        )
+
+        file_path = lesson_content_path(
+            course_slug=course.slug,
+            module_id=module.module_id,
+            lesson_id=lesson.lesson_id,
+        )
+
+        await self.db.delete(lesson)
+        await self.db.commit()
+
+        # позиции оставшихся уроков сдвигаем, чтобы не было пропусков
+        await self._renumber_lessons(module=module)
+
+        if file_path is not None:
+            await minio_storage.delete_file(
+                file_path=file_path,
+                bucket=LESSON_CONTENT_BUCKET,
+            )
+
+        return EnrollmentResponse(success=True)
+
+    async def _get_lesson_module(
+            self,
+            request: Request,
+            lesson_id: int | str,
+            error: dict,
+    ) -> CourseModule:
+        """МОДУЛЬ УРОКА
+
+        Нужен, когда урок известен, а модуль — нет.
+        """
+
+        if not str(lesson_id).isdigit():
+            await self._raise(
+                request=request,
+                code="LESSON_NOT_FOUND",
+                error=error,
+            )
+
+        result = await self.db.execute(
+            select(CourseModule)
+            .join(Lesson, Lesson.module_id == CourseModule.module_id)
+            .where(Lesson.lesson_id == int(lesson_id))
+        )
+
+        module = result.scalar_one_or_none()
+
+        if module is None:
+            await self._raise(
+                request=request,
+                code="LESSON_NOT_FOUND",
+                error=error,
+            )
+
+        return module
+
+    async def _renumber_lessons(self, module: CourseModule) -> None:
+        """ПЕРЕНУМЕРОВЫВАЕТ УРОКИ МОДУЛЯ БЕЗ ПРОПУСКОВ
+
+        После удаления урока позиции остальных сдвигаются,
+        чтобы порядок остался 1..N.
+        """
+
+        result = await self.db.execute(
+            select(Lesson)
+            .where(Lesson.module_id == module.module_id)
+            .order_by(Lesson.position)
+        )
+
+        lessons = result.scalars().all()
+
+        if not lessons:
+            return
+
+        entities = {lesson.lesson_id: lesson for lesson in lessons}
+
+        await self._apply_positions(
+            entities=entities,
+            ordered_ids=[lesson.lesson_id for lesson in lessons],
+        )
+
+        try:
+            await self.db.commit()
+
+        except IntegrityError:
+            await self.db.rollback()

@@ -1,89 +1,54 @@
-import {useCallback, useEffect, useState} from "react";
+import {useCallback, useState} from "react";
 import {
     Inbox,
-    RefreshCw,
     ShieldCheck,
     TriangleAlert,
     UserX,
     Users as UsersIcon,
 } from "lucide-react";
-import {api} from "@/api/axios.js";
-import {API_ROUTES} from "@/api/routes.js";
-import {useAuth} from "@/context/AuthContext.jsx";
-import {getTranslation} from "@/locales/i18n.js";
 import {formatNumber} from "@/services/format.js";
 import UserAvatar from "@/components/UserAvatar/UserAvatar.jsx";
 import Badge from "@/components/Badge/Badge.jsx";
 import EmptyState from "@/components/EmptyState/EmptyState.jsx";
-import UserModal from "@/pages/Admin/UserModal.jsx";
+import AdminPageHeader from "@/pages/Admin/components/AdminPageHeader.jsx";
+import AdminPagination from "@/pages/Admin/components/AdminPagination.jsx";
+import pageStyles from "@/pages/Admin/components/adminPage.module.css";
+import {useAdminAccess} from "@/pages/Admin/hooks/useAdminAccess.js";
+import {useAdminTranslation} from "@/pages/Admin/hooks/useAdminTranslation.js";
+import UserModal from "./UserModal.jsx";
+import {PER_PAGE, useUsers} from "./useUsers.js";
 import styles from "./users.module.css";
 
-const language = "ru";
-
-const PER_PAGE = 10;
 const SKELETON_ROWS = PER_PAGE;
 
+/**
+ * Реестр пользователей: список, переход к карточке и блокировка.
+ */
 export function Users() {
-    const {user, loading: authLoading} = useAuth();
+    const t = useAdminTranslation();
 
-    const t = (key, params) => getTranslation(`admin.admin.${key}`, language, params);
+    const {
+        users,
+        page,
+        totalPages,
+        loading,
+        error,
+        reload,
+        goToPreviousPage,
+        goToNextPage,
+        updateUserBlocked,
+    } = useUsers();
 
-    const [users, setUsers] = useState([]);
-    const [page, setPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
+    const {authLoading, isForbidden} = useAdminAccess(error);
 
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [selectedUserId, setSelectedUserId] = useState(null);
-
-    const fetchUsers = useCallback(async () => {
-        setError(null);
-        setLoading(true);
-
-        try {
-            const {data} = await api.get(API_ROUTES.ADMIN_USERS, {
-                params: {
-                    page,
-                    per_page: PER_PAGE,
-                },
-            });
-
-            setUsers(data.users ?? []);
-            setTotalPages(data.total_pages ?? 1);
-        } catch (requestError) {
-            setError(requestError.response?.status === 403 ? "forbidden" : "request");
-        } finally {
-            setLoading(false);
-        }
-    }, [page]);
-
-    useEffect(() => {
-        fetchUsers();
-    }, [fetchUsers]);
-
-    const handleNextPage = () => {
-        setPage((current) => Math.min(totalPages, current + 1));
-    };
-
-    const handlePreviousPage = () => {
-        setPage((current) => Math.max(1, current - 1));
-    };
 
     const handleCloseModal = useCallback(() => {
         setSelectedUserId(null);
     }, []);
 
-    // статус в строке списка должен совпадать с карточкой
-    const handleUserUpdated = useCallback((userId, isBlocked) => {
-        setUsers((current) => current.map((item) =>
-            item.user_id === userId
-                ? {...item, is_blocked: isBlocked}
-                : item
-        ));
-    }, []);
-
     // прав нет ни у гостя, ни у пользователя, ни по ответу бэкенда
-    if (error === "forbidden" || (!authLoading && !user?.is_admin)) {
+    if (isForbidden) {
         return (
             <main className={styles.users}>
                 <EmptyState
@@ -105,8 +70,8 @@ export function Users() {
                     action={
                         <button
                             type="button"
-                            className={styles.retryButton}
-                            onClick={fetchUsers}
+                            className={pageStyles.retryButton}
+                            onClick={reload}
                         >
                             {t("usersPageErrorRetry")}
                         </button>
@@ -120,51 +85,32 @@ export function Users() {
 
     const renderSkeletonRow = (index) => (
         <tr className={styles.row} key={index}>
-            <td><span className={styles.skeletonCell} data-width="30%"/></td>
+            <td><span className={pageStyles.skeletonCell} data-width="30%"/></td>
 
             <td>
-                <div className={styles.skeletonUser}>
-                    <span className={styles.skeletonAvatar}/>
-                    <span className={styles.skeletonCell} data-width="60%"/>
+                <div className={pageStyles.skeletonUser}>
+                    <span className={pageStyles.skeletonAvatar}/>
+                    <span className={pageStyles.skeletonCell} data-width="60%"/>
                 </div>
             </td>
 
-            <td><span className={styles.skeletonCell} data-width="75%"/></td>
-            <td><span className={styles.skeletonCell} data-width="55%"/></td>
-            <td><span className={styles.skeletonCell} data-width="45%"/></td>
+            <td><span className={pageStyles.skeletonCell} data-width="75%"/></td>
+            <td><span className={pageStyles.skeletonCell} data-width="55%"/></td>
+            <td><span className={pageStyles.skeletonCell} data-width="45%"/></td>
         </tr>
     );
 
     return (
-        <dev className={styles.users}>
-
-            {/* ---------- heading ---------- */}
-
-            <section className={styles.heading}>
-                <div className={styles.badge}>
-                    <span className={styles.badgeDot}/>
-                    {t("usersPageEyebrow")}
-                </div>
-
-                <div className={styles.headingRow}>
-                    <div className={styles.headingContent}>
-                        <h1>{t("usersPageTitle")}</h1>
-                        <p>{t("usersPageSubtitle")}</p>
-                    </div>
-
-                    <button
-                        type="button"
-                        className={styles.refreshButton}
-                        onClick={fetchUsers}
-                        disabled={pending}
-                    >
-                        <RefreshCw/>
-                        <span>
-                            {pending ? t("refreshProcess") : t("refreshButton")}
-                        </span>
-                    </button>
-                </div>
-            </section>
+        <div className={styles.users}>
+            <AdminPageHeader
+                eyebrow={t("usersPageEyebrow")}
+                title={t("usersPageTitle")}
+                subtitle={t("usersPageSubtitle")}
+                onRefresh={reload}
+                refreshing={pending}
+                refreshLabel={t("refreshButton")}
+                refreshingLabel={t("refreshProcess")}
+            />
 
             {/* ---------- table ---------- */}
 
@@ -274,35 +220,19 @@ export function Users() {
 
             {/* ---------- pagination ---------- */}
 
-            {!pending && users.length > 0 && totalPages > 1 && (
-                <nav className={styles.pagination}>
-                    <button
-                        type="button"
-                        className={styles.pageButton}
-                        onClick={handlePreviousPage}
-                        disabled={page <= 1}
-                        aria-label={t("paginationPrev")}
-                    >
-                        ‹
-                    </button>
-
-                    <div className={styles.pageInfo}>
-                        {t("paginationInfo", {
-                            page: formatNumber(page),
-                            total: formatNumber(totalPages),
-                        })}
-                    </div>
-
-                    <button
-                        type="button"
-                        className={styles.pageButton}
-                        onClick={handleNextPage}
-                        disabled={page >= totalPages}
-                        aria-label={t("paginationNext")}
-                    >
-                        ›
-                    </button>
-                </nav>
+            {!pending && users.length > 0 && (
+                <AdminPagination
+                    page={page}
+                    totalPages={totalPages}
+                    onPrevious={goToPreviousPage}
+                    onNext={goToNextPage}
+                    label={t("paginationInfo", {
+                        page: formatNumber(page),
+                        total: formatNumber(totalPages),
+                    })}
+                    previousLabel={t("paginationPrev")}
+                    nextLabel={t("paginationNext")}
+                />
             )}
 
             {selectedUserId !== null && (
@@ -310,9 +240,9 @@ export function Users() {
                     key={selectedUserId}
                     userId={selectedUserId}
                     onClose={handleCloseModal}
-                    onUserUpdated={handleUserUpdated}
+                    onUserUpdated={updateUserBlocked}
                 />
             )}
-        </dev>
+        </div>
     );
 }

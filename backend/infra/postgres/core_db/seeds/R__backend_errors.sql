@@ -21,6 +21,14 @@ VALUES
     ('COURSE_ACCESS_REQUIRED', 403),
     ('LESSON_CONTENT_NOT_FOUND', 404),
     ('INVALID_COURSE_SLUG', 409),
+    ('COURSE_IMAGE_NOT_FOUND', 404),
+    ('MEDIA_FILE_NOT_FOUND', 404),
+    ('MEDIA_FILE_TOO_LARGE', 413),
+    ('MEDIA_FILE_TYPE_NOT_ALLOWED', 415),
+    ('MEDIA_FILE_CORRUPTED', 422),
+    ('MEDIA_IMAGE_RESOLUTION_TOO_LARGE', 422),
+    ('MEDIA_VIDEO_CODEC_NOT_SUPPORTED', 415),
+    ('MEDIA_VIDEO_RESOLUTION_TOO_LARGE', 422),
     ('INVALID_PHONE_FORMAT', 422),
     ('PHONE_ALREADY_EXISTS', 409),
     ('CONSENT_REQUIRED', 422),
@@ -91,6 +99,30 @@ VALUES
 
     ('INVALID_COURSE_SLUG', 'en', 'Course slug cannot be used to store lesson files'),
     ('INVALID_COURSE_SLUG', 'ru', 'Slug курса нельзя использовать для хранения файлов урока'),
+
+    ('COURSE_IMAGE_NOT_FOUND', 'en', 'Course image not found'),
+    ('COURSE_IMAGE_NOT_FOUND', 'ru', 'Обложка курса не найдена'),
+
+    ('MEDIA_FILE_NOT_FOUND', 'en', 'Media file not found'),
+    ('MEDIA_FILE_NOT_FOUND', 'ru', 'Медиафайл не найден'),
+
+    ('MEDIA_FILE_TOO_LARGE', 'en', 'File is larger than allowed'),
+    ('MEDIA_FILE_TOO_LARGE', 'ru', 'Файл больше допустимого размера'),
+
+    ('MEDIA_FILE_TYPE_NOT_ALLOWED', 'en', 'This file type is not supported'),
+    ('MEDIA_FILE_TYPE_NOT_ALLOWED', 'ru', 'Такой тип файла не поддерживается'),
+
+    ('MEDIA_FILE_CORRUPTED', 'en', 'Failed to read the file'),
+    ('MEDIA_FILE_CORRUPTED', 'ru', 'Не удалось прочитать файл'),
+
+    ('MEDIA_IMAGE_RESOLUTION_TOO_LARGE', 'en', 'Image resolution is too large'),
+    ('MEDIA_IMAGE_RESOLUTION_TOO_LARGE', 'ru', 'Разрешение изображения слишком большое'),
+
+    ('MEDIA_VIDEO_CODEC_NOT_SUPPORTED', 'en', 'Video codec is not supported, use H.264 with AAC'),
+    ('MEDIA_VIDEO_CODEC_NOT_SUPPORTED', 'ru', 'Кодек видео не поддерживается, используйте H.264 с AAC'),
+
+    ('MEDIA_VIDEO_RESOLUTION_TOO_LARGE', 'en', 'Video resolution is too large'),
+    ('MEDIA_VIDEO_RESOLUTION_TOO_LARGE', 'ru', 'Разрешение видео слишком большое'),
 
     ('INVALID_PHONE_FORMAT', 'en', 'Invalid phone format. Expected +7 (XXX) XXX-XX-XX'),
     ('INVALID_PHONE_FORMAT', 'ru', 'Неверный формат телефона. Ожидается +7 (XXX) XXX-XX-XX'),

@@ -1,0 +1,326 @@
+/* ---------- header ---------- */
+
+.header {
+    display: flex;
+    align-items: flex-start;
+
+    gap: 14px;
+
+    margin-bottom: 18px;
+}
+
+.headerIcon {
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 44px;
+    height: 44px;
+
+    border-radius: 13px;
+
+    background: rgb(182 95 253 / 0.1);
+    color: var(--accent);
+}
+
+.headerIcon svg {
+    width: 21px;
+    height: 21px;
+}
+
+.headerContent {
+    min-width: 0;
+}
+
+.headerContent h2 {
+    margin: 0;
+
+    color: var(--ink);
+
+    font-size: 21px;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+.headerContent p {
+    margin: 8px 0 0;
+
+    color: var(--muted);
+
+    font-size: 13px;
+
+    overflow-wrap: anywhere;
+}
+
+
+/* ---------- preview ---------- */
+
+.preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 220px;
+
+    margin-bottom: 14px;
+
+    padding: 16px;
+
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+
+    background: rgb(128 128 128 / 0.03);
+
+    overflow: hidden;
+}
+
+.preview img {
+    max-width: 100%;
+    max-height: 320px;
+
+    border-radius: var(--radius-sm);
+
+    object-fit: contain;
+}
+
+.preview[data-state="empty"],
+.preview[data-state="error"],
+.preview[data-state="loading"] {
+    flex-direction: column;
+
+    gap: 10px;
+
+    color: var(--muted);
+
+    font-size: 13px;
+    text-align: center;
+}
+
+.preview[data-state="empty"] svg {
+    width: 34px;
+    height: 34px;
+
+    opacity: 0.5;
+}
+
+.preview[data-state="error"] {
+    color: #d94a4a;
+}
+
+.preview[data-state="error"] svg {
+    width: 30px;
+    height: 30px;
+}
+
+.spinner {
+    width: 26px;
+    height: 26px;
+
+    color: var(--accent);
+
+    animation: spin 0.9s linear infinite;
+}
+
+
+/* ---------- meta ---------- */
+
+.meta {
+    display: flex;
+    flex-wrap: wrap;
+
+    gap: 8px;
+
+    margin-bottom: 14px;
+}
+
+.meta span {
+    padding: 5px 10px;
+
+    border-radius: 9px;
+
+    background: rgb(128 128 128 / 0.06);
+    color: var(--muted);
+
+    font-size: 11px;
+    font-weight: 700;
+}
+
+
+/* ---------- progress ---------- */
+
+.progress {
+    margin-bottom: 14px;
+}
+
+.progressBar {
+    height: 6px;
+
+    border-radius: 999px;
+
+    background: rgb(128 128 128 / 0.1);
+
+    overflow: hidden;
+}
+
+.progressBar span {
+    display: block;
+
+    height: 100%;
+
+    border-radius: 999px;
+
+    background: var(--accent);
+
+    transition: width 0.2s ease;
+}
+
+.progressText {
+    display: block;
+
+    margin-top: 6px;
+
+    color: var(--muted);
+
+    font-size: 11px;
+    font-weight: 600;
+}
+
+
+/* ---------- states ---------- */
+
+.error {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    margin: 0 0 14px;
+
+    padding: 12px 14px;
+
+    border-radius: var(--radius-md);
+
+    background: rgb(220 60 60 / 0.1);
+    color: #d94a4a;
+
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.error svg {
+    flex-shrink: 0;
+
+    width: 17px;
+    height: 17px;
+}
+
+.hint {
+    margin: 0 0 16px;
+
+    color: var(--muted);
+
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+
+/* ---------- actions ---------- */
+
+.actions {
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+}
+
+.fileInput {
+    display: none;
+}
+
+.uploadButton,
+.deleteButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 9px;
+
+    min-height: 44px;
+
+    padding: 12px 20px;
+
+    border: none;
+    border-radius: 12px;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition: background 0.3s ease,
+    color 0.3s ease,
+    transform 0.3s ease;
+}
+
+.uploadButton {
+    background: var(--accent);
+    color: #fff;
+}
+
+.uploadButton:hover:not(:disabled) {
+    background: var(--primary);
+
+    transform: translateY(-2px);
+}
+
+.deleteButton {
+    background: rgb(220 60 60 / 0.1);
+    color: #d94a4a;
+}
+
+.deleteButton:hover:not(:disabled) {
+    background: rgb(220 60 60 / 0.18);
+}
+
+.uploadButton svg,
+.deleteButton svg {
+    width: 16px;
+    height: 16px;
+}
+
+.uploadButton:disabled,
+.deleteButton:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+
+/* ---------- animations ---------- */
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 560px) {
+    .actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .uploadButton,
+    .deleteButton {
+        width: 100%;
+    }
+
+    .preview {
+        min-height: 160px;
+    }
+}

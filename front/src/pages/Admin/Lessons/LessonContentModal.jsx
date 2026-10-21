@@ -1,14 +1,14 @@
 import {useCallback, useEffect, useState} from "react";
-import {FileText, Link2, Pencil, TriangleAlert, X} from "lucide-react";
+import {FileText, Link2, Pencil, TriangleAlert} from "lucide-react";
 import {api} from "@/api/axios.js";
 import {API_ROUTES} from "@/api/routes.js";
-import {getTranslation} from "@/locales/i18n.js";
+import {listLessonMedia, refreshMediaUrl} from "@/api/media.js";
 import Markdown from "@/components/Markdown/Markdown.jsx";
 import Badge from "@/components/Badge/Badge.jsx";
-import modalStyles from "./userModal.module.css";
+import AdminModal from "@/pages/Admin/components/AdminModal.jsx";
+import LessonMediaModal from "./LessonMediaModal.jsx";
+import {useAdminTranslation} from "@/pages/Admin/hooks/useAdminTranslation.js";
 import styles from "./lessonContent.module.css";
-
-const language = "ru";
 
 /**
  * Содержимое урока в Markdown.
@@ -16,13 +16,21 @@ const language = "ru";
  * Содержимое приходит из хранилища уже очищенным на сервере,
  * а разметку собирает сервис markdown: произвольный HTML или
  * скрипт из урока показать нельзя.
+ *
+ * Ссылки на медиа раскрываются по идентификатору: в Markdown живёт
+ * asset:media_key, а картинку и видео отдаёт хранилище по временной
+ * ссылке из списка медиафайлов урока.
  */
 function LessonContentModal({courseSlug, moduleId, lesson, onClose, onEdit}) {
-    const t = (key, params) => getTranslation(`admin.admin.${key}`, language, params);
+    const t = useAdminTranslation();
 
     const [content, setContent] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+
+    // медиафайлы урока по идентификатору: для раскрытия ссылок в Markdown
+    const [media, setMedia] = useState({});
+    const [mediaOpen, setMediaOpen] = useState(false);
 
     const fetchContent = useCallback(async () => {
         setError(false);
@@ -46,26 +54,37 @@ function LessonContentModal({courseSlug, moduleId, lesson, onClose, onEdit}) {
         }
     }, [courseSlug, moduleId, lesson.lesson_id]);
 
+    const fetchMedia = useCallback(async () => {
+        try {
+            const data = await listLessonMedia(courseSlug, moduleId, lesson.lesson_id);
+
+            setMedia(Object.fromEntries(
+                (data.media ?? []).map((item) => [item.media_key, item])
+            ));
+        } catch {
+            // без списка медиа урок покажется без картинок
+            setMedia({});
+        }
+    }, [courseSlug, moduleId, lesson.lesson_id]);
+
+    // ссылка на файл протухла — берём новую
+    const handleMediaError = useCallback(async (mediaKey) => {
+        try {
+            const data = await refreshMediaUrl(mediaKey);
+
+            setMedia((current) => ({
+                ...current,
+                [mediaKey]: {...current[mediaKey], url: data.url},
+            }));
+        } catch {
+            // ссылку получить не удалось — останется заглушка
+        }
+    }, []);
+
     useEffect(() => {
         fetchContent();
-    }, [fetchContent]);
-
-    // закрытие по Escape и блокировка прокрутки фона
-    useEffect(() => {
-        const handleKeyDown = (event) => {
-            if (event.key === "Escape") {
-                onClose();
-            }
-        };
-
-        document.addEventListener("keydown", handleKeyDown);
-        document.body.style.overflow = "hidden";
-
-        return () => {
-            document.removeEventListener("keydown", handleKeyDown);
-            document.body.style.overflow = "";
-        };
-    }, [onClose]);
+        fetchMedia();
+    }, [fetchContent, fetchMedia]);
 
     const renderSkeleton = () => (
         <div className={styles.skeletonBody}>
@@ -133,6 +152,15 @@ function LessonContentModal({courseSlug, moduleId, lesson, onClose, onEdit}) {
                                     <span>{t("lessonContentEdit")}</span>
                                 </button>
                             )}
+
+                            <button
+                                type="button"
+                                className={styles.editButton}
+                                onClick={() => setMediaOpen(true)}
+                            >
+                                <Link2/>
+                                <span>{t("mediaTitle")}</span>
+                            </button>
                         </div>
                     </div>
                 </header>
@@ -141,7 +169,13 @@ function LessonContentModal({courseSlug, moduleId, lesson, onClose, onEdit}) {
 
                 <section className={styles.content}>
                     {content.content
-                        ? <Markdown content={content.content}/>
+                        ? (
+                            <Markdown
+                                content={content.content}
+                                media={media}
+                                onMediaError={handleMediaError}
+                            />
+                        )
                         : <p className={styles.empty}>{t("lessonContentEmpty")}</p>}
                 </section>
 
@@ -196,28 +230,25 @@ function LessonContentModal({courseSlug, moduleId, lesson, onClose, onEdit}) {
     };
 
     return (
-        <div className={modalStyles.overlay} onClick={onClose} role="presentation">
-            <div
-                className={modalStyles.modal}
-                onClick={(event) => event.stopPropagation()}
-                role="dialog"
-                aria-modal="true"
-                aria-label={t("lessonContentTitle")}
-            >
-                <button
-                    type="button"
-                    className={modalStyles.close}
-                    onClick={onClose}
-                    aria-label={t("lessonContentClose")}
-                >
-                    <X/>
-                </button>
-
-                {loading && renderSkeleton()}
-                {!loading && error && renderError()}
-                {!loading && !error && content && renderContent()}
-            </div>
-        </div>
+        <AdminModal
+            onClose={onClose}
+            ariaLabel={t("lessonContentTitle")}
+            closeLabel={t("lessonContentClose")}
+            closeOnEscape={!mediaOpen}
+            overlayChildren={mediaOpen ? (
+                <LessonMediaModal
+                    courseSlug={courseSlug}
+                    moduleId={moduleId}
+                    lesson={lesson}
+                    onClose={() => setMediaOpen(false)}
+                    onChanged={fetchMedia}
+                />
+            ) : null}
+        >
+            {loading && renderSkeleton()}
+            {!loading && error && renderError()}
+            {!loading && !error && content && renderContent()}
+        </AdminModal>
     );
 }
 

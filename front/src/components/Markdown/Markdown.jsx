@@ -10,8 +10,16 @@ import styles from "./markdown.module.css";
  * markdownService, здесь только отрисовка. Содержимое урока
  * выводится как текст и React-элементы, поэтому HTML и скрипты
  * из Markdown выполниться не могут.
+ *
+ * media — файлы урока по идентификатору:
+ *
+ *     {m_0123456789abcdef: {media_key, kind, url, ...}}
+ *
+ * По нему раскрываются ссылки вида ![Схема](asset:m_0123456789abcdef):
+ * в Markdown попадает только идентификатор, а сам файл отдаётся
+ * хранилищем по временной ссылке.
  */
-function Markdown({content, className}) {
+function Markdown({content, media, onMediaError, className}) {
     const blocks = useMemo(() => markdownService.parse(content), [content]);
 
     if (!blocks.length) {
@@ -20,7 +28,7 @@ function Markdown({content, className}) {
 
     return (
         <div className={className ? `${styles.markdown} ${className}` : styles.markdown}>
-            <MarkdownBlocks blocks={blocks}/>
+            <MarkdownBlocks blocks={blocks} media={media} onMediaError={onMediaError}/>
         </div>
     );
 }

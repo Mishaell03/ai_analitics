@@ -273,6 +273,19 @@
     border-radius: var(--radius-md);
 }
 
+.video {
+    display: block;
+
+    width: 100%;
+    max-width: 100%;
+
+    margin: 0 0 16px;
+
+    border-radius: var(--radius-md);
+
+    background: #1d1b26;
+}
+
 .imagePlaceholder {
     display: inline-block;
 

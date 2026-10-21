@@ -1,0 +1,135 @@
+/* ---------- course cell ---------- */
+
+.courseCell {
+    display: flex;
+    align-items: center;
+
+    gap: 14px;
+}
+
+.courseIcon {
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 42px;
+    height: 42px;
+
+    border-radius: 13px;
+
+    background: rgb(182 95 253 / 0.1);
+    color: var(--accent);
+}
+
+.courseIcon svg {
+    width: 20px;
+    height: 20px;
+}
+
+.courseImage {
+    flex-shrink: 0;
+
+    width: 42px;
+    height: 42px;
+
+    border-radius: 13px;
+
+    object-fit: cover;
+
+    background: rgb(128 128 128 / 0.08);
+}
+
+.courseMeta {
+    min-width: 0;
+}
+
+.courseMeta strong {
+    display: block;
+
+    color: var(--ink);
+
+    font-size: 14px;
+    font-weight: 700;
+
+    overflow-wrap: anywhere;
+}
+
+.courseMeta span {
+    display: block;
+
+    margin-top: 3px;
+
+    color: var(--muted);
+
+    font-size: 12px;
+    line-height: 1.4;
+
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+
+    overflow: hidden;
+    overflow-wrap: anywhere;
+}
+
+
+/* ---------- module toolbar ---------- */
+
+.moduleToolbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+
+    gap: 10px;
+
+    flex: 1 1 260px;
+}
+
+.select {
+    min-width: 0;
+
+    flex: 1 1 180px;
+    max-width: 100%;
+
+    padding: 11px 13px;
+
+    border: 1px solid var(--line);
+    border-radius: 12px;
+
+    background: rgb(128 128 128 / 0.04);
+    color: var(--ink);
+
+    font-size: 13px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: border-color 0.3s ease;
+}
+
+.select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 1000px) {
+    .moduleToolbar {
+        width: 100%;
+    }
+}
+
+@media (max-width: 700px) {
+    .moduleToolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .select {
+        max-width: none;
+    }
+}

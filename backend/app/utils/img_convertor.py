@@ -1,27 +1,148 @@
+"""ОБРАБОТКА ИЗОБРАЖЕНИЙ
+
+Изображение приходит от пользователя, поэтому перед сохранением его
+нужно проверить и привести к одному формату:
+
+    * проверить реальный формат файла (по содержимому, а не по имени);
+    * проверить размер и разрешение;
+    * пережать в WebP, сохранив пропорции;
+    * не сохранять лишние метаданные (EXIF с координатами и камерой).
+
+Ошибки разбора и проверки — доменные исключения: сервис переводит их
+в понятные ответы API.
+"""
+
+from dataclasses import dataclass
 from io import BytesIO
 
-from fastapi import UploadFile
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
+
+from app.core.config import settings
+
+# Pillow должен сам предупреждать о слишком больших изображениях:
+# лимит берём из конфигурации, а не из дефолта библиотеки
+Image.MAX_IMAGE_PIXELS = settings.media_max_image_pixels
+
+
+class ImageValidationError(Exception):
+    """ФАЙЛ НЕ ЯВЛЯЕТСЯ ПОДХОДЯЩИМ ИЗОБРАЖЕНИЕМ"""
+
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+
+        self.code = code
+        self.message = message
+
+
+@dataclass(frozen=True)
+class ProcessedImage:
+    """ГОТОВОЕ К СОХРАНЕНИЮ ИЗОБРАЖЕНИЕ"""
+
+    content: bytes
+    content_type: str
+    width: int
+    height: int
+    size_bytes: int
+    original_format: str
+
+
+# форматы, которые принимаем на входе
+SUPPORTED_FORMATS = frozenset({
+    "JPEG",
+    "PNG",
+    "WEBP",
+    "GIF",
+    "BMP",
+})
+
+# MIME-типы, которые заранее отсекаем
+ALLOWED_CONTENT_TYPES = frozenset({
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "image/bmp",
+})
 
 
 class ImageConvertor:
+    """ПРОВЕРЯЕТ И КОНВЕРТИРУЕТ ИЗОБРАЖЕНИЯ"""
 
-    @staticmethod
     async def to_webp(
-        file: UploadFile,
-        quality: int = 85,
-    ) -> BytesIO:
-        data = await file.read()
+        self,
+        data: bytes,
+        content_type: str | None = None,
+        max_size: int | None = None,
+        max_dimension: int | None = None,
+        quality: int | None = None,
+    ) -> ProcessedImage:
+        """ПРОВЕРЯЕТ ИЗОБРАЖЕНИЕ И ПРИВОДИТ ЕГО К WEBP
 
-        source = BytesIO(data)
+        data — содержимое файла (его размер ограничен заранее,
+        иначе файл целиком попал бы в память).
+        """
 
-        with Image.open(source) as image:
+        max_size = max_size if max_size is not None else settings.media_max_image_size
+        max_dimension = max_dimension if max_dimension is not None else settings.media_max_image_dimension
+        quality = quality if quality is not None else settings.media_image_quality
+
+        if not data:
+            raise ImageValidationError(
+                code="MEDIA_FILE_CORRUPTED",
+                message="Файл изображения пустой",
+            )
+
+        if len(data) > max_size:
+            raise ImageValidationError(
+                code="MEDIA_FILE_TOO_LARGE",
+                message="Файл изображения больше допустимого размера",
+            )
+
+        if content_type and content_type.lower() not in ALLOWED_CONTENT_TYPES:
+            raise ImageValidationError(
+                code="MEDIA_FILE_TYPE_NOT_ALLOWED",
+                message="Такой формат изображения не поддерживается",
+            )
+
+        try:
+            image = Image.open(BytesIO(data))
+
+            image_format = image.format
+
+            # реальный формат файла, а не то, что прислал клиент
+            if image_format not in SUPPORTED_FORMATS:
+                raise ImageValidationError(
+                    code="MEDIA_FILE_TYPE_NOT_ALLOWED",
+                    message="Такой формат изображения не поддерживается",
+                )
+
+            width, height = image.size
+
+            if width > max_dimension or height > max_dimension:
+                raise ImageValidationError(
+                    code="MEDIA_IMAGE_RESOLUTION_TOO_LARGE",
+                    message="Разрешение изображения больше допустимого",
+                )
+
+            if width * height > settings.media_max_image_pixels:
+                raise ImageValidationError(
+                    code="MEDIA_IMAGE_RESOLUTION_TOO_LARGE",
+                    message="Изображение содержит слишком много пикселей",
+                )
+
+            # метаданные (EXIF, GPS, камера) в результат не попадают
+            image.info.clear()
+
             if image.mode in ("RGBA", "LA") or (
                 image.mode == "P" and "transparency" in image.info
             ):
                 image = image.convert("RGBA")
+
             else:
                 image = image.convert("RGB")
+
+            # пропорции сохраняются, лишнее обрезается по меньшей стороне
+            image.thumbnail((max_dimension, max_dimension))
 
             output = BytesIO()
 
@@ -32,9 +153,31 @@ class ImageConvertor:
                 method=6,
             )
 
-        output.seek(0)
+            content = output.getvalue()
 
-        return output
+        except ImageValidationError:
+            raise
+
+        except (UnidentifiedImageError, OSError, ValueError) as error:
+            raise ImageValidationError(
+                code="MEDIA_FILE_CORRUPTED",
+                message="Не удалось прочитать изображение",
+            ) from error
+
+        except Image.DecompressionBombError as error:
+            raise ImageValidationError(
+                code="MEDIA_IMAGE_RESOLUTION_TOO_LARGE",
+                message="Изображение содержит слишком много пикселей",
+            ) from error
+
+        return ProcessedImage(
+            content=content,
+            content_type="image/webp",
+            width=image.width,
+            height=image.height,
+            size_bytes=len(content),
+            original_format=image_format,
+        )
 
 
 image_convertor = ImageConvertor()

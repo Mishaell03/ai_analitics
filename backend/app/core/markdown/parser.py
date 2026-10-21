@@ -16,7 +16,11 @@ from markdown_it.token import Token
 from app.core.markdown.custom_blocks import CustomBlockRegistry
 from app.core.markdown.models import CustomBlock, LessonAsset, ParsedMarkdown
 from app.core.markdown.sanitizer import MarkdownSanitizer
-from app.core.storage_paths import ASSETS_DIR_NAME
+from app.core.storage_paths import (
+    ASSET_REFERENCE_PREFIX,
+    ASSETS_DIR_NAME,
+    is_safe_media_key,
+)
 
 # разметка кастомного блока: :::тип ... :::
 _CUSTOM_BLOCK_OPEN_RE = re.compile(r"^:::\s*(?P<type>[a-zA-Z][a-zA-Z0-9_-]*)\s*$")
@@ -199,13 +203,25 @@ class MarkdownParser:
     def _get_asset_id(source: str) -> str | None:
         """ИДЕНТИФИКАТОР МЕДИАФАЙЛА ИЗ ССЫЛКИ В MARKDOWN
 
-        Поддерживаются ссылки вида assets/schema.png и schema.png.
+        Поддерживаются три вида ссылок:
+
+            ![схема](asset:m_0123456789abcdef) — логический идентификатор
+            ![схема](assets/schema.png)         — файл в каталоге модуля
+            ![схема](schema.png)                — файл без пути
         """
 
         if not source:
             return None
 
         assets_prefix = f"{ASSETS_DIR_NAME}/"
+
+        if source.startswith(ASSET_REFERENCE_PREFIX):
+            media_key = source[len(ASSET_REFERENCE_PREFIX):]
+
+            if not is_safe_media_key(media_key):
+                return None
+
+            return media_key
 
         if source.startswith(assets_prefix):
             asset_id = source[len(assets_prefix):]
@@ -224,6 +240,10 @@ class MarkdownParser:
     @staticmethod
     def _get_asset_kind(asset_id: str) -> str:
         """ТИП МЕДИАФАЙЛА ПО РАСШИРЕНИЮ"""
+
+        if is_safe_media_key(asset_id) and asset_id.startswith("m_"):
+            # логический идентификатор: тип файла известен только из БД
+            return "media"
 
         _, _, extension = asset_id.rpartition(".")
 

@@ -6,6 +6,7 @@ asyncpg
 alembic
 minio
 markdown-it-py
+pillow
 
 pydantic
 pydantic-settings

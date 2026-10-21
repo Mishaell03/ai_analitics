@@ -11,24 +11,24 @@ import styles from "./markdown.module.css";
  * Markdown. Здесь нет логики разбора: только соответствие типа
  * блока элементу интерфейса.
  */
-function MarkdownBlocks({blocks = []}) {
+function MarkdownBlocks({blocks = [], media, onMediaError}) {
     return (
         <>
             {blocks.map((block, index) => (
-                <MarkdownBlock block={block} key={index}/>
+                <MarkdownBlock block={block} media={media} onMediaError={onMediaError} key={index}/>
             ))}
         </>
     );
 }
 
-function MarkdownBlock({block}) {
+function MarkdownBlock({block, media, onMediaError}) {
     switch (block.type) {
         case "heading": {
             const Heading = `h${Math.min(Math.max(block.level, 1), 6)}`;
 
             return (
                 <Heading className={styles.heading} data-level={block.level}>
-                    <MarkdownInline nodes={block.children}/>
+                    <MarkdownInline nodes={block.children} media={media} onMediaError={onMediaError}/>
                 </Heading>
             );
         }
@@ -36,25 +36,27 @@ function MarkdownBlock({block}) {
         case "paragraph":
             return (
                 <p className={styles.paragraph}>
-                    <MarkdownInline nodes={block.children}/>
+                    <MarkdownInline nodes={block.children} media={media} onMediaError={onMediaError}/>
                 </p>
             );
 
         case "list":
-            return renderList(block);
+            return renderList(block, media, onMediaError);
 
         case "table":
             return (
                 <MarkdownTable
                     header={block.header}
                     rows={block.rows}
+                    media={media}
+                    onMediaError={onMediaError}
                 />
             );
 
         case "quote":
             return (
                 <blockquote className={styles.quote}>
-                    <MarkdownBlocks blocks={block.children}/>
+                    <MarkdownBlocks blocks={block.children} media={media} onMediaError={onMediaError}/>
                 </blockquote>
             );
 
@@ -73,7 +75,7 @@ function MarkdownBlock({block}) {
         case "custom":
             return (
                 <MarkdownCustomBlock block={block}>
-                    <MarkdownBlocks blocks={block.children}/>
+                    <MarkdownBlocks blocks={block.children} media={media} onMediaError={onMediaError}/>
                 </MarkdownCustomBlock>
             );
 
@@ -82,7 +84,7 @@ function MarkdownBlock({block}) {
     }
 }
 
-function renderList(block) {
+function renderList(block, media, onMediaError) {
     const ListTag = block.ordered ? "ol" : "ul";
     const start = block.ordered && block.start !== 1 ? {start: block.start} : undefined;
 
@@ -91,11 +93,11 @@ function renderList(block) {
             {block.items.map((item, index) => (
                 <li className={styles.listItem} key={index}>
                     {item.children.length > 0 && (
-                        <MarkdownInline nodes={item.children}/>
+                        <MarkdownInline nodes={item.children} media={media} onMediaError={onMediaError}/>
                     )}
 
                     {item.blocks.length > 0 && (
-                        <MarkdownBlocks blocks={item.blocks}/>
+                        <MarkdownBlocks blocks={item.blocks} media={media} onMediaError={onMediaError}/>
                     )}
                 </li>
             ))}

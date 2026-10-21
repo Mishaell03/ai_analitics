@@ -254,6 +254,6 @@ class LessonsAdminResponse(BaseModel):
 class ModuleReorderRequest(BaseModel):
     module_ids: list[int] = Field(..., min_length=1)
 
-# request for reordering modules (admin)
-class ModuleReorderRequest(BaseModel):
-    module_ids: list[int] = Field(..., min_length=1)
+# запрос на перестановку уроков модуля
+class LessonReorderRequest(BaseModel):
+    lesson_ids: list[int] = Field(..., min_length=1)

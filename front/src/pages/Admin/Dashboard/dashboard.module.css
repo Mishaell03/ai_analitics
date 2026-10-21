@@ -3,124 +3,6 @@
 }
 
 
-/* ---------- heading ---------- */
-
-.heading {
-    margin: 0 0 28px;
-}
-
-.badge {
-    width: fit-content;
-
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-
-    margin-bottom: 18px;
-    padding: 8px 13px;
-
-    border-radius: 999px;
-
-    background: rgb(182 95 253 / 0.1);
-    color: var(--accent);
-
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-}
-
-.badgeDot {
-    width: 7px;
-    height: 7px;
-
-    border-radius: 50%;
-
-    background: var(--accent);
-
-    box-shadow: 0 0 0 4px rgb(182 95 253 / 0.12);
-}
-
-.headingRow {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    gap: 24px;
-}
-
-.headingContent {
-    min-width: 0;
-}
-
-.headingContent h1 {
-    margin: 0;
-
-    color: var(--ink);
-
-    font-size: clamp(30px, 3.4vw, 42px);
-    line-height: 1.05;
-    font-weight: 800;
-
-    letter-spacing: -1.6px;
-}
-
-.headingContent p {
-    margin: 10px 0 0;
-
-    color: var(--muted);
-
-    font-size: 14px;
-}
-
-.refreshButton {
-    flex-shrink: 0;
-
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 9px;
-
-    min-height: 44px;
-
-    padding: 12px 17px;
-
-    border: none;
-    border-radius: 13px;
-
-    background: var(--accent);
-    color: #fff;
-
-    font-size: 13px;
-    font-weight: 700;
-
-    cursor: pointer;
-
-    transition: background 0.5s ease,
-    transform 0.5s ease,
-    box-shadow 0.5s ease;
-}
-
-.refreshButton svg {
-    width: 17px;
-    height: 17px;
-}
-
-.refreshButton:hover:not(:disabled) {
-    background: var(--primary);
-
-    transform: translateY(-3px);
-
-    box-shadow: 0 12px 30px rgb(182 95 253 / 0.2);
-
-    transition: 0.3s ease;
-}
-
-.refreshButton:disabled {
-    opacity: 0.55;
-    cursor: default;
-}
-
-
 /* ---------- stats ---------- */
 
 .stats {
@@ -432,18 +314,6 @@
 }
 
 @media (max-width: 700px) {
-    .headingRow {
-        align-items: flex-start;
-
-        flex-direction: column;
-
-        gap: 18px;
-    }
-
-    .refreshButton {
-        width: 100%;
-    }
-
     .stats {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 12px;
@@ -455,7 +325,7 @@
 }
 
 @media (max-width: 420px) {
-    .headingContent h1 {
+    .dashboard .title {
         font-size: 28px;
         letter-spacing: -1.2px;
     }

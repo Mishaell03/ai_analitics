@@ -171,6 +171,116 @@ export default {
     adminLessonsCreate: "Создать урок",
     adminLessonsCreated: "Урок создан",
     adminLessonsSaved: "Урок сохранён",
+    adminLessonsReordered: "Порядок уроков обновлён",
+    adminLessonsReorderError: "Не удалось изменить порядок уроков",
+    adminLessonsPublish: "Опубликовать урок",
+    adminLessonsUnpublish: "Снять с публикации",
+    adminLessonsPublishedToast: "Урок опубликован",
+    adminLessonsUnpublished: "Урок снят с публикации",
+    adminLessonsStatusError: "Не удалось изменить статус урока",
+    adminLessonsDelete: "Удалить урок",
+    adminLessonsDeleted: "Урок удалён",
+    adminLessonsDeleteError: "Не удалось удалить урок",
+
+    // ---------- courses ----------
+
+    coursesEyebrow: "Курсы и модули",
+    coursesTitle: "Управление курсами",
+    coursesSubtitle: "Создание, редактирование, удаление и статусы курсов и модулей",
+
+    coursesPanelTitle: "Курсы",
+    coursesPanelHint: "Выберите курс, чтобы управлять его модулями",
+    coursesCreate: "Создать курс",
+    coursesEmptyTitle: "Курсы не найдены",
+    coursesEmptyDescription: "Создайте первый курс",
+
+    courseCreated: "Курс создан",
+    courseUpdated: "Курс обновлён",
+    courseDeleted: "Курс удалён",
+    courseActivated: "Курс активирован",
+    courseDeactivated: "Курс деактивирован",
+    courseSaveError: "Не удалось сохранить курс",
+    courseStatusError: "Не удалось изменить статус курса",
+
+    courseActionCover: "Обложка курса",
+
+    // ---------- modules ----------
+
+    modulesPanelTitle: "Модули",
+    modulesPanelHint: "Выберите курс из списка выше",
+    modulesCreate: "Создать модуль",
+    courseSelectPlaceholder: "Выберите курс",
+    modulesEmptyTitle: "Модули не найдены",
+    modulesEmptyDescription: "Создайте первый модуль для выбранного курса",
+    modulesSelectTitle: "Выберите курс",
+    modulesSelectDescription: "Сначала выберите курс из списка выше",
+    modulesReordered: "Порядок модулей обновлён",
+    modulesReorderError: "Не удалось изменить порядок модулей",
+
+    moduleCreated: "Модуль создан",
+    moduleUpdated: "Модуль обновлён",
+    moduleDeleted: "Модуль удалён",
+    moduleActivated: "Модуль активирован",
+    moduleDeactivated: "Модуль деактивирован",
+    moduleSaveError: "Не удалось сохранить модуль",
+    moduleStatusError: "Не удалось изменить статус модуля",
+
+    moduleActionLessons: "Уроки модуля",
+
+    // ---------- общие кнопки и колонки ----------
+
+    modalClose: "Закрыть",
+
+    formSave: "Сохранить",
+    formSaving: "Сохранение...",
+    formCancel: "Отмена",
+    formActive: "Активен",
+
+    columnTitle: "Название",
+    columnSlug: "Slug",
+    columnModules: "Модулей",
+    columnLessons: "Уроков",
+    columnPosition: "Позиция",
+    columnStatus: "Статус",
+    columnContent: "Содержимое",
+    columnActions: "Действия",
+
+    statusActive: "Активен",
+    statusInactive: "Неактивен",
+
+    actionEdit: "Редактировать",
+    actionDelete: "Удалить",
+    actionActivate: "Активировать",
+    actionDeactivate: "Деактивировать",
+
+    deleteError: "Не удалось удалить",
+
+    // ---------- формы курса и модуля ----------
+
+    courseCreateTitle: "Создать курс",
+    courseEditTitle: "Редактировать курс",
+    courseTitleField: "Название (до 255 символов)",
+    courseSlugField: "Slug (до 255 символов, необязательно)",
+    courseDescriptionField: "Описание (до 2000 символов)",
+    courseTitleError: "Название курса обязательно и не длиннее 255 символов",
+    courseSlugError: "Slug: только латиница, цифры и дефис, до 255 символов",
+    courseDescriptionError: "Описание не длиннее 2000 символов",
+
+    moduleCreateTitle: "Создать модуль",
+    moduleEditTitle: "Редактировать модуль",
+    moduleTitleField: "Название (до 255 символов)",
+    moduleDescriptionField: "Описание (до 2000 символов)",
+    moduleTitleError: "Название модуля обязательно и не длиннее 255 символов",
+    moduleDescriptionError: "Описание не длиннее 2000 символов",
+
+    // ---------- confirm ----------
+
+    confirmDeleteCourseTitle: "Удалить курс?",
+    confirmDeleteModuleTitle: "Удалить модуль?",
+    confirmDeleteLessonTitle: "Удалить урок?",
+    confirmDeleteButton: "Удалить",
+    confirmDeleteProcess: "Удаление...",
+    confirmCancelButton: "Отмена",
 
     // ---------- lesson editor ----------
 
@@ -193,9 +303,55 @@ export default {
     adminLessonEditorLoading: "Загружаем содержимое урока",
     adminLessonEditorTitleError: "Название урока обязательно и не длиннее 255 символов",
     adminLessonEditorUploadError: "Не удалось загрузить Markdown в хранилище",
+    adminLessonEditorSaveError: "Не удалось сохранить урок. Проверьте подключение к интернету и попробуйте ещё раз.",
     adminLessonEditorErrorTitle: "Не удалось загрузить содержимое",
     adminLessonEditorErrorDescription: "Проверьте подключение к интернету и попробуйте ещё раз.",
     adminLessonEditorErrorRetry: "Попробовать снова",
+
+    // ---------- lesson media ----------
+
+    mediaTitle: "Медиафайлы",
+    mediaClose: "Закрыть",
+    mediaUpload: "Загрузить файл",
+    mediaUploadingShort: "Загружаем...",
+    mediaUploading: "Загрузка: {progress}%",
+    mediaHint: "Изображения (JPG, PNG, WebP, GIF, BMP) до 10 МБ и видео MP4 (H.264/AAC) до 200 МБ",
+    mediaEmptyTitle: "Медиафайлов пока нет",
+    mediaEmptyDescription: "Загрузите изображение или видео, чтобы вставить его в урок.",
+    mediaKindImage: "Изображение",
+    mediaKindVideo: "Видео",
+    mediaNoLink: "Ссылка недоступна",
+    mediaCopyKey: "Скопировать идентификатор",
+    mediaCopyMarkdown: "Копировать Markdown",
+    mediaCopied: "Скопировано",
+    mediaCopyError: "Не удалось скопировать",
+    mediaRefresh: "Обновить ссылку",
+    mediaRefreshError: "Не удалось получить ссылку на файл",
+    mediaDelete: "Удалить",
+    mediaDeleteTitle: "Удалить медиафайл?",
+    mediaDeleteError: "Не удалось удалить медиафайл",
+    mediaLoadError: "Не удалось загрузить список медиафайлов",
+    mediaFileRequired: "Выберите файл",
+    mediaFileTypeNotAllowed: "Поддерживаются только изображения и видео MP4",
+    mediaFileTooLarge: "Файл больше, чем принимает хранилище (максимум {limit})",
+
+    // ---------- course cover ----------
+
+    coverTitle: "Обложка курса",
+    coverClose: "Закрыть",
+    coverUpload: "Загрузить обложку",
+    coverReplace: "Заменить обложку",
+    coverUploadingShort: "Загружаем...",
+    coverUploading: "Загрузка: {progress}%",
+    coverDelete: "Удалить обложку",
+    coverDeleteTitle: "Удалить обложку?",
+    coverDeleteDescription: "У курса не будет обложки до загрузки новой",
+    coverDeleteError: "Не удалось удалить обложку",
+    coverEmpty: "У курса пока нет обложки",
+    coverLoadError: "Не удалось загрузить обложку",
+    coverTypeError: "Обложкой может быть только изображение",
+    coverSizeError: "Файл больше, чем принимает хранилище (максимум {limit})",
+    coverHint: "Изображение до {limit}. Backend сам пережимает файл в WebP и чистит его от метаданных.",
 
     // ---------- lesson content ----------
 

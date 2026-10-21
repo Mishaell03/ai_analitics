@@ -9,9 +9,9 @@ import {Course} from "@/pages/Curses/Course.jsx";
 import {About} from "@/pages/About/About.jsx";
 import {Profile} from "@/pages/Profile/Profile.jsx";
 import {Teachers} from "@/pages/Teachers/Teachers.jsx";
-import {Dashboard} from "@/pages/Admin/Dashboard.jsx";
-import {Users} from "@/pages/Admin/Users.jsx";
-import AdminCourses from "@/pages/Admin/AdminCourses.jsx";
+import {Dashboard} from "@/pages/Admin/Dashboard/Dashboard.jsx";
+import {Users} from "@/pages/Admin/Users/Users.jsx";
+import AdminCourses from "@/pages/Admin/Courses/AdminCourses.jsx";
 import AdminLayout from "@/pages/Admin/AdminLayout.jsx";
 
 function App() {

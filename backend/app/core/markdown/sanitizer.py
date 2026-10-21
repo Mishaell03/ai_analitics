@@ -13,12 +13,16 @@ Markdown приходит из MinIO, поэтому к нему нельзя о
 
 import re
 
+from app.core.storage_paths import ASSET_REFERENCE_PREFIX
+
 # протоколы, которые разрешено отдавать клиенту
 SAFE_URL_SCHEMES = frozenset({
     "http",
     "https",
     "mailto",
     "tel",
+    # ссылка на медиафайл курса: ![описание](asset:media_key)
+    ASSET_REFERENCE_PREFIX.rstrip(":"),
 })
 
 # элементы, которые вырезаются вместе со своим содержимым

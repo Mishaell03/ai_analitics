@@ -5,10 +5,16 @@
  * нельзя отдавать в разметку как есть: протокол javascript: выполнит
  * код, а data: спрячет внутри себя картинку с кодом.
  *
- * Разрешены только http, https, mailto, tel и относительные пути.
+ * Разрешены только http, https, mailto, tel, asset и относительные пути.
+ * asset — это ссылка на файл курса по его идентификатору:
+ *
+ *     ![Схема](asset:m_0123456789abcdef)
+ *
+ * Сам файл отдаётся хранилищем по временной ссылке, поэтому в разметку
+ * попадает только идентификатор.
  */
 
-const SAFE_SCHEMES = new Set(["http:", "https:", "mailto:", "tel:"]);
+const SAFE_SCHEMES = new Set(["http:", "https:", "mailto:", "tel:", "asset:"]);
 
 // схема в начале адреса: protocol://host или protocol:
 const SCHEME_PATTERN = /^([a-zA-Z][a-zA-Z0-9+.-]*):/;

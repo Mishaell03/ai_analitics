@@ -6,7 +6,7 @@ import styles from "./markdown.module.css";
  *
  * Выравнивание колонок берётся из строки-разделителя Markdown.
  */
-function MarkdownTable({header = [], rows = []}) {
+function MarkdownTable({header = [], rows = [], media, onMediaError}) {
     return (
         <div className={styles.tableWrap}>
             <table className={styles.table}>
@@ -14,7 +14,11 @@ function MarkdownTable({header = [], rows = []}) {
                     <tr>
                         {header.map((cell, index) => (
                             <th key={index} data-align={cell.align}>
-                                <MarkdownInline nodes={cell.children}/>
+                                <MarkdownInline
+                                    nodes={cell.children}
+                                    media={media}
+                                    onMediaError={onMediaError}
+                                />
                             </th>
                         ))}
                     </tr>
@@ -25,7 +29,11 @@ function MarkdownTable({header = [], rows = []}) {
                         <tr key={rowIndex}>
                             {row.map((cell, cellIndex) => (
                                 <td key={cellIndex} data-align={cell.align}>
-                                    <MarkdownInline nodes={cell.children}/>
+                                    <MarkdownInline
+                                        nodes={cell.children}
+                                        media={media}
+                                        onMediaError={onMediaError}
+                                    />
                                 </td>
                             ))}
                         </tr>

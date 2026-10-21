@@ -41,10 +41,21 @@ export const API_ROUTES = {
 
 // Admin lessons
     ADMIN_COURSE_LESSONS: (courseId, moduleId) => `/admin/courses/${courseId}/modules/${moduleId}/lessons`,
+    ADMIN_COURSE_LESSONS_REORDER: (courseId, moduleId) =>
+        `/admin/courses/${courseId}/modules/${moduleId}/lessons/reorder`,
     ADMIN_LESSON: (courseId, moduleId, lessonId) =>
         `/admin/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`,
     ADMIN_LESSON_CONTENT: (courseId, moduleId, lessonId) =>
         `/admin/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/content`,
     ADMIN_LESSON_UPLOAD_URL: (courseId, moduleId, lessonId) =>
         `/admin/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/upload-url`,
+
+// Admin covers
+    ADMIN_COURSE_IMAGE: (courseSlug) => `/admin/courses/${courseSlug}/image`,
+
+// Admin lesson media
+    ADMIN_LESSON_MEDIA: (courseId, moduleId, lessonId) =>
+        `/admin/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/media`,
+    ADMIN_LESSON_MEDIA_ITEM: (lessonId, mediaKey) => `/admin/lessons/${lessonId}/media/${mediaKey}`,
+    ADMIN_MEDIA_URL: (mediaKey) => `/admin/media/${mediaKey}/url`,
 };

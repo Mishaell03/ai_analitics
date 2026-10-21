@@ -1,0 +1,124 @@
+.users {
+    min-width: 0;
+}
+
+
+/* ---------- panel ---------- */
+
+.panel {
+    min-width: 0;
+
+    padding: 8px 24px;
+
+    border-radius: var(--radius-lg);
+
+    background: var(--card);
+}
+
+.tableWrap {
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+
+    min-width: 620px;
+
+    border-collapse: collapse;
+}
+
+.table th {
+    padding: 16px 0;
+
+    border-bottom: 1px solid var(--line);
+
+    color: var(--muted);
+
+    font-size: 11px;
+    font-weight: 750;
+
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+
+    white-space: nowrap;
+}
+
+.table th[data-align="right"],
+.table td[data-align="right"] {
+    text-align: right;
+}
+
+.row {
+    cursor: pointer;
+
+    transition: background 0.3s ease;
+}
+
+.row:hover {
+    background: rgb(182 95 253 / 0.05);
+}
+
+.row:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+
+.row td {
+    padding: 14px 0;
+
+    border-bottom: 1px solid var(--line);
+
+    color: var(--ink);
+
+    font-size: 14px;
+}
+
+.row:last-child td {
+    border-bottom: none;
+}
+
+.cellId {
+    color: var(--muted);
+
+    font-variant-numeric: tabular-nums;
+}
+
+.cellMuted {
+    color: var(--muted);
+}
+
+.user {
+    display: flex;
+    align-items: center;
+
+    gap: 12px;
+}
+
+.userName {
+    min-width: 0;
+
+    font-weight: 650;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.status {
+    display: flex;
+    justify-content: flex-end;
+}
+
+
+/* ---------- skeleton ---------- */
+
+/* ---------- states ---------- */
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 700px) {
+    .panel {
+        padding: 6px 16px;
+    }
+}

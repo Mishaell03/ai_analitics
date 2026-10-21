@@ -66,12 +66,39 @@ import {registerCustomBlockRenderer} from "@/components/Markdown/customBlockRend
 registerCustomBlockRenderer("test", (block) => <TestBlock block={block}/>);
 ```
 
+### Медиафайлы
+
+Файлы лежат в приватном хранилище: клиент видит только логический
+идентификатор и временную ссылку. В Markdown попадает идентификатор,
+а не ссылка:
+
+```markdown
+![Схема работы](asset:m_0123456789abcdef)
+```
+
+- `src/api/media.js` — API-клиент: обложка курса, медиафайлы урока,
+  обновление ссылки, удаление;
+- `src/services/media.js` — правила файлов (типы, размеры), разбор
+  ссылки `asset:` и сборка Markdown-вставки;
+- `src/hooks/useFileUpload.js` — загрузка с прогрессом и отменой запроса
+  при уходе со страницы.
+
+Ссылка на файл живёт недолго, поэтому список медиафайлов всегда
+приходит со свежими ссылками, а протухшая ссылка обновляется
+запросом `POST /admin/media/{media_key}/url`.
+
+`Markdown` принимает файлы урока и раскрывает ссылки по идентификатору:
+
+```jsx
+<Markdown content={lesson.content} media={mediaByKey} onMediaError={refreshMediaUrl}/>
+```
+
 ### Команды
 
 ```bash
 npm run dev          # запуск dev-сервера
 npm run build        # сборка
 npm run lint         # линтер
-npm test             # тесты сервиса Markdown
+npm test             # тесты сервисов Markdown и Media
 npm run test:render  # проверка отрисовки Markdown
 ```

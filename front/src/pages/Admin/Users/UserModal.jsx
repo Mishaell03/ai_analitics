@@ -13,18 +13,17 @@ import {
     TriangleAlert,
     UserCheck,
     UserX,
-    X,
 } from "lucide-react";
 import {api} from "@/api/axios.js";
 import {API_ROUTES} from "@/api/routes.js";
 import {useAuth} from "@/context/AuthContext.jsx";
-import {getTranslation} from "@/locales/i18n.js";
 import {formatDateTime, formatNumber} from "@/services/format.js";
 import UserAvatar from "@/components/UserAvatar/UserAvatar.jsx";
 import Badge from "@/components/Badge/Badge.jsx";
+import ConfirmModal from "@/components/ConfirmModal/ConfirmModal.jsx";
+import AdminModal from "@/pages/Admin/components/AdminModal.jsx";
+import {useAdminTranslation} from "@/pages/Admin/hooks/useAdminTranslation.js";
 import styles from "./userModal.module.css";
-
-const language = "ru";
 
 // сколько сессий показываем до раскрытия списка
 const SESSIONS_PREVIEW = 5;
@@ -36,12 +35,9 @@ const SESSIONS_PREVIEW = 5;
  * держать лишнее состояние, достаточно знать id открытого пользователя.
  */
 function UserModal({userId, onClose, onUserUpdated}) {
-    const t = (key, params) => getTranslation(`admin.admin.${key}`, language, params);
+    const t = useAdminTranslation();
 
     const {user: authUser} = useAuth();
-
-    // себя блокировать нельзя: админ потерял бы доступ к админке
-    const isSelf = authUser?.user_id === userId;
 
     const [detail, setDetail] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -73,23 +69,6 @@ function UserModal({userId, onClose, onUserUpdated}) {
     useEffect(() => {
         fetchDetail();
     }, [fetchDetail]);
-
-    // закрытие по Escape и блокировка прокрутки фона
-    useEffect(() => {
-        const handleKeyDown = (event) => {
-            if (event.key === "Escape") {
-                onClose();
-            }
-        };
-
-        document.addEventListener("keydown", handleKeyDown);
-        document.body.style.overflow = "hidden";
-
-        return () => {
-            document.removeEventListener("keydown", handleKeyDown);
-            document.body.style.overflow = "";
-        };
-    }, [onClose]);
 
     const handleOpenBlockConfirm = () => {
         setBlockError("");
@@ -168,6 +147,10 @@ function UserModal({userId, onClose, onUserUpdated}) {
     const renderDetail = () => {
         const user = detail.user;
         const learning = detail.learning;
+
+        // себя блокировать нельзя: админ потерял бы доступ к админке.
+        // В ответе /me нет user_id, поэтому сравниваем по почте
+        const isSelf = Boolean(authUser?.email) && authUser.email === user.email;
 
         const hasCourses = detail.courses.length > 0;
         const hasAttempts = detail.recent_attempts.length > 0;
@@ -553,92 +536,38 @@ function UserModal({userId, onClose, onUserUpdated}) {
     };
 
     return (
-        <div
-            className={styles.overlay}
-            onClick={onClose}
-            role="presentation"
+        <AdminModal
+            onClose={onClose}
+            ariaLabel={t("userModalTitle")}
+            closeLabel={t("userModalClose")}
+            closeOnEscape={!blockConfirm}
         >
-            <div
-                className={styles.modal}
-                onClick={(event) => event.stopPropagation()}
-                role="dialog"
-                aria-modal="true"
-                aria-label={t("userModalTitle")}
-            >
-                <button
-                    type="button"
-                    className={styles.close}
-                    onClick={onClose}
-                    aria-label={t("userModalClose")}
-                >
-                    <X/>
-                </button>
+            {loading && renderSkeleton()}
+            {!loading && error && renderError()}
+            {!loading && !error && detail && renderDetail()}
 
-                {loading && renderSkeleton()}
-                {!loading && error && renderError()}
-                {!loading && !error && detail && renderDetail()}
+            {/* ---------- block confirm ---------- */}
 
-                {/* ---------- block confirm ---------- */}
-
-                {blockConfirm && detail && (
-                    <div
-                        className={styles.confirmOverlay}
-                        onClick={handleCancelBlock}
-                        role="presentation"
-                    >
-                        <div
-                            className={styles.confirm}
-                            onClick={(event) => event.stopPropagation()}
-                            role="dialog"
-                            aria-modal="true"
-                        >
-                            <span className={styles.confirmIcon}>
-                                {detail.user.is_blocked
-                                    ? <UserCheck/>
-                                    : <TriangleAlert/>
-                                }
-                            </span>
-
-                            <h3>
-                                {detail.user.is_blocked
-                                    ? t("userModalUnblock")
-                                    : t("userModalBlockConfirmTitle")}
-                            </h3>
-
-                            {!detail.user.is_blocked && (
-                                <p>{t("userModalBlockConfirmDescription")}</p>
-                            )}
-
-                            <div className={styles.confirmActions}>
-                                <button
-                                    type="button"
-                                    className={styles.confirmCancel}
-                                    onClick={handleCancelBlock}
-                                    disabled={blocking}
-                                >
-                                    {t("userModalBlockConfirmCancel")}
-                                </button>
-
-                                <button
-                                    type="button"
-                                    className={
-                                        detail.user.is_blocked
-                                            ? styles.confirmOk
-                                            : styles.confirmDanger
-                                    }
-                                    onClick={handleToggleBlock}
-                                    disabled={blocking}
-                                >
-                                    {detail.user.is_blocked
-                                        ? t("userModalUnblock")
-                                        : t("userModalBlockConfirmOk")}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
+            {blockConfirm && detail && (
+                <ConfirmModal
+                    icon={detail.user.is_blocked ? UserCheck : TriangleAlert}
+                    tone={detail.user.is_blocked ? "ok" : "danger"}
+                    title={detail.user.is_blocked
+                        ? t("userModalUnblock")
+                        : t("userModalBlockConfirmTitle")}
+                    description={detail.user.is_blocked
+                        ? ""
+                        : t("userModalBlockConfirmDescription")}
+                    confirmText={detail.user.is_blocked
+                        ? t("userModalUnblock")
+                        : t("userModalBlockConfirmOk")}
+                    cancelText={t("userModalBlockConfirmCancel")}
+                    busy={blocking}
+                    onConfirm={handleToggleBlock}
+                    onClose={handleCancelBlock}
+                />
+            )}
+        </AdminModal>
     );
 }
 

@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState} from "react";
+import {useMemo} from "react";
 import {Link} from "react-router-dom";
 import {
     Activity,
@@ -6,29 +6,22 @@ import {
     Flame,
     GraduationCap,
     Inbox,
-    RefreshCw,
     ShieldCheck,
     TriangleAlert,
     UserCheck,
     Users,
 } from "lucide-react";
-import {api} from "@/api/axios.js";
-import {API_ROUTES} from "@/api/routes.js";
 import {ROUTES} from "@/router/AppRouter.jsx";
-import {useAuth} from "@/context/AuthContext.jsx";
-import {getTranslation} from "@/locales/i18n.js";
 import {formatDateTime, formatNumber} from "@/services/format.js";
 import StatCard from "@/components/StatCard/StatCard.jsx";
 import BarChart from "@/components/BarChart/BarChart.jsx";
 import EmptyState from "@/components/EmptyState/EmptyState.jsx";
 import UserAvatar from "@/components/UserAvatar/UserAvatar.jsx";
+import AdminPageHeader from "@/pages/Admin/components/AdminPageHeader.jsx";
+import {useAdminAccess} from "@/pages/Admin/hooks/useAdminAccess.js";
+import {useAdminTranslation} from "@/pages/Admin/hooks/useAdminTranslation.js";
+import {LATEST_USERS, TOP_COURSES, useDashboard} from "./useDashboard.js";
 import styles from "./dashboard.module.css";
-
-const language = "ru";
-
-// сколько последних пользователей показываем и сколько курсов берём в топ
-const LATEST_USERS = 10;
-const TOP_COURSES = 3;
 
 const STAT_CARDS = [
     {key: "total_users", title: "statsUsers", icon: Users, tone: "accent"},
@@ -38,50 +31,14 @@ const STAT_CARDS = [
     {key: "total_active_sessions", title: "statsActiveSessions", icon: Activity, tone: "primary"},
 ];
 
-// пустой ответ, чтобы разметка не зависела от наличия ключей
-const EMPTY_DASHBOARD = {
-    total_users: 0,
-    total_courses: 0,
-    total_lessons: 0,
-    total_enrollments: 0,
-    total_active_sessions: 0,
-    latest_users: [],
-    top_courses: [],
-};
-
+/**
+ * Дашборд админки: метрики, популярные курсы и последние регистрации.
+ */
 export function Dashboard() {
-    const {user, loading: authLoading} = useAuth();
+    const t = useAdminTranslation();
 
-    const t = (key) => getTranslation(`admin.admin.${key}`, language);
-
-    const [dashboard, setDashboard] = useState(EMPTY_DASHBOARD);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-
-    const fetchDashboard = useCallback(async () => {
-        setError(null);
-        setLoading(true);
-
-        try {
-            const {data} = await api.get(API_ROUTES.ADMIN_DASHBOARD, {
-                params: {
-                    users: LATEST_USERS,
-                    top_courses: TOP_COURSES,
-                },
-            });
-
-            setDashboard({...EMPTY_DASHBOARD, ...data});
-        } catch (requestError) {
-            // 403 — сессия есть, но прав администратора нет
-            setError(requestError.response?.status === 403 ? "forbidden" : "request");
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchDashboard();
-    }, [fetchDashboard]);
+    const {dashboard, loading, error, reload} = useDashboard();
+    const {authLoading, isForbidden} = useAdminAccess(error);
 
     const topCourses = useMemo(
         () => dashboard.top_courses.map((course) => ({
@@ -92,26 +49,23 @@ export function Dashboard() {
         [dashboard.top_courses]
     );
 
-    const forbiddenState = (
-        <div className={styles.dashboard}>
-            <div className={styles.state}>
-                <EmptyState
-                    icon={ShieldCheck}
-                    title={t("forbiddenTitle")}
-                    description={t("forbiddenDescription")}
-                    action={
-                        <Link to={ROUTES.profile} className={styles.linkButton}>
-                            {t("forbiddenButton")}
-                        </Link>
-                    }
-                />
+    if (isForbidden) {
+        return (
+            <div className={styles.dashboard}>
+                <div className={styles.state}>
+                    <EmptyState
+                        icon={ShieldCheck}
+                        title={t("forbiddenTitle")}
+                        description={t("forbiddenDescription")}
+                        action={
+                            <Link to={ROUTES.profile} className={styles.linkButton}>
+                                {t("forbiddenButton")}
+                            </Link>
+                        }
+                    />
+                </div>
             </div>
-        </div>
-    );
-
-    // прав нет ни у гостя, ни у пользователя, ни по ответу бэкенда
-    if (error === "forbidden" || (!authLoading && !user?.is_admin)) {
-        return forbiddenState;
+        );
     }
 
     if (error) {
@@ -126,7 +80,7 @@ export function Dashboard() {
                             <button
                                 type="button"
                                 className={styles.linkButton}
-                                onClick={fetchDashboard}
+                                onClick={reload}
                             >
                                 {t("errorRetry")}
                             </button>
@@ -144,34 +98,16 @@ export function Dashboard() {
 
     return (
         <div className={styles.dashboard}>
-
-            {/* ---------- heading ---------- */}
-
-            <section className={styles.heading}>
-                <div className={styles.badge}>
-                    <span className={styles.badgeDot}/>
-                    {t("badge")}
-                </div>
-
-                <div className={styles.headingRow}>
-                    <div className={styles.headingContent}>
-                        <h1>{t("title")}</h1>
-                        <p>{t("subtitle")}</p>
-                    </div>
-
-                    <button
-                        type="button"
-                        className={styles.refreshButton}
-                        onClick={fetchDashboard}
-                        disabled={pending}
-                    >
-                        <RefreshCw/>
-                        <span>
-                            {pending ? t("refreshProcess") : t("refreshButton")}
-                        </span>
-                    </button>
-                </div>
-            </section>
+            <AdminPageHeader
+                eyebrow={t("badge")}
+                title={t("title")}
+                subtitle={t("subtitle")}
+                onRefresh={reload}
+                refreshing={pending}
+                refreshLabel={t("refreshButton")}
+                refreshingLabel={t("refreshProcess")}
+                titleClassName={styles.title}
+            />
 
             {/* ---------- stats ---------- */}
 

@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, Request, Query
+from fastapi import APIRouter, Depends, File, Request, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.admin import (
@@ -8,6 +8,12 @@ from app.api.v1.schemas.admin import (
     AdminUserBlockResponse,
     AdminUserDetail,
     DashboardResponse,
+)
+from app.api.v1.schemas.media import (
+    CourseImageResponse,
+    MediaInfoResponse,
+    MediaListResponse,
+    MediaUrlResponse,
 )
 from app.api.v1.schemas.courses import (
     CourseAdminResponse,
@@ -18,6 +24,7 @@ from app.api.v1.schemas.courses import (
     LessonAdminResponse,
     LessonContentResponse,
     LessonCreateRequest,
+    LessonReorderRequest,
     LessonUpdateRequest,
     LessonUploadResponse,
     LessonsAdminResponse,
@@ -28,8 +35,10 @@ from app.api.v1.schemas.courses import (
     ModulesAdminResponse,
 )
 from app.api.v1.services.courses import BaseCoursesService
+from app.api.v1.services.course_image import CourseImageService
 from app.api.v1.services.lesson_admin import LessonAdminService
 from app.api.v1.services.lesson_content import LessonContentService
+from app.api.v1.services.lesson_media import LessonMediaService
 from app.api.v1.services.admin import AdminService
 from app.core.database import get_db
 from app.core.session import CurrentUserContext, get_current_admin
@@ -397,7 +406,7 @@ async def replace_admin_module_flat(
     )
 
 
-@router.put("/courses/{course_slug}/modules/reorder", response_model=EnrollmentResponse)
+@router.put("/courses/{course_slug}/modules/reorder", response_model=ModulesAdminResponse)
 async def reorder_admin_modules(
         course_slug: str,
         request: Request,
@@ -422,6 +431,72 @@ async def reorder_admin_modules(
         status_code=200,
         device_id=current.session.device_id,
         user_id=current.user.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return result
+
+
+@router.put("/courses/{course_slug}/modules/{module_id}/lessons/reorder", response_model=LessonsAdminResponse)
+async def reorder_admin_lessons(
+        course_slug: str,
+        module_id: int,
+        request: Request,
+        data: LessonReorderRequest,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    result = await BaseCoursesService(db).reorder_lessons(
+        request=request,
+        module_id=module_id,
+        data=data,
+        course_slug=course_slug,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_REORDER_ADMIN_LESSONS",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return result
+
+
+@router.put("/modules/{module_id}/lessons/reorder", response_model=LessonsAdminResponse)
+async def reorder_admin_lessons_flat(
+        module_id: int,
+        request: Request,
+        data: LessonReorderRequest,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    result = await BaseCoursesService(db).reorder_lessons(
+        request=request,
+        module_id=module_id,
+        data=data,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_REORDER_ADMIN_LESSONS",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
         session_id=current.session.id,
         platform=current.session.platform,
     )
@@ -891,6 +966,423 @@ async def update_admin_lesson(
     )
 
     return lesson
+
+
+@router.delete(
+    "/courses/{course_slug}/modules/{module_id}/lessons/{lesson_id}",
+    response_model=EnrollmentResponse,
+)
+async def delete_admin_lesson(
+        course_slug: str,
+        module_id: int,
+        lesson_id: int,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    result = await BaseCoursesService(db).delete_lesson(
+        module_id=module_id,
+        lesson_id=lesson_id,
+        course_slug=course_slug,
+        request=request,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_DELETE_ADMIN_LESSON",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return result
+
+
+@router.delete(
+    "/lessons/{lesson_id}",
+    response_model=EnrollmentResponse,
+)
+async def delete_admin_lesson_flat(
+        lesson_id: int,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    result = await BaseCoursesService(db).delete_lesson(
+        lesson_id=lesson_id,
+        request=request,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_DELETE_ADMIN_LESSON",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return result
+
+
+# ---------- MEDIA ----------
+
+@router.post(
+    "/courses/{course_slug}/image",
+    response_model=CourseImageResponse,
+)
+async def upload_admin_course_image(
+        course_slug: str,
+        request: Request,
+        file: UploadFile = File(...),
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    image = await CourseImageService(db).upload_image(
+        course_slug=course_slug,
+        file=file,
+        request=request,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_UPLOAD_ADMIN_COURSE_IMAGE",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return image
+
+
+@router.get(
+    "/courses/{course_slug}/image",
+    response_model=CourseImageResponse,
+)
+async def get_admin_course_image(
+        course_slug: str,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    image = await CourseImageService(db).get_image(
+        course_slug=course_slug,
+        request=request,
+        is_admin=True,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_GET_ADMIN_COURSE_IMAGE",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return image
+
+
+@router.delete(
+    "/courses/{course_slug}/image",
+    response_model=CourseImageResponse,
+)
+async def delete_admin_course_image(
+        course_slug: str,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    image = await CourseImageService(db).delete_image(
+        course_slug=course_slug,
+        request=request,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_DELETE_ADMIN_COURSE_IMAGE",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return image
+
+
+@router.post(
+    "/courses/{course_slug}/modules/{module_id}/lessons/{lesson_id}/media",
+    response_model=MediaInfoResponse,
+)
+async def upload_admin_lesson_media(
+        course_slug: str,
+        module_id: int,
+        lesson_id: int,
+        request: Request,
+        file: UploadFile = File(...),
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    media = await LessonMediaService(db).upload_media(
+        course_slug=course_slug,
+        module_id=module_id,
+        lesson_id=lesson_id,
+        file=file,
+        request=request,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_UPLOAD_ADMIN_LESSON_MEDIA",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return media
+
+
+@router.get(
+    "/courses/{course_slug}/modules/{module_id}/lessons/{lesson_id}/media",
+    response_model=MediaListResponse,
+)
+async def get_admin_lesson_media(
+        course_slug: str,
+        module_id: int,
+        lesson_id: int,
+        request: Request,
+        page: int = Query(default=1, ge=1),
+        page_size: int = Query(default=20, ge=1, le=100),
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    media = await LessonMediaService(db).list_media(
+        course_slug=course_slug,
+        module_id=module_id,
+        lesson_id=lesson_id,
+        request=request,
+        page=page,
+        page_size=page_size,
+        is_admin=True,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_GET_ADMIN_LESSON_MEDIA",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return media
+
+
+@router.get("/media/{media_key}", response_model=MediaInfoResponse)
+async def get_admin_media(
+        media_key: str,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    media = await LessonMediaService(db).get_media(
+        media_key=media_key,
+        request=request,
+        is_admin=True,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_GET_ADMIN_MEDIA",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return media
+
+
+@router.post("/media/{media_key}/url", response_model=MediaUrlResponse)
+async def get_admin_media_url(
+        media_key: str,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    url = await LessonMediaService(db).get_media_url(
+        media_key=media_key,
+        request=request,
+        is_admin=True,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_GET_ADMIN_MEDIA_URL",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return url
+
+
+@router.delete("/media/{media_key}", response_model=MediaListResponse)
+async def delete_admin_media(
+        media_key: str,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    media = await LessonMediaService(db).delete_media(
+        media_key=media_key,
+        request=request,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_DELETE_ADMIN_MEDIA",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return media
+
+
+@router.post(
+    "/lessons/{lesson_id}/media/{media_key}",
+    response_model=MediaInfoResponse,
+)
+async def attach_admin_lesson_media(
+        lesson_id: int,
+        media_key: str,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    media = await LessonMediaService(db).attach_media(
+        lesson_id=lesson_id,
+        media_key=media_key,
+        request=request,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_ATTACH_ADMIN_LESSON_MEDIA",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return media
+
+
+@router.delete(
+    "/lessons/{lesson_id}/media/{media_key}",
+    response_model=MediaListResponse,
+)
+async def delete_admin_lesson_media(
+        lesson_id: int,
+        media_key: str,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    media = await LessonMediaService(db).delete_media(
+        media_key=media_key,
+        lesson_id=lesson_id,
+        request=request,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.session.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_DELETE_ADMIN_LESSON_MEDIA",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.session.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return media
 
 
 @router.delete("/users/{user_id}/block", response_model=AdminUserBlockResponse)

@@ -30,13 +30,15 @@ backend/
 │   │   └── dto/              # Data Transfer Objects
 │   ├── models/               # SQLAlchemy модели
 │   └── utils/                # Утилиты
-│       └── img_convertor.py  # Конвертация изображений
+│       ├── img_convertor.py  # Проверка и конвертация изображений
+│       ├── video_inspector.py  # Проверка MP4 и кодеков
+│       └── phone.py          # Нормализация телефона
 │
 ├── infra/
 │   ├── postgres/
 │   │   ├── init/             # SQL инициализация (создание БД)
 │   │   └── core_db/
-│   │       ├── migrations/   # Flyway миграции (V1__... V5__...)
+│   │       ├── migrations/   # Flyway миграции (V1__... V7__...)
 │   │       └── seeds/        # Тестовые данные (R__*.sql)
 │   └── minio/
 │       └── seeds/            # Файлы для MinIO (аватары, контент)
@@ -235,11 +237,133 @@ await fetch(upload.url, { method: "POST", body: form });
   перезаписи файла её можно запросить заново;
 - если ссылка не построилась, урок не сохраняется в БД.
 
+### Удаление урока
+
+```
+DELETE /api/v1/admin/courses/{course_slug}/modules/{module_id}/lessons/{lesson_id}
+DELETE /api/v1/admin/lessons/{lesson_id}
+```
+
+Удаляются и запись в БД, и Markdown-файл урока в MinIO.
+
+- запись в БД удаляется первой: если файл в хранилище почему-то не
+  удалится, останется лишний файл, а не урок без текста;
+- позиции оставшихся уроков модуля пересобираются в `1..N`, чтобы
+  после удаления не было пропусков;
+- попытки урока (`lesson_attempts`) удаляются каскадом на уровне БД.
+
+### Перестановка модулей и уроков
+
+```
+PUT /api/v1/admin/courses/{course_slug}/modules/reorder
+PUT /api/v1/admin/courses/{course_slug}/modules/{module_id}/lessons/reorder
+PUT /api/v1/admin/modules/{module_id}/lessons/reorder
+```
+
+Клиент присылает id в новом порядке, backend переназначает `position = 1..N`
+одной транзакцией и возвращает список в новом порядке:
+
+```json
+{ "module_ids": [4, 3] }
+```
+
+```json
+{ "lesson_ids": [2, 1] }
+```
+
+- список должен содержать **все** модули курса (или все уроки модуля),
+  иначе `UPDATE_ME_FAILED`;
+- позиции ставятся в два шага (сначала временные, потом финальные) —
+  иначе уникальный индекс `(курс/модуль, позиция)` ругается на
+  промежуточное состояние при перестановке;
+- ответ содержит актуальные позиции и `has_content` у уроков.
+
 ### Тесты
 
 ```bash
 python -m pytest
 ```
+
+---
+
+## Медиафайлы курсов и уроков
+
+Файлы лежат в **приватном** баке `course-media`, в базе хранится
+логический идентификатор, физический ключ объекта и метаданные.
+Presigned URL в базе не хранится — он выдаётся по запросу и живёт
+`MEDIA_URL_TTL` секунд (по умолчанию 600).
+
+### Раскладка в MinIO
+
+```
+course-media/
+    covers/{course_id}/{file_id}.webp     — обложки курсов
+    media/{course_id}/{media_key}.webp    — изображения уроков
+    media/{course_id}/{media_key}.mp4     — видео уроков
+```
+
+`file_id` и `media_key` — стабильные логические идентификаторы
+(`c_…` и `m_…`), они не зависят от пути в MinIO и используются
+в ссылках Markdown: `![Описание](asset:m_0123456789abcdef)`.
+
+### Обложка курса
+
+```
+POST   /api/v1/admin/courses/{course_slug}/image   — загрузить или заменить
+GET    /api/v1/admin/courses/{course_slug}/image   — метаданные (админ)
+DELETE /api/v1/admin/courses/{course_slug}/image   — удалить
+GET    /api/v1/courses/{course_slug}/image         — метаданные со ссылкой
+```
+
+- файл проверяется по содержимому (не по расширению), пережимается
+  в WebP с сохранением пропорций, метаданные (EXIF, GPS) не сохраняются;
+- замена безопасна: новый файл сначала уходит в хранилище, потом
+  меняется запись в БД, и только после этого удаляется старый файл —
+  при сбое у курса остаётся рабочая обложка;
+- загруженная обложка автоматически используется в списке курсов и
+  в карточке курса вместо старого файла из бака `course-content`.
+
+### Медиафайлы урока
+
+```
+POST   /api/v1/admin/courses/{course_slug}/modules/{module_id}/lessons/{lesson_id}/media
+GET    /api/v1/admin/courses/{course_slug}/modules/{module_id}/lessons/{lesson_id}/media
+GET    /api/v1/admin/media/{media_key}
+POST   /api/v1/admin/media/{media_key}/url
+DELETE /api/v1/admin/media/{media_key}
+POST   /api/v1/admin/lessons/{lesson_id}/media/{media_key}      — привязать к уроку
+DELETE /api/v1/admin/lessons/{lesson_id}/media/{media_key}      — отвязать от урока
+GET    /api/v1/courses/{course_slug}/modules/{module_id}/lessons/{lesson_id}/media
+GET    /api/v1/courses/{course_slug}/modules/{module_id}/lessons/{lesson_id}/media/{media_key}/url
+```
+
+- **изображения** конвертируются в WebP, метаданные удаляются;
+- **видео** сохраняется как есть, но проверяется реальный контейнер
+  и кодеки: нужен MP4 с H.264 и AAC — такой файл играет во всех
+  браузерах без перекодирования;
+- видео **не читается в память целиком**: контейнер разбирается
+  по структуре боксов, файл уходит в MinIO потоком (MinIO сам
+  разобьёт файл на части, если он больше 5 ГБ — лимит у нас 200 МБ);
+- один файл можно использовать в нескольких уроках курса: при
+  удалении из одного урока файл остаётся, пока на него есть ссылки;
+- ссылку на файл получают только записанные на курс пользователи
+  (администраторы — всегда); ссылка короткоживущая, новую можно
+  запросить снова.
+
+### Ограничения (в `.env`)
+
+| Переменная | По умолчанию | Значение |
+|---|---|---|
+| `MEDIA_BUCKET` | `course-media` | бак с медиа (приватный) |
+| `MEDIA_URL_TTL` | `600` | срок жизни ссылки, секунды |
+| `MEDIA_MAX_IMAGE_SIZE` | `10485760` | максимальный размер изображения, байт |
+| `MEDIA_MAX_VIDEO_SIZE` | `209715200` | максимальный размер видео, байт |
+| `MEDIA_MAX_IMAGE_DIMENSION` | `6000` | максимальная сторона изображения, пиксели |
+| `MEDIA_MAX_VIDEO_DIMENSION` | `4096` | максимальная сторона видео, пиксели |
+| `MEDIA_MAX_IMAGE_PIXELS` | `40000000` | максимум пикселей изображения (защита от bomb-файлов) |
+| `MEDIA_IMAGE_QUALITY` | `82` | качество WebP |
+| `MEDIA_ALLOWED_IMAGE_TYPES` | `image/jpeg,image/png,…` | допустимые MIME-типы изображений |
+| `MEDIA_ALLOWED_VIDEO_TYPES` | `video/mp4` | допустимые MIME-типы видео |
 
 ---
 

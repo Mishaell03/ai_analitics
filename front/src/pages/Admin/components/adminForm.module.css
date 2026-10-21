@@ -1,0 +1,166 @@
+.form {
+    display: flex;
+    flex-direction: column;
+
+    gap: 16px;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+
+    gap: 7px;
+}
+
+.field span {
+    color: var(--muted);
+
+    font-size: 11px;
+    font-weight: 750;
+
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.field input,
+.field textarea {
+    width: 100%;
+
+    padding: 13px 15px;
+
+    border: 1px solid var(--line);
+    border-radius: 12px;
+
+    background: rgb(128 128 128 / 0.04);
+    color: var(--ink);
+
+    font: inherit;
+    font-size: 14px;
+
+    outline: none;
+
+    box-sizing: border-box;
+
+    transition: border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible {
+    border-color: var(--accent);
+
+    box-shadow: 0 0 0 4px rgb(182 95 253 / 0.08);
+}
+
+.checkboxField {
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+
+    color: var(--ink);
+
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.checkboxField input {
+    width: 18px;
+    height: 18px;
+
+    margin: 0;
+
+    accent-color: var(--accent);
+}
+
+.formActions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+
+    gap: 10px;
+
+    margin-top: 12px;
+}
+
+.cancelButton {
+    min-height: 44px;
+
+    padding: 12px 20px;
+
+    border: none;
+    border-radius: 12px;
+
+    background: rgb(128 128 128 / 0.08);
+    color: var(--muted);
+
+    font-size: 13px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition: background 0.3s ease,
+    color 0.3s ease;
+}
+
+.cancelButton:hover:not(:disabled) {
+    background: rgb(128 128 128 / 0.14);
+    color: var(--ink);
+}
+
+.saveButton {
+    min-height: 44px;
+
+    padding: 12px 20px;
+
+    border: none;
+    border-radius: 12px;
+
+    background: var(--accent);
+    color: #fff;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition: background 0.4s ease,
+    transform 0.4s ease;
+}
+
+.saveButton:hover:not(:disabled) {
+    background: var(--primary);
+
+    transform: translateY(-2px);
+}
+
+.cancelButton:disabled,
+.saveButton:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+.modalTitle {
+    margin: 0 0 18px;
+
+    color: var(--ink);
+
+    font-size: 22px;
+    line-height: 1.2;
+    font-weight: 800;
+}
+
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 700px) {
+    .formActions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .cancelButton,
+    .saveButton {
+        width: 100%;
+    }
+}
