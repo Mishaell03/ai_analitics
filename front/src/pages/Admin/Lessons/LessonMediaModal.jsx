@@ -25,7 +25,7 @@ import {
     MEDIA_ACCEPT,
     validateMediaFile,
 } from "@/services/media.js";
-import {getErrorMessage, useFileUpload} from "@/hooks/useFileUpload.js";
+import {getLocalizedErrorMessage, useFileUpload} from "@/hooks/useFileUpload.js";
 import Badge from "@/components/Badge/Badge.jsx";
 import ConfirmModal from "@/components/ConfirmModal/ConfirmModal.jsx";
 import EmptyState from "@/components/EmptyState/EmptyState.jsx";
@@ -69,7 +69,7 @@ function LessonMediaModal({courseSlug, moduleId, lesson, onClose, onChanged}) {
 
             setMedia(data.media ?? []);
         } catch (requestError) {
-            setLoadError(getErrorMessage(requestError, t("mediaLoadError")));
+            setLoadError(getLocalizedErrorMessage(requestError, t, t("mediaLoadError")));
         } finally {
             setLoading(false);
         }
@@ -158,7 +158,7 @@ function LessonMediaModal({courseSlug, moduleId, lesson, onClose, onChanged}) {
                 item.media_key === mediaKey ? {...item, url: data.url} : item
             )));
         } catch (requestError) {
-            setError(new Error(getErrorMessage(requestError, t("mediaRefreshError"))));
+            setError(new Error(getLocalizedErrorMessage(requestError, t, t("mediaRefreshError"))));
         } finally {
             setRefreshingKey(null);
         }
@@ -195,7 +195,7 @@ function LessonMediaModal({courseSlug, moduleId, lesson, onClose, onChanged}) {
 
             onChanged?.(null);
         } catch (requestError) {
-            setError(new Error(getErrorMessage(requestError, t("mediaDeleteError"))));
+            setError(new Error(getLocalizedErrorMessage(requestError, t, t("mediaDeleteError"))));
             setDeleteTarget(null);
         } finally {
             setDeleting(false);
@@ -317,7 +317,11 @@ function LessonMediaModal({courseSlug, moduleId, lesson, onClose, onChanged}) {
             {(uploadError || loadError) && (
                 <p className={styles.error}>
                     <TriangleAlert/>
-                    {(uploadError || loadError).message}
+                    {getLocalizedErrorMessage(
+                        uploadError || loadError,
+                        t,
+                        t("mediaUploadError")
+                    )}
                 </p>
             )}
 

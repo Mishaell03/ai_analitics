@@ -334,6 +334,13 @@ export default {
     mediaFileRequired: "Выберите файл",
     mediaFileTypeNotAllowed: "Поддерживаются только изображения и видео MP4",
     mediaFileTooLarge: "Файл больше, чем принимает хранилище (максимум {limit})",
+    mediaUploadError: "Не удалось загрузить файл в хранилище",
+
+    // ---------- upload errors ----------
+
+    uploadUrlMissing: "Ссылка на загрузку не получена",
+    uploadFileTooLarge: "Файл больше, чем принимает хранилище",
+    uploadRejected: "Хранилище отклонило файл",
 
     // ---------- course cover ----------
 
@@ -352,6 +359,25 @@ export default {
     coverTypeError: "Обложкой может быть только изображение",
     coverSizeError: "Файл больше, чем принимает хранилище (максимум {limit})",
     coverHint: "Изображение до {limit}. Backend сам пережимает файл в WebP и чистит его от метаданных.",
+    coverUploadError: "Не удалось загрузить обложку в хранилище",
+    courseCoverField: "Обложка курса",
+    courseCoverChoose: "Выбрать изображение",
+    courseCoverReplace: "Заменить изображение",
+    courseCoverClear: "Убрать выбранный файл",
+    courseCoverHint: "Изображение до {limit}. Файл отправится на сервер после сохранения курса.",
+
+    // ---------- lesson exercises ----------
+
+    adminLessonExercisesTitle: "Задания",
+    adminLessonExercisesEmpty: "В уроке пока нет заданий",
+    adminLessonExercisesId: "Идентификатор",
+    adminLessonExercisesIdPlaceholder: "python-variables",
+    adminLessonExercisesNoId: "Без идентификатора ответ не сохранится",
+    adminLessonReferenceTitle: "Эталонный ответ",
+    adminLessonReferencePlaceholder: "Пример идеального решения задачи урока",
+    adminLessonReferenceHint: "Код хранится в базе как эталонный ответ урока: он не привязан к заданию и с кодом ученика автоматически не сравнивается.",
+    adminLessonAnswerLabel: "Правильный ответ",
+    adminLessonImageLabel: "изображение",
 
     // ---------- lesson content ----------
 

@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from fastapi import UploadFile
+from minio.commonconfig import CopySource
 from minio.datatypes import Object, PostPolicy
 from minio.error import S3Error
 
@@ -62,6 +63,104 @@ class MinioStorageService:
             return False
 
         return True
+
+    async def ensure_bucket(self, bucket: str) -> bool:
+        """СОЗДАЁТ БАК, ЕСЛИ ЕГО ЕЩЁ НЕТ"""
+
+        def _ensure() -> bool:
+            if settings.minio_client.bucket_exists(bucket):
+                return True
+
+            settings.minio_client.make_bucket(bucket)
+
+            return True
+
+        try:
+            return await asyncio.to_thread(_ensure)
+
+        except S3Error:
+            logging.warning(f"failed to ensure bucket: {bucket}")
+
+            return False
+
+    async def copy_object(
+        self,
+        source_bucket: str,
+        source_path: str,
+        target_bucket: str,
+        target_path: str,
+    ) -> bool:
+        """КОПИРУЕТ ОБЪЕКТ ВНУТРИ ХРАНИЛИЩА
+
+        Используется миграцией: исходный объект остаётся на месте,
+        пока получатель не проверит, что копия действительно появилась.
+        """
+
+        if source_bucket == target_bucket and source_path == target_path:
+            return True
+
+        try:
+            await asyncio.to_thread(
+                settings.minio_client.copy_object,
+                bucket_name=target_bucket,
+                object_name=target_path,
+                source=CopySource(source_bucket, source_path),
+            )
+
+        except S3Error:
+            logging.warning(
+                f"failed to copy object: "
+                f"{source_bucket}/{source_path} -> {target_bucket}/{target_path}"
+            )
+
+            return False
+
+        return True
+
+    async def list_keys(
+        self,
+        bucket: str,
+        prefix: str = "",
+    ) -> list[str]:
+        """СПИСОК КЛЮЧЕЙ ОБЪЕКТОВ В БАКЕ"""
+
+        def _list() -> list[str]:
+            return [
+                item.object_name
+                for item in settings.minio_client.list_objects(
+                    bucket_name=bucket,
+                    prefix=prefix,
+                    recursive=True,
+                )
+            ]
+
+        try:
+            return await asyncio.to_thread(_list)
+
+        except S3Error:
+            logging.warning(f"failed to list objects: {bucket}/{prefix}")
+
+            return []
+
+    async def delete_prefix(
+        self,
+        bucket: str,
+        prefix: str,
+    ) -> int:
+        """УДАЛЯЕТ ВСЕ ОБЪЕКТЫ ПОД ПРЕФИКСОМ
+
+        Возвращает количество удалённых объектов.
+        """
+
+        keys = await self.list_keys(bucket=bucket, prefix=prefix)
+
+        deleted = 0
+
+        for key in keys:
+            if await self.delete_file(file_path=key, bucket=bucket):
+                deleted += 1
+
+        return deleted
 
     async def get_text(
         self,

@@ -18,7 +18,7 @@ from app.api.v1.services.courses import BaseCoursesService
 from app.core.config import settings
 from app.core.markdown import MarkdownParser
 from app.core.minio_url import minio_storage
-from app.core.storage_paths import LESSON_CONTENT_BUCKET, lesson_content_path
+from app.core.storage_paths import COURSE_CONTENT_BUCKET, lesson_content_path
 from app.models.courses import Lesson
 
 
@@ -98,7 +98,7 @@ class LessonContentService(BaseCoursesService):
         return await self._read_content(
             request=request,
             lesson=lesson,
-            course_slug=course.slug,
+            course_id=course.course_id,
             error=error,
         )
 
@@ -159,7 +159,7 @@ class LessonContentService(BaseCoursesService):
         return await self._read_content(
             request=request,
             lesson=lesson,
-            course_slug=course.slug,
+            course_id=course.course_id,
             error=error,
         )
 
@@ -167,7 +167,7 @@ class LessonContentService(BaseCoursesService):
             self,
             request: Request,
             lesson: Lesson,
-            course_slug: str,
+            course_id: int,
             error: dict,
     ) -> LessonContentResponse:
         """ЧИТАЕТ И ОЧИЩАЕТ MARKDOWN УРОКА
@@ -177,13 +177,13 @@ class LessonContentService(BaseCoursesService):
         """
 
         file_path = lesson_content_path(
-            course_slug=course_slug,
+            course_id=course_id,
             module_id=lesson.module_id,
             lesson_id=lesson.lesson_id,
         )
 
         if file_path is None:
-            # slug курса нельзя использовать как часть пути
+            # id нельзя использовать как часть пути
             await self._raise(
                 request=request,
                 code="LESSON_CONTENT_NOT_FOUND",
@@ -192,7 +192,7 @@ class LessonContentService(BaseCoursesService):
 
         raw_content = await minio_storage.get_text(
             file_path=file_path,
-            bucket=LESSON_CONTENT_BUCKET,
+            bucket=COURSE_CONTENT_BUCKET,
             max_bytes=settings.max_text_file_size,
         )
 
@@ -207,7 +207,7 @@ class LessonContentService(BaseCoursesService):
 
         content_url = await minio_storage.get_url(
             file_path=file_path,
-            bucket=LESSON_CONTENT_BUCKET,
+            bucket=COURSE_CONTENT_BUCKET,
             expires=settings.content_url_ttl,
         )
 
@@ -226,6 +226,7 @@ class LessonContentService(BaseCoursesService):
                     type=block.type,
                     content=block.content,
                     implemented=block.implemented,
+                    data=block.data,
                 )
                 for block in parsed.custom_blocks
             ],

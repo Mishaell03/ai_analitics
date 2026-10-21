@@ -1,15 +1,25 @@
 import axios from "axios";
 import {ROUTES} from "@/router/AppRouter.jsx";
+import {API_ROUTES} from "@/api/routes.js";
 
 const _baseConfig = {
     baseURL: import.meta.env.VITE_API_URL,
     withCredentials: true,
 };
 
-const onUnauthorized = (error) => {
-    const isLoginPage = window.location.pathname === ROUTES.login;
+const AUTH_PAGES = new Set([ROUTES.login, ROUTES.registration]);
 
-    if (error.response?.status === 401 && !isLoginPage) {
+const onUnauthorized = (error) => {
+    const isAuthPage = AUTH_PAGES.has(window.location.pathname);
+
+    // GET /me — это фоновая проверка сессии. Для гостя 401 здесь
+    // ожидаем: редирект не должен выкидывать его с регистрации
+    // или публичной страницы.
+    const isGuestSessionCheck =
+        error.config?.method === "get" &&
+        error.config?.url === API_ROUTES.USER_INFO;
+
+    if (error.response?.status === 401 && !isAuthPage && !isGuestSessionCheck) {
         window.location.assign(ROUTES.login);
     }
 

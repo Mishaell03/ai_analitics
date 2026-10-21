@@ -11,6 +11,7 @@
 """
 
 import logging
+from datetime import datetime, timezone
 from io import BytesIO
 
 from fastapi import Request
@@ -23,7 +24,7 @@ from app.api.v1.services.courses import BaseCoursesService
 from app.core.config import settings
 from app.core.minio_url import minio_storage
 from app.core.storage_paths import (
-    MEDIA_BUCKET,
+    COURSE_CONTENT_BUCKET,
     course_cover_object_key,
     generate_file_id,
 )
@@ -83,7 +84,6 @@ class CourseImageService(BaseCoursesService):
 
         object_key = course_cover_object_key(
             course_id=course.course_id,
-            file_id=file_id,
         )
 
         if object_key is None:
@@ -102,7 +102,7 @@ class CourseImageService(BaseCoursesService):
         await minio_storage.put_stream(
             data=BytesIO(image.content),
             length=image.size_bytes,
-            bucket=MEDIA_BUCKET,
+            bucket=COURSE_CONTENT_BUCKET,
             file_path=object_key,
             content_type=image.content_type,
         )
@@ -137,11 +137,14 @@ class CourseImageService(BaseCoursesService):
         except IntegrityError:
             await self.db.rollback()
 
-            # файл уже загружен, но в базу не попал — убираем его
-            await minio_storage.delete_file(
-                file_path=object_key,
-                bucket=MEDIA_BUCKET,
-            )
+            # файл уже загружен, но в базу не попал — убираем его.
+            # если обложка уже была, ключ тот же: старый файл перезаписан
+            # новым, поэтому удалять его нельзя
+            if old_image is None:
+                await minio_storage.delete_file(
+                    file_path=object_key,
+                    bucket=COURSE_CONTENT_BUCKET,
+                )
 
             await self._raise(
                 request=request,
@@ -152,12 +155,12 @@ class CourseImageService(BaseCoursesService):
         if old_object_key is not None and old_object_key != object_key:
             await minio_storage.delete_file(
                 file_path=old_object_key,
-                bucket=MEDIA_BUCKET,
+                bucket=COURSE_CONTENT_BUCKET,
             )
 
         url = await minio_storage.get_url(
-            file_path=new_image.object_key,
-            bucket=MEDIA_BUCKET,
+            file_path=object_key,
+            bucket=COURSE_CONTENT_BUCKET,
             expires=settings.media_url_ttl,
         )
 
@@ -204,20 +207,48 @@ class CourseImageService(BaseCoursesService):
                 error=error,
             )
 
-        image = await self._get_image_row(course_id=course.course_id)
+        object_key = course_cover_object_key(course_id=course.course_id)
 
-        if image is None:
+        if object_key is None:
             await self._raise(
                 request=request,
                 code="COURSE_IMAGE_NOT_FOUND",
                 error=error,
             )
 
-        url = await minio_storage.get_url(
-            file_path=image.object_key,
-            bucket=MEDIA_BUCKET,
-            expires=settings.media_url_ttl,
+        # Обложка в хранилище — главный источник истины. Запись в БД
+        # может отсутствовать (сиды, старые файлы после миграции),
+        # но список курсов всё равно показывает эту обложку.
+        stat = await minio_storage.stat(
+            file_path=object_key,
+            bucket=COURSE_CONTENT_BUCKET,
         )
+
+        if stat is None:
+            await self._raise(
+                request=request,
+                code="COURSE_IMAGE_NOT_FOUND",
+                error=error,
+            )
+
+        image = await self._get_image_row(course_id=course.course_id)
+
+        url = await minio_storage.get_url(
+            file_path=object_key,
+            bucket=COURSE_CONTENT_BUCKET,
+            expires=(
+                settings.media_url_ttl
+                if image is not None
+                else settings.image_url_ttl
+            ),
+        )
+
+        if image is None:
+            return self._to_object_response(
+                course_id=course.course_id,
+                stat=stat,
+                url=url,
+            )
 
         return self._to_response(image=image, url=url)
 
@@ -249,35 +280,57 @@ class CourseImageService(BaseCoursesService):
 
         image = await self._get_image_row(course_id=course.course_id)
 
-        if image is None:
+        object_key = course_cover_object_key(course_id=course.course_id)
+
+        stat = None
+        if object_key is not None:
+            stat = await minio_storage.stat(
+                file_path=object_key,
+                bucket=COURSE_CONTENT_BUCKET,
+            )
+
+        # Удалять можно и «бесхозную» обложку: файл есть, записи в
+        # course_images нет (сиды, старые файлы после миграции).
+        if image is None and stat is None:
             await self._raise(
                 request=request,
                 code="COURSE_IMAGE_NOT_FOUND",
                 error=error,
             )
 
-        object_key = image.object_key
-        file_id = image.file_id
+        if image is not None:
+            file_id = image.file_id
 
-        await self.db.delete(image)
-        await self.db.commit()
+            await self.db.delete(image)
+            await self.db.commit()
 
-        await minio_storage.delete_file(
-            file_path=object_key,
-            bucket=MEDIA_BUCKET,
-        )
+        else:
+            file_id = self._object_file_id(course_id=course.course_id)
+
+        if object_key is not None:
+            await minio_storage.delete_file(
+                file_path=object_key,
+                bucket=COURSE_CONTENT_BUCKET,
+            )
 
         logging.info("course image deleted: course=%s file=%s", course.course_id, file_id)
 
-        return CourseImageResponse(
-            file_id=file_id,
+        if image is not None:
+            return CourseImageResponse(
+                file_id=file_id,
+                course_id=course.course_id,
+                content_type="image/webp",
+                size_bytes=0,
+                width=0,
+                height=0,
+                created_at=image.created_at,
+                updated_at=image.updated_at,
+                url=None,
+            )
+
+        return self._to_object_response(
             course_id=course.course_id,
-            content_type="image/webp",
-            size_bytes=0,
-            width=0,
-            height=0,
-            created_at=image.created_at,
-            updated_at=image.updated_at,
+            stat=stat,
             url=None,
         )
 
@@ -325,6 +378,39 @@ class CourseImageService(BaseCoursesService):
             )
 
         return data
+
+    @staticmethod
+    def _object_file_id(course_id: int) -> str:
+        """ИДЕНТИФИКАТОР ДЛЯ ОБЛОЖКИ БЕЗ ЗАПИСИ В БД"""
+
+        return f"course_{course_id}_cover"
+
+    @staticmethod
+    def _to_object_response(
+            course_id: int,
+            stat,
+            url: str | None,
+    ) -> CourseImageResponse:
+        """ОТВЕТ ПО МЕТАДАННЫМ ОБЪЕКТА MINIO
+
+        Используется, когда файл обложки есть, а записи в
+        course_images нет. Размеры изображения в этом случае
+        неизвестны, поэтому отдаём нули.
+        """
+
+        modified = getattr(stat, "last_modified", None) or datetime.now(timezone.utc)
+
+        return CourseImageResponse(
+            file_id=CourseImageService._object_file_id(course_id=course_id),
+            course_id=course_id,
+            content_type=getattr(stat, "content_type", None) or "image/webp",
+            size_bytes=getattr(stat, "size", 0) or 0,
+            width=0,
+            height=0,
+            created_at=modified,
+            updated_at=modified,
+            url=url,
+        )
 
     @staticmethod
     def _to_response(image: CourseImage, url: str | None) -> CourseImageResponse:

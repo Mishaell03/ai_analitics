@@ -104,6 +104,8 @@ class CustomBlockResponse(BaseModel):
     content: str
     # логика блока пока не реализована, содержимое отдаётся как есть
     implemented: bool = False
+    # разобранные данные блока (например, exercise_id у задания)
+    data: dict | None = None
 
 
 # ссылка на медиафайл, упомянутый в уроке

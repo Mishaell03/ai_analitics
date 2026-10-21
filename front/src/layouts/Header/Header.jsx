@@ -1,19 +1,17 @@
 import {NavLink} from "react-router-dom";
 import {useState} from "react";
 import {useAuth} from "@/context/AuthContext.jsx";
-import {getTranslation} from "@/locales/i18n.js";
+import {useTranslation} from "@/hooks/useTranslation.js";
 import {Menu, X} from "lucide-react";
 import {ROUTES} from "@/router/AppRouter.jsx";
 
 import Avatar from "@/components/Avatar/Avatar.jsx";
 import styles from "./header.module.css";
 
-const language = "ru";
-
 function Header() {
     const [open, setOpen] = useState(false);
     const {user} = useAuth();
-    const t = (key) => getTranslation(`layouts.header.${key}`, language);
+    const t = useTranslation("layouts.header");
 
     const navigation = [
         {

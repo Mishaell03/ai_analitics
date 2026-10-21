@@ -24,11 +24,11 @@ backend/
 │   │   └── errors.py         # Обработка ошибок
 │   ├── api/v1/               # API слой
 │   │   ├── router.py         # Общий роутер /api/v1
-│   │   ├── routes/           # Эндпоинты (auth, courses, users, health)
+│   │   ├── routes/           # Эндпоинты (auth, courses, users, exercises)
 │   │   ├── services/         # Бизнес-логика
 │   │   ├── schemas/          # Pydantic схемы (валидация)
 │   │   └── dto/              # Data Transfer Objects
-│   ├── models/               # SQLAlchemy модели
+│   ├── models/               # SQLAlchemy модели (courses, media, exercises)
 │   └── utils/                # Утилиты
 │       ├── img_convertor.py  # Проверка и конвертация изображений
 │       ├── video_inspector.py  # Проверка MP4 и кодеков
@@ -120,18 +120,26 @@ python -m app.main
 
 ### Раскладка в MinIO
 
-Бак `lesson-content`:
+Все файлы курса лежат в баке `course-content`, внутри каталога курса:
 
 ```
-{course_slug}/{module_id}/{lesson_id}.md    # текст урока
-{course_slug}/{module_id}/assets/...         # медиафайлы модуля (картинки, видео)
+{course_id}/main.webp                     # обложка курса
+{course_id}/content.md                    # вводный текст курса
+{course_id}/{module_id}/content.md        # вводный текст модуля
+{course_id}/{module_id}/{lesson_id}.md    # текст урока
+{course_id}/media/{media_key}.webp|.mp4   # медиафайлы урока
 ```
 
 В Markdown медиафайлы упоминаются по идентификатору, а не по ссылке:
 
 ```markdown
-![Схема работы](assets/schema.png)
+![Схема работы](asset:m_0123456789abcdef)
 ```
+
+Старые объекты из `course-media`, `lesson-content` и `module-content`
+переносятся в `course-content` автоматически при старте приложения
+(`MINIO_MIGRATE_ON_STARTUP=true`). Перенос идемпотентен: объект сначала
+копируется и проверяется, и только потом удаляется старый.
 
 ### Получение урока
 
@@ -203,14 +211,14 @@ POST /api/v1/admin/courses/{course_slug}/modules/{module_id}/lessons/{lesson_id}
   "is_published": false,
   "has_content": false,
   "upload": {
-    "url": "http://localhost:9000/lesson-content",
+    "url": "http://localhost:9000/course-content",
     "fields": {
-      "key": "ai-development-beginner/1/15.md",
+      "key": "1/1/15.md",
       "Content-Type": "text/markdown",
       "policy": "...",
       "x-amz-signature": "..."
     },
-    "file_path": "ai-development-beginner/1/15.md",
+    "file_path": "1/1/15.md",
     "max_size": 512000,
     "expires_in": 900
   }
@@ -278,6 +286,43 @@ PUT /api/v1/admin/modules/{module_id}/lessons/reorder
   промежуточное состояние при перестановке;
 - ответ содержит актуальные позиции и `has_content` у уроков.
 
+### Правильные ответы на задания
+
+Задания (тесты) хранятся в Markdown урока, правильные ответы — в БД.
+Связь идёт через `exercise_id`: он указан в Markdown задания и
+повторяется в ключе записи, поэтому ответ переживает правку текста.
+
+Разметка задания в Markdown:
+
+```
+:::test
+id: python-variables
+Текст задания
+:::
+```
+
+Идентификатор задаётся первой строкой содержимого блока. В ответе с
+содержимым урока он приходит в `custom_blocks[].data.exercise_id`.
+
+```
+POST   /api/v1/admin/lessons/{lesson_id}/exercises/{exercise_id}/answer
+DELETE /api/v1/admin/lessons/{lesson_id}/exercises/{exercise_id}/answer
+GET    /api/v1/admin/lessons/{lesson_id}/exercises
+```
+
+- `POST` создаёт ответ или обновляет существующий — это один эндпоинт;
+- `DELETE` убирает ответ задания;
+- `GET` отдаёт все ответы урока (у урока без заданий список пустой);
+- `exercise_id` — буквы, цифры, дефис и подчёркивание, до 64 символов;
+- правильный ответ не пустой, до 10000 символов;
+- создавать, изменять и удалять ответы может только админ.
+
+Ключ `reference` зарезервирован под **эталонный ответ урока** — пример
+идеального решения задачи, который не привязан ни к одному заданию.
+Админка сохраняет его тем же эндпоинтом, но с этим ключом вместо
+`exercise_id`: код в базу уходит как есть, а код ученика с эталоном
+автоматически не сравнивается.
+
 ### Тесты
 
 ```bash
@@ -288,7 +333,7 @@ python -m pytest
 
 ## Медиафайлы курсов и уроков
 
-Файлы лежат в **приватном** баке `course-media`, в базе хранится
+Все файлы лежат в **приватном** баке `course-content`, в базе хранится
 логический идентификатор, физический ключ объекта и метаданные.
 Presigned URL в базе не хранится — он выдаётся по запросу и живёт
 `MEDIA_URL_TTL` секунд (по умолчанию 600).
@@ -296,15 +341,16 @@ Presigned URL в базе не хранится — он выдаётся по �
 ### Раскладка в MinIO
 
 ```
-course-media/
-    covers/{course_id}/{file_id}.webp     — обложки курсов
-    media/{course_id}/{media_key}.webp    — изображения уроков
-    media/{course_id}/{media_key}.mp4     — видео уроков
+course-content/
+    {course_id}/main.webp                       — обложка курса
+    {course_id}/media/{media_key}.webp          — изображения уроков
+    {course_id}/media/{media_key}.mp4           — видео уроков
 ```
 
 `file_id` и `media_key` — стабильные логические идентификаторы
-(`c_…` и `m_…`), они не зависят от пути в MinIO и используются
-в ссылках Markdown: `![Описание](asset:m_0123456789abcdef)`.
+(`c_…` и `m_…`). `media_key` не зависит от пути в MinIO и используется
+в ссылках Markdown: `![Описание](asset:m_0123456789abcdef)`. Обложка
+всегда лежит по фиксированному пути `{course_id}/main.webp`.
 
 ### Обложка курса
 
@@ -320,8 +366,8 @@ GET    /api/v1/courses/{course_slug}/image         — метаданные со
 - замена безопасна: новый файл сначала уходит в хранилище, потом
   меняется запись в БД, и только после этого удаляется старый файл —
   при сбое у курса остаётся рабочая обложка;
-- загруженная обложка автоматически используется в списке курсов и
-  в карточке курса вместо старого файла из бака `course-content`.
+- обложка автоматически используется в списке курсов и в карточке
+  курса по пути `{course_id}/main.webp`.
 
 ### Медиафайлы урока
 
@@ -354,7 +400,7 @@ GET    /api/v1/courses/{course_slug}/modules/{module_id}/lessons/{lesson_id}/med
 
 | Переменная | По умолчанию | Значение |
 |---|---|---|
-| `MEDIA_BUCKET` | `course-media` | бак с медиа (приватный) |
+| `MINIO_MIGRATE_ON_STARTUP` | `true` | переносить старые файлы в `course-content` при старте |
 | `MEDIA_URL_TTL` | `600` | срок жизни ссылки, секунды |
 | `MEDIA_MAX_IMAGE_SIZE` | `10485760` | максимальный размер изображения, байт |
 | `MEDIA_MAX_VIDEO_SIZE` | `209715200` | максимальный размер видео, байт |
@@ -380,6 +426,7 @@ docker-compose logs -f        # логи
 make migrate                  # применить миграции
 make seed                     # загрузить сиды
 make fresh                    # сбросить БД + миграции + сиды
+make storage-migrate          # перенести старые файлы MinIO в course-content
 ```
 
 --- 

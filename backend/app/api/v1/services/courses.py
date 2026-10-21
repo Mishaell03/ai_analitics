@@ -27,9 +27,13 @@ from app.api.v1.schemas.courses import (
 from app.core.config import settings
 from app.core.minio_url import minio_storage
 from app.core.storage_paths import (
-    LESSON_CONTENT_BUCKET,
-    MEDIA_BUCKET,
+    COURSE_CONTENT_BUCKET,
+    course_content_path,
+    course_cover_object_key,
+    course_prefix,
     lesson_content_path,
+    module_content_path,
+    module_prefix,
 )
 from app.models.courses import Course, CourseModule, Lesson
 from app.core.pagination import get_pagination, get_total_pages
@@ -200,8 +204,8 @@ class BaseCoursesService:
     async def _get_cover_urls(self, course_ids: list[int]) -> dict[int, str | None]:
         """ССЫЛКИ НА ОБЛОЖКИ КУРСОВ
 
-        Если у курса есть загруженная обложка, берётся она,
-        иначе — старый файл из бака course-content.
+        Обложка всегда лежит по фиксированному пути
+        `{course_id}/main.webp`; запись в БД нужна только для метаданных.
         """
 
         from app.models.media import CourseImage
@@ -218,24 +222,40 @@ class BaseCoursesService:
         urls: dict[int, str | None] = {}
 
         for course_id in course_ids:
-            cover = covers.get(course_id)
+            object_key = course_cover_object_key(course_id=course_id)
 
-            if cover is not None:
-                urls[course_id] = await minio_storage.get_url(
-                    file_path=cover.object_key,
-                    expires=settings.media_url_ttl,
-                    bucket=MEDIA_BUCKET,
-                )
+            if object_key is None:
+                urls[course_id] = None
 
                 continue
 
+            expires = (
+                settings.media_url_ttl
+                if covers.get(course_id) is not None
+                else settings.image_url_ttl
+            )
+
             urls[course_id] = await minio_storage.get_url(
-                file_path=f"{course_id}/main.webp",
-                expires=settings.image_url_ttl,
-                bucket="course-content",
+                file_path=object_key,
+                expires=expires,
+                bucket=COURSE_CONTENT_BUCKET,
             )
 
         return urls
+
+    async def _get_cover_url(self, course_id: int) -> str | None:
+        """ССЫЛКА НА ОБЛОЖКУ ОДНОГО КУРСА"""
+
+        object_key = course_cover_object_key(course_id=course_id)
+
+        if object_key is None:
+            return None
+
+        return await minio_storage.get_url(
+            file_path=object_key,
+            expires=settings.image_url_ttl,
+            bucket=COURSE_CONTENT_BUCKET,
+        )
 
     async def _is_enrolled(self, user_id: int | None, course_id: int) -> bool:
         """ЗАПИСАН ЛИ ПОЛЬЗОВАТЕЛЬ НА КУРС"""
@@ -401,11 +421,16 @@ class BaseCoursesService:
         for module in modules:
             module_content_url = None
 
-            if is_enrolled:
+            file_path = module_content_path(
+                course_id=course.course_id,
+                module_id=module.module_id,
+            )
+
+            if is_enrolled and file_path is not None:
                 module_content_url = await minio_storage.get_url(
-                    file_path=f"{module.module_id}/content.md",
+                    file_path=file_path,
                     expires=settings.content_url_ttl,
-                    bucket="module-content",
+                    bucket=COURSE_CONTENT_BUCKET,
                 )
 
             module_items.append(
@@ -428,11 +453,16 @@ class BaseCoursesService:
 
             main_image_url = cover_urls.get(course.course_id)
 
-            content_url = await minio_storage.get_url(
-                file_path=f"{course.course_id}/content.md",
-                expires=settings.content_url_ttl,
-                bucket="course-content",
-            )
+            file_path = course_content_path(course_id=course.course_id)
+
+            content_url = None
+
+            if file_path is not None:
+                content_url = await minio_storage.get_url(
+                    file_path=file_path,
+                    expires=settings.content_url_ttl,
+                    bucket=COURSE_CONTENT_BUCKET,
+                )
 
             course_info = CourseInfo(
                 slug=course.slug,
@@ -543,12 +573,17 @@ class BaseCoursesService:
         if pagination.page == 1:
             module_content_url = None
 
+            file_path = module_content_path(
+                course_id=course.course_id,
+                module_id=module.module_id,
+            )
+
             # Module content only for enrolled users
-            if is_enrolled:
+            if is_enrolled and file_path is not None:
                 module_content_url = await minio_storage.get_url(
-                    file_path=f"{module.module_id}/content.md",
+                    file_path=file_path,
                     expires=settings.content_url_ttl,
-                    bucket="module-content",
+                    bucket=COURSE_CONTENT_BUCKET,
                 )
 
             module_info = ModuleInfo(
@@ -619,7 +654,7 @@ class BaseCoursesService:
         content_url = None
 
         lesson_file_path = lesson_content_path(
-            course_slug=course.slug,
+            course_id=course.course_id,
             module_id=module.module_id,
             lesson_id=lesson.lesson_id,
         )
@@ -628,7 +663,7 @@ class BaseCoursesService:
             content_url = await minio_storage.get_url(
                 file_path=lesson_file_path,
                 expires=settings.content_url_ttl,
-                bucket=LESSON_CONTENT_BUCKET,
+                bucket=COURSE_CONTENT_BUCKET,
             )
 
         return LessonDetailResponse(
@@ -899,11 +934,7 @@ class BaseCoursesService:
                 error=error,
             )
 
-        main_image_url = await minio_storage.get_url(
-            file_path=f"{course.course_id}/main.webp",
-            expires=settings.image_url_ttl,
-            bucket="course-content",
-        )
+        main_image_url = await self._get_cover_url(course_id=course.course_id)
 
         from app.api.v1.schemas.courses import CourseAdminResponse
 
@@ -1002,11 +1033,7 @@ class BaseCoursesService:
                 error=error,
             )
 
-        main_image_url = await minio_storage.get_url(
-            file_path=f"{course.course_id}/main.webp",
-            expires=settings.image_url_ttl,
-            bucket="course-content",
-        )
+        main_image_url = await self._get_cover_url(course_id=course.course_id)
 
         return CourseAdminResponse(
             slug=course.slug,
@@ -1050,6 +1077,16 @@ class BaseCoursesService:
         await self.db.delete(course)
         await self.db.commit()
 
+        # после удаления курса в хранилище не должно остаться его файлов:
+        # обложки, текстов уроков, медиа и вводных текстов
+        prefix = course_prefix(course_id=course.course_id)
+
+        if prefix is not None:
+            await minio_storage.delete_prefix(
+                bucket=COURSE_CONTENT_BUCKET,
+                prefix=prefix,
+            )
+
         from app.api.v1.schemas.courses import EnrollmentResponse
         return EnrollmentResponse(success=True)
 
@@ -1081,11 +1118,7 @@ class BaseCoursesService:
         await self.db.commit()
         await self.db.refresh(course)
 
-        main_image_url = await minio_storage.get_url(
-            file_path=f"{course.course_id}/main.webp",
-            expires=settings.image_url_ttl,
-            bucket="course-content",
-        )
+        main_image_url = await self._get_cover_url(course_id=course.course_id)
 
         from app.api.v1.schemas.courses import CourseAdminResponse
         return CourseAdminResponse(
@@ -1129,11 +1162,7 @@ class BaseCoursesService:
         await self.db.commit()
         await self.db.refresh(course)
 
-        main_image_url = await minio_storage.get_url(
-            file_path=f"{course.course_id}/main.webp",
-            expires=settings.image_url_ttl,
-            bucket="course-content",
-        )
+        main_image_url = await self._get_cover_url(course_id=course.course_id)
 
         from app.api.v1.schemas.courses import CourseAdminResponse
         return CourseAdminResponse(
@@ -1513,6 +1542,18 @@ class BaseCoursesService:
         await self.db.delete(module)
         await self.db.commit()
 
+        # файлы модуля: его вводный текст и Markdown всех уроков
+        prefix = module_prefix(
+            course_id=module.course_id,
+            module_id=module.module_id,
+        )
+
+        if prefix is not None:
+            await minio_storage.delete_prefix(
+                bucket=COURSE_CONTENT_BUCKET,
+                prefix=prefix,
+            )
+
         from app.api.v1.schemas.courses import EnrollmentResponse
         return EnrollmentResponse(success=True)
 
@@ -1767,7 +1808,7 @@ class BaseCoursesService:
 
         for lesson in lessons:
             file_path = lesson_content_path(
-                course_slug=course.slug,
+                course_id=course.course_id,
                 module_id=module.module_id,
                 lesson_id=lesson.lesson_id,
             )
@@ -1778,7 +1819,7 @@ class BaseCoursesService:
             if file_path is not None:
                 has_content = await minio_storage.exists(
                     file_path=file_path,
-                    bucket=LESSON_CONTENT_BUCKET,
+                    bucket=COURSE_CONTENT_BUCKET,
                 )
 
             items.append(
@@ -1980,7 +2021,7 @@ class BaseCoursesService:
 
         for lesson in sorted(lessons.values(), key=lambda item: item.position):
             file_path = lesson_content_path(
-                course_slug=course.slug,
+                course_id=course.course_id,
                 module_id=module.module_id,
                 lesson_id=lesson.lesson_id,
             )
@@ -1990,7 +2031,7 @@ class BaseCoursesService:
             if file_path is not None:
                 has_content = await minio_storage.exists(
                     file_path=file_path,
-                    bucket=LESSON_CONTENT_BUCKET,
+                    bucket=COURSE_CONTENT_BUCKET,
                 )
 
             items.append(
@@ -2087,7 +2128,7 @@ class BaseCoursesService:
         )
 
         file_path = lesson_content_path(
-            course_slug=course.slug,
+            course_id=course.course_id,
             module_id=module.module_id,
             lesson_id=lesson.lesson_id,
         )
@@ -2101,7 +2142,7 @@ class BaseCoursesService:
         if file_path is not None:
             await minio_storage.delete_file(
                 file_path=file_path,
-                bucket=LESSON_CONTENT_BUCKET,
+                bucket=COURSE_CONTENT_BUCKET,
             )
 
         return EnrollmentResponse(success=True)

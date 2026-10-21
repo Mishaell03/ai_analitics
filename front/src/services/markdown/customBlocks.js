@@ -19,6 +19,9 @@
  * содержимое отдаётся как есть.
  */
 
+// идентификатор задания задаётся первой строкой содержимого блока
+const EXERCISE_ID_LINE = /^id:\s*(?<exercise_id>[A-Za-z0-9_-]{1,64})\s*$/i;
+
 export class CustomBlockHandler {
     /**
      * @param {string} type тип блока в разметке (test, video, ...)
@@ -58,6 +61,71 @@ export class PlaceholderCustomBlockHandler extends CustomBlockHandler {
             data: null,
         };
     }
+}
+
+export class TestBlockHandler extends CustomBlockHandler {
+    /**
+     * @param {string} type тип блока в разметке
+     */
+    constructor(type = "test") {
+        super(type);
+    }
+
+    /**
+     * Задание урока.
+     *
+     * Задание записывается в Markdown так:
+     *
+     *     :::test
+     *     id: python-variables
+     *     Текст задания
+     *     - [ ] Вариант 1
+     *     :::
+     *
+     * Идентификатор связывает задание с правильным ответом, который
+     * хранится в базе. Правила разбора те же, что у backend.
+     *
+     * @param {string} content содержимое блока без разметки :::test
+     * @returns {{type: string, content: string, implemented: boolean, data: object}}
+     */
+    parse(content) {
+        const {exercise_id, body} = splitExerciseHeader(content);
+
+        return {
+            type: this.type,
+            content,
+            implemented: false,
+            data: {
+                exercise_id,
+                body,
+            },
+        };
+    }
+}
+
+/**
+ * Отделяет идентификатор задания от текста.
+ *
+ * @param {string} content содержимое блока
+ * @returns {{exercise_id: string|null, body: string}}
+ */
+export function splitExerciseHeader(content) {
+    const lines = (content ?? "").split("\n");
+
+    if (!lines.length) {
+        return {exercise_id: null, body: content ?? ""};
+    }
+
+    const match = EXERCISE_ID_LINE.exec(lines[0]);
+
+    if (!match) {
+        return {exercise_id: null, body: content};
+    }
+
+    return {
+        exercise_id: match.groups.exercise_id,
+        body: lines.slice(1).join("\n").trim(),
+    };
 }
 
 export class CustomBlockRegistry {

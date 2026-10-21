@@ -28,6 +28,30 @@ export function getErrorMessage(requestError, fallback) {
 }
 
 /**
+ * Текст ошибки с переводом кода.
+ *
+ * Ошибки наших сервисов приходят кодом: интерфейс переводит их
+ * сам, иначе сообщение осталось бы на одном языке.
+ *
+ * @param {Error} requestError ошибка запроса
+ * @param {Function} t функция перевода
+ * @param {string} fallback текст на случай нестандартного ответа
+ * @returns {string}
+ */
+export function getLocalizedErrorMessage(requestError, t, fallback) {
+    if (requestError?.code && typeof t === "function") {
+        const translated = t(requestError.code);
+
+        // ключа нет — перевод вернёт имя ключа, тогда берём запасной текст
+        if (translated && translated !== requestError.code) {
+            return translated;
+        }
+    }
+
+    return getErrorMessage(requestError, fallback);
+}
+
+/**
  * Была ли загрузка отменена.
  *
  * @param {Error} requestError ошибка запроса

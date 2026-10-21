@@ -6,6 +6,7 @@ from sqlalchemy import text
 
 from app.core.database import engine
 from app.core.config import settings
+from app.core.minio_migration import migrate_legacy_storage
 from app.api.v1.router import router_v1
 from app.core.exception_handlers import register_exception_handlers
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,6 +18,15 @@ async def lifespan(app: FastAPI):
             await connection.execute(text("SELECT 1"))
 
         logging.info("✅ PostgreSQL connected")
+
+        if settings.minio_migrate_on_startup:
+            # ошибка миграции не должна мешать запуску: старые файлы
+            # можно перенести позже командой `make storage-migrate`
+            try:
+                await migrate_legacy_storage()
+
+            except Exception as e:
+                logging.warning(f"⚠️ MinIO migration failed: {e}")
 
         yield
 

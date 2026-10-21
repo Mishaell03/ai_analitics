@@ -247,6 +247,37 @@
     background: rgb(128 128 128 / 0.03);
 }
 
+.exercises {
+    min-height: 200px;
+
+    padding: 16px;
+
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+
+    background: rgb(128 128 128 / 0.03);
+}
+
+.hint {
+    margin: 0 0 16px;
+
+    color: var(--muted);
+
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+/* эталонный ответ — код, поэтому моноширинный шрифт */
+.field .reference {
+    min-height: 120px;
+
+    font-family: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+    font-size: 12.5px;
+    line-height: 1.55;
+
+    resize: vertical;
+}
+
 .empty {
     margin: 0;
 

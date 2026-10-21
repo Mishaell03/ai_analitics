@@ -38,6 +38,9 @@ seed:
 			migrate; \
 	done
 
+storage-migrate:
+	python -m app.core.minio_migration
+
 fresh:
 	@for db in $(shell echo $(DATABASES) | tr ',' ' '); do \
 		echo "Reset $$db"; \

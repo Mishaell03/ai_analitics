@@ -306,7 +306,6 @@
 
 
 /* ---------- custom block ---------- */
-
 .customBlock {
     margin: 0 0 18px;
 
@@ -340,4 +339,140 @@
 
 .customBlockBody > *:last-child {
     margin-bottom: 0;
+}
+
+
+/* ---------- test block ---------- */
+
+.testBlock {
+    margin: 0 0 18px;
+
+    padding: 16px 18px;
+
+    border: 1px solid rgb(182 95 253 / 0.22);
+    border-radius: var(--radius-md);
+
+    background: rgb(182 95 253 / 0.04);
+}
+
+.testHeader {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    margin-bottom: 12px;
+
+    color: var(--accent);
+}
+
+.testHeader svg {
+    width: 16px;
+    height: 16px;
+}
+
+.testHeader span {
+    font-family: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+    font-size: 11px;
+    font-weight: 700;
+
+    letter-spacing: 0.03em;
+}
+
+.testQuestion {
+    margin: 0 0 12px;
+
+    color: var(--ink);
+
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.testOptions {
+    display: flex;
+    flex-direction: column;
+
+    gap: 8px;
+
+    margin: 0;
+
+    padding: 0;
+
+    list-style: none;
+}
+
+.testOption {
+    display: flex;
+    align-items: flex-start;
+
+    gap: 10px;
+
+    padding: 9px 12px;
+
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+
+    background: rgb(128 128 128 / 0.03);
+
+    color: var(--ink);
+
+    font-size: 13.5px;
+    line-height: 1.5;
+}
+
+.testOption input {
+    flex-shrink: 0;
+
+    width: 16px;
+    height: 16px;
+
+    margin: 2px 0 0;
+
+    accent-color: var(--accent);
+}
+
+.testOption[data-correct="true"] {
+    border-color: rgb(55 200 113 / 0.4);
+
+    background: rgb(55 200 113 / 0.08);
+
+    font-weight: 600;
+}
+
+.testAnswer {
+    margin-top: 12px;
+}
+
+.testAnswerLabel {
+    display: block;
+
+    margin-bottom: 6px;
+
+    color: var(--muted);
+
+    font-size: 11px;
+    font-weight: 750;
+
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.testAnswerValue {
+    display: block;
+
+    padding: 10px 12px;
+
+    border-radius: var(--radius-sm);
+
+    background: #1d1b26;
+    color: #e8e6f0;
+
+    font-family: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+    font-size: 12.5px;
+    line-height: 1.55;
+
+    white-space: pre-wrap;
+
+    overflow-wrap: anywhere;
 }

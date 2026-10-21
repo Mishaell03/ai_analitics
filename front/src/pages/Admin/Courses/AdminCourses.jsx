@@ -1,6 +1,8 @@
 import {useCallback, useMemo, useState} from "react";
 import {ShieldCheck, TriangleAlert} from "lucide-react";
 import {getApiErrorMessage} from "@/services/apiError.js";
+import {uploadCourseImage} from "@/api/media.js";
+import {getLocalizedErrorMessage} from "@/hooks/useFileUpload.js";
 import EmptyState from "@/components/EmptyState/EmptyState.jsx";
 import ConfirmModal from "@/components/ConfirmModal/ConfirmModal.jsx";
 import AdminPageHeader from "@/pages/Admin/components/AdminPageHeader.jsx";
@@ -114,24 +116,52 @@ function AdminCourses() {
         });
     };
 
-    const submitCourse = async (payload) => {
+    const submitCourse = async (payload, coverFile) => {
         if (!courseModal) {
             return;
         }
 
-        try {
-            if (courseModal.mode === "create") {
-                await createCourse(payload);
-                showMessage("success", t("courseCreated"));
-            } else {
-                await updateCourse(courseModal.originalSlug, payload);
-                showMessage("success", t("courseUpdated"));
-            }
+        const isCreate = courseModal.mode === "create";
 
-            setCourseModal(null);
+        let saved;
+
+        try {
+            saved = isCreate
+                ? await createCourse(payload)
+                : await updateCourse(courseModal.originalSlug, payload);
         } catch (requestError) {
             showMessage("error", getApiErrorMessage(requestError, t("courseSaveError")));
+            return;
         }
+
+        // Обложка уходит отдельным запросом уже после сохранения курса:
+        // у нового курса до этого нет slug, по которому её примет сервер.
+        // У изменённого курса берём slug из ответа — он мог поменяться.
+        if (coverFile) {
+            const coverSlug = saved?.slug || payload.slug || courseModal.originalSlug;
+
+            try {
+                await uploadCourseImage(coverSlug, coverFile);
+
+                // в списке появится ссылка на сохранённую обложку
+                await reloadCourses();
+            } catch (requestError) {
+                showMessage(
+                    "error",
+                    getLocalizedErrorMessage(requestError, t, t("coverUploadError"))
+                );
+
+                // курс уже сохранён — окно закрываем, обложку можно
+                // загрузить повторно через отдельное окно обложки
+                setCourseModal(null);
+
+                return;
+            }
+        }
+
+        showMessage("success", isCreate ? t("courseCreated") : t("courseUpdated"));
+
+        setCourseModal(null);
     };
 
     const handleToggleCourseStatus = async (course) => {

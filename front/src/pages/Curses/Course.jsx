@@ -1,4 +1,4 @@
-import {getTranslation} from "@/locales/i18n.js";
+import {useTranslation} from "@/hooks/useTranslation.js";
 import styles from "./course.module.css";
 import {ArrowLeft, ArrowRight, BookOpen, ChevronLeft, ChevronRight, ExternalLink, ImageOff, Play,} from "lucide-react";
 import {Link, useParams} from "react-router-dom";
@@ -6,11 +6,10 @@ import {useCallback, useEffect, useState,} from "react";
 import {api} from "@/api/axios.js";
 import {API_ROUTES} from "@/api/routes.js";
 
-const language = "ru";
 const PAGE_SIZE = 20;
 
 export function Course() {
-    const t = (key) => getTranslation(`courses.course.${key}`, language);
+    const t = useTranslation("courses.course");
 
     const {slug} = useParams();
     const [course, setCourse] = useState(null);

@@ -29,6 +29,11 @@ class Settings:
     minio_secret_key: str = os.getenv("MINIO_SECRET_KEY")
     minio_secure: bool = os.getenv("MINIO_SECURE", "false").lower() == "true"
 
+    # переносить ли старые объекты в раскладку course-content при старте
+    minio_migrate_on_startup: bool = (
+        os.getenv("MINIO_MIGRATE_ON_STARTUP", "true").lower() == "true"
+    )
+
 
     minio_client = Minio(
         endpoint=minio_endpoint,
@@ -51,9 +56,8 @@ class Settings:
     )
 
     # MEDIA
-    # бак с медиафайлами: приватный, файлы отдаются только по presigned URL
-    media_bucket: str = os.getenv("MEDIA_BUCKET", "course-media")
-
+    # файлы курсов лежат в одном баке course-content и отдаются
+    # только по presigned URL
     # срок действия ссылки на файл
     media_url_ttl: int = int(os.getenv("MEDIA_URL_TTL", "600"))
 

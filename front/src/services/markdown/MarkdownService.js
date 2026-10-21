@@ -21,7 +21,12 @@
  * покажет React-компонент.
  */
 
-import {CustomBlockHandler, CustomBlockRegistry, PlaceholderCustomBlockHandler} from "./customBlocks.js";
+import {
+    CustomBlockHandler,
+    CustomBlockRegistry,
+    PlaceholderCustomBlockHandler,
+    TestBlockHandler,
+} from "./customBlocks.js";
 import {MarkdownParser} from "./parser.js";
 import {codeHighlighter} from "./highlight.js";
 import {isSafeUrl, safeUrl} from "./sanitize.js";
@@ -34,6 +39,9 @@ export class MarkdownService {
      */
     constructor({parser} = {}) {
         this._parser = parser ?? new MarkdownParser();
+
+        // задание — собственный тип блока: у него есть идентификатор
+        this.registerCustomBlock(new TestBlockHandler());
     }
 
     /**
@@ -76,6 +84,7 @@ export {
     CustomBlockHandler,
     CustomBlockRegistry,
     PlaceholderCustomBlockHandler,
+    TestBlockHandler,
     isSafeUrl,
     safeUrl,
     parseInline,

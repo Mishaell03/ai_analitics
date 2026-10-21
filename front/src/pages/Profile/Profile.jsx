@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
-import {getTranslation} from "@/locales/i18n.js";
+import {useTranslation} from "@/hooks/useTranslation.js";
 import styles from "./profile.module.css";
 import {BookOpen, ImageOff, LogOut, Pencil, RefreshCw, ShieldCheck, Sparkles, User, X} from "lucide-react";
 import {Link, useNavigate} from "react-router-dom";
@@ -10,14 +10,14 @@ import {useAuth} from "@/context/AuthContext.jsx";
 import ImageCache from "@/context/ImageCache.js";
 import {formatPhone, validateProfile} from "@/services/mask.js";
 
-const language = "ru";
 const PAGE_SIZE = 100;
 
 export function Profile() {
     const navigate = useNavigate();
     const {user, loading: authLoading, refresh, logout} = useAuth();
 
-    const t = (key) => getTranslation(`profile.profile.${key}`, language);
+    const t = useTranslation("profile.profile");
+    const tError = useTranslation("error.error");
 
     const [avatar, setAvatar] = useState(null);
     const [courses, setCourses] = useState([]);
@@ -121,8 +121,6 @@ export function Profile() {
         () => courses.filter((course) => course.is_enrolled),
         [courses]
     );
-
-    const tError = (key) => getTranslation(`error.error.${key}`, language);
 
     const handleNameChange = (event) => {
         setName(event.target.value);

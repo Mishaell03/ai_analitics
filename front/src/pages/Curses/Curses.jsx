@@ -1,4 +1,4 @@
-import {getTranslation} from "@/locales/i18n.js";
+import {useTranslation} from "@/hooks/useTranslation.js";
 import styles from "./courses.module.css";
 import {ArrowRight, ChevronLeft, ChevronRight, ImageOff, Search, SlidersHorizontal} from "lucide-react";
 import {Link} from "react-router-dom";
@@ -7,11 +7,8 @@ import {api} from "@/api/axios.js";
 import {API_ROUTES} from "@/api/routes.js";
 import {ROUTES} from "@/router/AppRouter.jsx";
 
-const language = "ru";
-
 export function Courses() {
-    const t = (key) =>
-        getTranslation(`courses.courses.${key}`, language);
+    const t = useTranslation("courses.courses");
 
     const [courses, setCourses] = useState([]);
     const [page, setPage] = useState(1);
@@ -42,7 +39,7 @@ export function Courses() {
                 label: t("filterCareer"),
             },
         ],
-        []
+        [t]
     );
 
     /*

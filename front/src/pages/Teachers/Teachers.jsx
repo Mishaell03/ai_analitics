@@ -1,4 +1,4 @@
-﻿import {getTranslation} from "@/locales/i18n.js";
+﻿import {useTranslation} from "@/hooks/useTranslation.js";
 import styles from "./teachers.module.css";
 
 import {
@@ -21,11 +21,9 @@ import teacher5Photo from "@/assets/teacher/teacher5.webp";
 import teacher6Photo from "@/assets/teacher/teacher6.webp";
 import {ROUTES} from "@/router/AppRouter.jsx";
 
-const language = "ru";
-
 export function Teachers() {
     const navigate = useNavigate();
-    const t = (key) => getTranslation(`teachers.teachers.${key}`, language);
+    const t = useTranslation("teachers.teachers");
 
     const aiPoints = [
         t("pairAiPoint1"),

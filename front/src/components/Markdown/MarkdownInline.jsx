@@ -12,38 +12,53 @@ import styles from "./markdown.module.css";
  * ![Схема](asset:m_0123456789abcdef) раскрывается в картинку или
  * видео по временной ссылке из этого списка.
  */
-function MarkdownInline({nodes, media, onMediaError}) {
+function MarkdownInline({nodes, media, labels, onMediaError}) {
     if (!nodes?.length) {
         return null;
     }
 
     return (
         <>
-            {nodes.map((node, index) => renderNode(node, index, media, onMediaError))}
+            {nodes.map((node, index) => renderNode(node, index, media, labels, onMediaError))}
         </>
     );
 }
 
-function renderNode(node, index, media, onMediaError) {
+function renderNode(node, index, media, labels, onMediaError) {
     switch (node.type) {
         case "strong":
             return (
                 <strong key={index}>
-                    <MarkdownInline nodes={node.children} media={media} onMediaError={onMediaError}/>
+                    <MarkdownInline
+                        nodes={node.children}
+                        media={media}
+                        labels={labels}
+                        onMediaError={onMediaError}
+                    />
                 </strong>
             );
 
         case "emphasis":
             return (
                 <em key={index}>
-                    <MarkdownInline nodes={node.children} media={media} onMediaError={onMediaError}/>
+                    <MarkdownInline
+                        nodes={node.children}
+                        media={media}
+                        labels={labels}
+                        onMediaError={onMediaError}
+                    />
                 </em>
             );
 
         case "strikethrough":
             return (
                 <s key={index}>
-                    <MarkdownInline nodes={node.children} media={media} onMediaError={onMediaError}/>
+                    <MarkdownInline
+                        nodes={node.children}
+                        media={media}
+                        labels={labels}
+                        onMediaError={onMediaError}
+                    />
                 </s>
             );
 
@@ -55,10 +70,10 @@ function renderNode(node, index, media, onMediaError) {
             );
 
         case "link":
-            return renderLink(node, index, media, onMediaError);
+            return renderLink(node, index, media, labels, onMediaError);
 
         case "image":
-            return renderImage(node, index, media, onMediaError);
+            return renderImage(node, index, media, labels, onMediaError);
 
         default:
             return <span key={index}>{node.value}</span>;
@@ -78,7 +93,7 @@ function findMedia(source, media) {
     return media[key] ?? null;
 }
 
-function renderLink(node, index, media, onMediaError) {
+function renderLink(node, index, media, labels, onMediaError) {
     const file = findMedia(node.href, media);
 
     // видео показываем плеером: обычная ссылка на файл неудобна
@@ -87,7 +102,13 @@ function renderLink(node, index, media, onMediaError) {
     }
 
     if (file) {
-        return renderImage({src: node.href, alt: file.original_name}, index, media, onMediaError);
+        return renderImage(
+            {src: node.href, alt: file.original_name},
+            index,
+            media,
+            labels,
+            onMediaError
+        );
     }
 
     const isExternal = /^https?:\/\//i.test(node.href);
@@ -101,12 +122,17 @@ function renderLink(node, index, media, onMediaError) {
             rel={isExternal ? "noreferrer noopener" : undefined}
             key={index}
         >
-            <MarkdownInline nodes={node.children} media={media} onMediaError={onMediaError}/>
+            <MarkdownInline
+                nodes={node.children}
+                media={media}
+                labels={labels}
+                onMediaError={onMediaError}
+            />
         </a>
     );
 }
 
-function renderImage(node, index, media, onMediaError) {
+function renderImage(node, index, media, labels, onMediaError) {
     const file = findMedia(node.src, media);
 
     if (file) {
@@ -139,7 +165,7 @@ function renderImage(node, index, media, onMediaError) {
     if (!node.src || !isMediaUrl(node.src)) {
         return (
             <span className={styles.imagePlaceholder} key={index}>
-                {node.alt || node.src || "изображение"}
+                {node.alt || node.src || labels?.image || ""}
             </span>
         );
     }

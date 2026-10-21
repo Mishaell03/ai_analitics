@@ -54,22 +54,37 @@ export function useCourses() {
         setSaving(true);
 
         try {
-            await request();
+            const result = await request();
+
             await fetchCourses();
+
+            return result;
         } finally {
             setSaving(false);
         }
     }, [fetchCourses]);
 
+    // создание и изменение возвращают сохранённый курс: обложку
+    // отправляют уже на его slug, а не на значение из формы
     const createCourse = useCallback(
-        (payload) => runMutation(() => api.post(API_ROUTES.ADMIN_COURSES, payload)),
+        async (payload) => {
+            const {data} = await runMutation(
+                () => api.post(API_ROUTES.ADMIN_COURSES, payload)
+            );
+
+            return data;
+        },
         [runMutation]
     );
 
     const updateCourse = useCallback(
-        (originalSlug, payload) => runMutation(
-            () => api.patch(API_ROUTES.ADMIN_COURSE_BY_ID(originalSlug), payload)
-        ),
+        async (originalSlug, payload) => {
+            const {data} = await runMutation(
+                () => api.patch(API_ROUTES.ADMIN_COURSE_BY_ID(originalSlug), payload)
+            );
+
+            return data;
+        },
         [runMutation]
     );
 
