@@ -12,10 +12,12 @@
 в понятные ответы API.
 """
 
+import asyncio
+import warnings
 from dataclasses import dataclass
 from io import BytesIO
 
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from app.core.config import settings
 
@@ -25,11 +27,8 @@ Image.MAX_IMAGE_PIXELS = settings.media_max_image_pixels
 
 
 class ImageValidationError(Exception):
-    """ФАЙЛ НЕ ЯВЛЯЕТСЯ ПОДХОДЯЩИМ ИЗОБРАЖЕНИЕМ"""
-
     def __init__(self, code: str, message: str):
         super().__init__(message)
-
         self.code = code
         self.message = message
 
@@ -53,6 +52,8 @@ SUPPORTED_FORMATS = frozenset({
     "WEBP",
     "GIF",
     "BMP",
+    "AVIF",
+    "TIFF",
 })
 
 # MIME-типы, которые заранее отсекаем
@@ -62,6 +63,8 @@ ALLOWED_CONTENT_TYPES = frozenset({
     "image/webp",
     "image/gif",
     "image/bmp",
+    "image/avif",
+    "image/tiff",
 })
 
 
@@ -76,15 +79,38 @@ class ImageConvertor:
         max_dimension: int | None = None,
         quality: int | None = None,
     ) -> ProcessedImage:
-        """ПРОВЕРЯЕТ ИЗОБРАЖЕНИЕ И ПРИВОДИТ ЕГО К WEBP
+        return await asyncio.to_thread(
+            self._to_webp_sync,
+            data,
+            content_type,
+            max_size,
+            max_dimension,
+            quality,
+        )
 
-        data — содержимое файла (его размер ограничен заранее,
-        иначе файл целиком попал бы в память).
-        """
-
-        max_size = max_size if max_size is not None else settings.media_max_image_size
-        max_dimension = max_dimension if max_dimension is not None else settings.media_max_image_dimension
-        quality = quality if quality is not None else settings.media_image_quality
+    @staticmethod
+    def _to_webp_sync(
+        data: bytes,
+        content_type: str | None,
+        max_size: int | None,
+        max_dimension: int | None,
+        quality: int | None,
+    ) -> ProcessedImage:
+        max_size = (
+            max_size
+            if max_size is not None
+            else settings.media_max_image_size
+        )
+        max_dimension = (
+            max_dimension
+            if max_dimension is not None
+            else settings.media_max_image_dimension
+        )
+        quality = (
+            quality
+            if quality is not None
+            else settings.media_image_quality
+        )
 
         if not data:
             raise ImageValidationError(
@@ -98,86 +124,108 @@ class ImageConvertor:
                 message="Файл изображения больше допустимого размера",
             )
 
-        if content_type and content_type.lower() not in ALLOWED_CONTENT_TYPES:
+        if (
+            content_type
+            and content_type.lower() not in ALLOWED_CONTENT_TYPES
+        ):
             raise ImageValidationError(
                 code="MEDIA_FILE_TYPE_NOT_ALLOWED",
                 message="Такой формат изображения не поддерживается",
             )
 
         try:
-            image = Image.open(BytesIO(data))
-
-            image_format = image.format
-
-            # реальный формат файла, а не то, что прислал клиент
-            if image_format not in SUPPORTED_FORMATS:
-                raise ImageValidationError(
-                    code="MEDIA_FILE_TYPE_NOT_ALLOWED",
-                    message="Такой формат изображения не поддерживается",
+            with warnings.catch_warnings():
+                warnings.simplefilter(
+                    "error",
+                    Image.DecompressionBombWarning,
                 )
 
-            width, height = image.size
+                with Image.open(BytesIO(data)) as image:
+                    image_format = image.format
 
-            if width > max_dimension or height > max_dimension:
-                raise ImageValidationError(
-                    code="MEDIA_IMAGE_RESOLUTION_TOO_LARGE",
-                    message="Разрешение изображения больше допустимого",
-                )
+                    if image_format not in SUPPORTED_FORMATS:
+                        raise ImageValidationError(
+                            code="MEDIA_FILE_TYPE_NOT_ALLOWED",
+                            message="Такой формат изображения не поддерживается",
+                        )
 
-            if width * height > settings.media_max_image_pixels:
-                raise ImageValidationError(
-                    code="MEDIA_IMAGE_RESOLUTION_TOO_LARGE",
-                    message="Изображение содержит слишком много пикселей",
-                )
+                    width, height = image.size
 
-            # метаданные (EXIF, GPS, камера) в результат не попадают
-            image.info.clear()
+                    if (
+                        width > max_dimension
+                        or height > max_dimension
+                    ):
+                        raise ImageValidationError(
+                            code="MEDIA_IMAGE_RESOLUTION_TOO_LARGE",
+                            message="Разрешение изображения больше допустимого",
+                        )
 
-            if image.mode in ("RGBA", "LA") or (
-                image.mode == "P" and "transparency" in image.info
-            ):
-                image = image.convert("RGBA")
+                    if width * height > settings.media_max_image_pixels:
+                        raise ImageValidationError(
+                            code="MEDIA_IMAGE_RESOLUTION_TOO_LARGE",
+                            message="Изображение содержит слишком много пикселей",
+                        )
 
-            else:
-                image = image.convert("RGB")
+                    has_alpha = (
+                        image.mode in ("RGBA", "LA")
+                        or (
+                            image.mode == "P"
+                            and "transparency" in image.info
+                        )
+                    )
 
-            # пропорции сохраняются, лишнее обрезается по меньшей стороне
-            image.thumbnail((max_dimension, max_dimension))
+                    image = ImageOps.exif_transpose(image)
 
-            output = BytesIO()
+                    image = image.convert(
+                        "RGBA" if has_alpha else "RGB"
+                    )
 
-            image.save(
-                output,
-                format="WEBP",
-                quality=quality,
-                method=6,
-            )
+                    image.thumbnail((
+                        max_dimension,
+                        max_dimension,
+                    ))
 
-            content = output.getvalue()
+                    output = BytesIO()
+
+                    image.save(
+                        output,
+                        format="WEBP",
+                        quality=quality,
+                        method=6,
+                    )
+
+                    content = output.getvalue()
+
+                    return ProcessedImage(
+                        content=content,
+                        content_type="image/webp",
+                        width=image.width,
+                        height=image.height,
+                        size_bytes=len(content),
+                        original_format=image_format,
+                    )
 
         except ImageValidationError:
             raise
 
-        except (UnidentifiedImageError, OSError, ValueError) as error:
-            raise ImageValidationError(
-                code="MEDIA_FILE_CORRUPTED",
-                message="Не удалось прочитать изображение",
-            ) from error
-
-        except Image.DecompressionBombError as error:
+        except (
+            Image.DecompressionBombError,
+            Image.DecompressionBombWarning,
+        ) as error:
             raise ImageValidationError(
                 code="MEDIA_IMAGE_RESOLUTION_TOO_LARGE",
                 message="Изображение содержит слишком много пикселей",
             ) from error
 
-        return ProcessedImage(
-            content=content,
-            content_type="image/webp",
-            width=image.width,
-            height=image.height,
-            size_bytes=len(content),
-            original_format=image_format,
-        )
+        except (
+            UnidentifiedImageError,
+            OSError,
+            ValueError,
+        ) as error:
+            raise ImageValidationError(
+                code="MEDIA_FILE_CORRUPTED",
+                message="Не удалось прочитать изображение",
+            ) from error
 
 
 image_convertor = ImageConvertor()
