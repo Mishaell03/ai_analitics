@@ -2,8 +2,18 @@ import axios from "axios";
 import {ROUTES} from "@/router/AppRouter.jsx";
 import {API_ROUTES} from "@/api/routes.js";
 
+const LOCAL_API_URL = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?/i;
+
+const configuredApiUrl = import.meta.env.VITE_API_URL || "/api/v1";
+
+// В dev API идёт через прокси Vite на тот же origin: backend закрыл
+// CORS для localhost, а same-origin запросы CORS не требуют.
+const baseURL = import.meta.env.DEV && LOCAL_API_URL.test(configuredApiUrl)
+    ? "/api/v1"
+    : configuredApiUrl;
+
 const _baseConfig = {
-    baseURL: import.meta.env.VITE_API_URL,
+    baseURL,
     withCredentials: true,
 };
 

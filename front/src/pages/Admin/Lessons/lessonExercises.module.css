@@ -119,6 +119,13 @@
     box-shadow: 0 0 0 4px rgb(182 95 253 / 0.08);
 }
 
+.idHint {
+    color: var(--muted);
+
+    font-size: 10px;
+    line-height: 1.4;
+}
+
 .question {
     margin: 0 0 12px;
 

@@ -10,6 +10,8 @@ import {
     buildAnswer,
     buildAnswerMap,
     buildReferenceAnswer,
+    ensureExerciseIds,
+    generateExerciseId,
     getReferenceAnswer,
     parseAnswer,
     parseExercises,
@@ -108,6 +110,38 @@ test("идентификатор добавляется, если его не б
 
 test("некорректный идентификатор не записывается", () => {
     assert.equal(setExerciseId(LESSON, 0, "плохой id"), LESSON);
+});
+
+test("автоматический идентификатор — хеш из 10 символов", () => {
+    const exerciseId = generateExerciseId();
+
+    assert.equal(exerciseId.length, 10);
+    assert.match(exerciseId, /^[0-9a-f]{10}$/);
+});
+
+test("идентификаторы проставляются только заданиям без id", () => {
+    const source = [
+        ":::test",
+        "id: keep-me",
+        "Вопрос с id",
+        "- [ ] Вариант",
+        ":::",
+        "",
+        ":::test",
+        "Вопрос без id",
+        "- [ ] Вариант",
+        ":::",
+    ].join("\n");
+
+    const withIds = ensureExerciseIds(source);
+    const exercises = parseExercises(withIds);
+
+    // сохранённый идентификатор не меняется: к нему привязан ответ
+    assert.equal(exercises[0].exercise_id, "keep-me");
+    assert.match(exercises[1].exercise_id, /^[0-9a-f]{10}$/);
+
+    // повторный вызов ничего не добавляет
+    assert.equal(ensureExerciseIds(withIds), withIds);
 });
 
 test("ответы на варианты собираются из отметок", () => {

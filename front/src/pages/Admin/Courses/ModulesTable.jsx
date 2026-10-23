@@ -94,8 +94,8 @@ function ModulesTable({
                     <table className={pageStyles.table} aria-busy="true">
                         <thead>
                         <tr>
-                            <th>{t("columnTitle")}</th>
                             <th>{t("columnPosition")}</th>
+                            <th>{t("columnTitle")}</th>
                             <th>{t("columnStatus")}</th>
                             <th data-align="right">{t("columnActions")}</th>
                         </tr>
@@ -103,8 +103,8 @@ function ModulesTable({
                         <tbody>
                         {Array.from({length: SKELETON_ROWS}, (_, index) => (
                             <tr className={pageStyles.row} key={index}>
-                                <td><span className={pageStyles.skeletonCell} data-width="60%"/></td>
                                 <td><span className={pageStyles.skeletonCell} data-width="20%"/></td>
+                                <td><span className={pageStyles.skeletonCell} data-width="60%"/></td>
                                 <td><span className={pageStyles.skeletonCell} data-width="30%"/></td>
                                 <td><span className={pageStyles.skeletonCell} data-width="50%"/></td>
                             </tr>
@@ -150,8 +150,8 @@ function ModulesTable({
                     <table className={pageStyles.table}>
                         <thead>
                         <tr>
-                            <th>{t("columnTitle")}</th>
                             <th>{t("columnPosition")}</th>
+                            <th>{t("columnTitle")}</th>
                             <th>{t("columnStatus")}</th>
                             <th data-align="right">{t("columnActions")}</th>
                         </tr>
@@ -167,12 +167,19 @@ function ModulesTable({
                                 key={getModuleId(module)}
                                 {...getDragProps(index, reordering)}
                             >
-                                <td data-cell="title">
+                                <td data-label={t("columnPosition")}>
                                     <div className={pageStyles.moduleCell}>
+                                        <span className={pageStyles.positionBadge}>
+                                            {module.position ?? index + 1}
+                                        </span>
                                         <span className={pageStyles.dragHandle} aria-hidden="true">
                                             ⋮⋮
                                         </span>
+                                    </div>
+                                </td>
 
+                                <td data-cell="title">
+                                    <div className={pageStyles.moduleCell}>
                                         <div className={pageStyles.moduleMeta}>
                                             <strong>{module.title}</strong>
                                             {module.description && (
@@ -180,12 +187,6 @@ function ModulesTable({
                                             )}
                                         </div>
                                     </div>
-                                </td>
-
-                                <td data-label={t("columnPosition")}>
-                                    <span className={pageStyles.positionBadge}>
-                                        {index + 1}
-                                    </span>
                                 </td>
 
                                 <td data-label={t("columnStatus")}>

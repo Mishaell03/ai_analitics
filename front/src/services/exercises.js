@@ -11,7 +11,9 @@
  *     :::
  *
  * Строка `id:` связывает задание с правильным ответом в базе:
- * ответ переживает правку текста задания.
+ * ответ переживает правку текста задания. Идентификатор генерирует
+ * фронтенд — короткий хеш из 10 символов; администратор может его
+ * переименовать, но придумывать значение вручную не обязан.
  *
  * Правильные ответы хранятся отдельно от Markdown, поэтому в файл
  * уходят только варианты без отметок:
@@ -49,6 +51,55 @@ const EXERCISE_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
 // строка с идентификатором задания
 const EXERCISE_ID_LINE = /^id:\s*(?<exercise_id>[A-Za-z0-9_-]{1,64})\s*$/i;
+
+/**
+ * Автоматический идентификатор задания.
+ *
+ * Идентификатор придумывает фронтенд: администратору не нужно
+ * вручную придумывать имя. Значение выглядит как короткий хеш из
+ * 10 шестнадцатеричных символов, поэтому подходит под ограничения
+ * backend и не содержит ничего лишнего.
+ */
+export const EXERCISE_ID_LENGTH = 10;
+
+const EXERCISE_ID_ALPHABET = "0123456789abcdef";
+
+/**
+ * Случайные байты для идентификатора.
+ *
+ * crypto есть и в браузере, и в тестах Node; Math.random остаётся
+ * запасным вариантом для старых окружений.
+ *
+ * @param {number} size количество байт
+ * @returns {Uint8Array}
+ */
+function randomBytes(size) {
+    const bytes = new Uint8Array(size);
+
+    if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+        crypto.getRandomValues(bytes);
+
+        return bytes;
+    }
+
+    for (let index = 0; index < size; index += 1) {
+        bytes[index] = Math.floor(Math.random() * 256);
+    }
+
+    return bytes;
+}
+
+/**
+ * Генерирует идентификатор задания из 10 символов.
+ *
+ * @returns {string}
+ */
+export function generateExerciseId() {
+    return Array.from(
+        randomBytes(EXERCISE_ID_LENGTH),
+        (byte) => EXERCISE_ID_ALPHABET[byte % EXERCISE_ID_ALPHABET.length]
+    ).join("");
+}
 
 // вариант ответа: маркер списка и квадратные скобки
 const OPTION_LINE = /^(?<indent>\s*)[-*+]\s+\[(?<mark>[ xX])\]\s*(?<text>.*)$/;
@@ -295,6 +346,47 @@ export function setExerciseId(markdown, exerciseIndex, exerciseId) {
     }
 
     return lines.join("\n");
+}
+
+/**
+ * Проставляет идентификаторы всем заданиям без них.
+ *
+ * Блоки с уже сохранённым `id:` не трогаются: по идентификатору к
+ * заданию привязан правильный ответ в базе. Новым заданиям выдаётся
+ * сгенерированный хеш, поэтому администратору не нужно придумывать
+ * имя вручную.
+ *
+ * @param {string} markdown текст урока
+ * @returns {string}
+ */
+export function ensureExerciseIds(markdown) {
+    const source = markdown ?? "";
+    const exercises = parseExercises(source);
+    const used = new Set(
+        exercises
+            .map((exercise) => exercise.exercise_id)
+            .filter(Boolean)
+    );
+
+    let result = source;
+
+    // идём с конца: вставка строки не сдвигает индексы предыдущих блоков
+    for (let index = exercises.length - 1; index >= 0; index -= 1) {
+        if (exercises[index].exercise_id) {
+            continue;
+        }
+
+        let exerciseId = generateExerciseId();
+
+        while (used.has(exerciseId)) {
+            exerciseId = generateExerciseId();
+        }
+
+        used.add(exerciseId);
+        result = setExerciseId(result, index, exerciseId);
+    }
+
+    return result;
 }
 
 /**

@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useMemo, useState} from "react";
-import {Eye, FileText, Link2, ListChecks, Pencil, Save, TriangleAlert} from "lucide-react";
+import {Eye, FileText, Link2, ListChecks, Pencil, Plus, Save, TriangleAlert, X} from "lucide-react";
 import {api} from "@/api/axios.js";
 import {API_ROUTES} from "@/api/routes.js";
 import {listLessonMedia} from "@/api/media.js";
@@ -15,6 +15,7 @@ import {
     buildAnswer,
     buildAnswerMap,
     buildReferenceAnswer,
+    ensureExerciseIds,
     getReferenceAnswer,
     parseAnswer,
     parseExercises,
@@ -85,8 +86,10 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
 
     // эталонный ответ урока: пример идеального решения задачи.
     // Он не принадлежит ни одному заданию и хранится отдельно.
+    // Поле необязательное: показываем его, только если админ его добавил.
     const [referenceAnswer, setReferenceAnswer] = useState("");
     const [savedReference, setSavedReference] = useState("");
+    const [referenceOpen, setReferenceOpen] = useState(false);
 
     const fetchMedia = useCallback(async () => {
         if (isNew) {
@@ -119,6 +122,7 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
 
             setSavedReference(reference.raw);
             setReferenceAnswer(reference.value);
+            setReferenceOpen(Boolean(reference.value));
 
             // ответы заданий: запись эталонного ответа к ним не относится
             const raw = Object.fromEntries(
@@ -156,7 +160,7 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
                 API_ROUTES.ADMIN_LESSON_CONTENT(courseSlug, moduleId, lessonId)
             );
 
-            setContent(applyAnswers(data.content ?? "", buildAnswerMap(raw)));
+            setContent(ensureExerciseIds(applyAnswers(data.content ?? "", buildAnswerMap(raw))));
         } catch (requestError) {
             // урока без файла — обычный случай: открываем пустой редактор
             if (requestError.response?.status === 404) {
@@ -210,6 +214,22 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
 
     const handleChangeReferenceAnswer = useCallback((value) => {
         setReferenceAnswer(value);
+    }, []);
+
+    // новым заданиям идентификатор выдаёт фронтенд: открывая вкладку,
+    // сразу проставляем хеш всем блокам без `id:`
+    const handleOpenExercises = useCallback(() => {
+        setTab(TAB_EXERCISES);
+        setContent((current) => ensureExerciseIds(current));
+    }, []);
+
+    const handleAddReference = useCallback(() => {
+        setReferenceOpen(true);
+    }, []);
+
+    const handleRemoveReference = useCallback(() => {
+        setReferenceAnswer("");
+        setReferenceOpen(false);
     }, []);
 
     /**
@@ -299,6 +319,14 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
         setSaving(true);
         setSaveError(null);
 
+        // перед сохранением гарантируем, что у каждого задания есть id:
+        // без него ответ не привяжется к заданию в базе
+        const preparedContent = ensureExerciseIds(content);
+
+        if (preparedContent !== content) {
+            setContent(preparedContent);
+        }
+
         try {
             if (isNew) {
                 // 1. создаём урок и получаем ссылку на загрузку
@@ -312,10 +340,10 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
                 );
 
                 // 2. отправляем Markdown в хранилище без отметок ответов
-                await uploadLessonMarkdown(data.upload, stripCheckedMarks(content));
+                await uploadLessonMarkdown(data.upload, stripCheckedMarks(preparedContent));
 
                 // 3. правильные ответы заданий и эталонный ответ урока
-                await syncAnswers(data.lesson_id, parseExercises(content), {});
+                await syncAnswers(data.lesson_id, parseExercises(preparedContent), {});
                 await syncReferenceAnswer(data.lesson_id, referenceAnswer, "");
 
                 onSaved(data);
@@ -337,11 +365,11 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
             );
 
             // отметки правильных вариантов в файл урока не попадают
-            await uploadLessonMarkdown(upload, stripCheckedMarks(content));
+            await uploadLessonMarkdown(upload, stripCheckedMarks(preparedContent));
 
             await syncAnswers(
                 lesson.lesson_id,
-                parseExercises(content),
+                parseExercises(preparedContent),
                 savedAnswers
             );
 
@@ -481,7 +509,7 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
                                     type="button"
                                     className={styles.tab}
                                     data-active={tab === TAB_EXERCISES}
-                                    onClick={() => setTab(TAB_EXERCISES)}
+                                    onClick={handleOpenExercises}
                                 >
                                     <ListChecks/>
                                     <span>{t("adminLessonExercisesTitle")}</span>
@@ -511,6 +539,7 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
                                     className={styles.editor}
                                     value={content}
                                     onChange={(event) => setContent(event.target.value)}
+                                    onBlur={() => setContent((current) => ensureExerciseIds(current))}
                                     spellCheck={false}
                                     placeholder={t("adminLessonEditorPlaceholder")}
                                 />
@@ -540,23 +569,53 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
 
                             {tab === TAB_EXERCISES && (
                                 <div className={styles.exercises}>
-                                    <label className={styles.field}>
-                                        <span>{t("adminLessonReferenceTitle")}</span>
-                                        <textarea
-                                            className={styles.reference}
-                                            value={referenceAnswer}
-                                            onChange={(event) => handleChangeReferenceAnswer(
-                                                event.target.value
-                                            )}
-                                            rows={6}
-                                            spellCheck={false}
-                                            placeholder={t("adminLessonReferencePlaceholder")}
-                                        />
-                                    </label>
+                                    {referenceOpen ? (
+                                        <>
+                                            <div className={styles.referenceHeader}>
+                                                <label className={styles.field}>
+                                                    <span>{t("adminLessonReferenceTitle")}</span>
+                                                    <textarea
+                                                        className={styles.reference}
+                                                        value={referenceAnswer}
+                                                        onChange={(event) => handleChangeReferenceAnswer(
+                                                            event.target.value
+                                                        )}
+                                                        rows={6}
+                                                        spellCheck={false}
+                                                        placeholder={t("adminLessonReferencePlaceholder")}
+                                                    />
+                                                </label>
 
-                                    <p className={styles.hint}>
-                                        {t("adminLessonReferenceHint")}
-                                    </p>
+                                                <button
+                                                    type="button"
+                                                    className={styles.referenceRemove}
+                                                    onClick={handleRemoveReference}
+                                                    title={t("adminLessonReferenceRemove")}
+                                                >
+                                                    <X/>
+                                                </button>
+                                            </div>
+
+                                            <p className={styles.hint}>
+                                                {t("adminLessonReferenceHint")}
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <div className={styles.referenceAdd}>
+                                            <button
+                                                type="button"
+                                                className={styles.addReferenceButton}
+                                                onClick={handleAddReference}
+                                            >
+                                                <Plus/>
+                                                <span>{t("adminLessonReferenceAdd")}</span>
+                                            </button>
+
+                                            <p className={styles.hint}>
+                                                {t("adminLessonReferenceAddHint")}
+                                            </p>
+                                        </div>
+                                    )}
 
                                     <LessonExercisesPanel
                                         exercises={exercises}
