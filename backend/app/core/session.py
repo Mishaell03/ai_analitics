@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.errors import raise_backend_error
+from app.core.tokens import hash_session_token
 from app.models.auth import UserSession
 from app.models.users import User
 
@@ -37,10 +38,11 @@ async def get_current_user(
     session_token = session_token.strip()
 
     now = datetime.now(timezone.utc)
+    token_hash = hash_session_token(session_token)
 
     result = await db.execute(
         select(UserSession).where(
-            UserSession.session == session_token,
+            UserSession.session == token_hash,
             UserSession.revoked_at.is_(None),
             UserSession.expires_at > now,
         )
@@ -88,6 +90,34 @@ async def get_current_user(
         user=user,
         session=session,
     )
+
+
+async def revoke_session(db: AsyncSession, session_token: str) -> bool:
+    """Отзывает сессию по токену из cookie.
+
+    Возвращает False, если активной сессии уже нет: logout идемпотентен.
+    В базе поиск выполняется строго по SHA-256 хэшу от переданного токена.
+    """
+
+    token_hash = hash_session_token(session_token)
+
+    result = await db.execute(
+        select(UserSession).where(
+            UserSession.session == token_hash,
+            UserSession.revoked_at.is_(None),
+        )
+    )
+
+    session = result.scalar_one_or_none()
+
+    if session is None:
+        return False
+
+    session.revoked_at = datetime.now(timezone.utc)
+
+    await db.commit()
+
+    return True
 
 
 async def get_current_admin(

@@ -5,8 +5,9 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from starlette.requests import HTTPConnection
 
-from app.core.clients_ip import get_client_ip, get_geoip
+from app.core.clients_ip import get_client_ip, get_geoip, safe_inet_ip
 from app.core.database import AsyncSessionLocal
+from app.core.tokens import hash_session_token
 from app.models.auth import UserSession
 from app.models.errors import BackendErrorLog
 
@@ -94,11 +95,12 @@ async def resolve_session_id(
         return None
 
     now = datetime.now(timezone.utc)
+    token_hash = hash_session_token(session_token)
 
     async with AsyncSessionLocal() as db:
         result = await db.execute(
             select(UserSession.id).where(
-                UserSession.session == session_token.strip(),
+                UserSession.session == token_hash,
                 UserSession.revoked_at.is_(None),
                 UserSession.expires_at > now,
             )
@@ -146,7 +148,7 @@ async def backend_error_logs(
                 request_path=request.url.path[:255],
                 request_body=sanitize_request_body(request_body),
                 error_message=error_message[:MAX_ERROR_MESSAGE_LENGTH] if error_message else None,
-                ip_address=client_ip,
+                ip_address=safe_inet_ip(client_ip),
                 is_proxy=is_proxy,
                 created_at=datetime.now(timezone.utc),
             )

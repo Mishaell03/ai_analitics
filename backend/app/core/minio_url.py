@@ -17,6 +17,7 @@ class MinioStorageService:
         file_path: str,
         bucket: str,
         expires: int | timedelta | None = None,
+        check_exists: bool = True,
     ) -> str | None:
         """GET URL FOR FILE"""
 
@@ -26,21 +27,32 @@ class MinioStorageService:
         if isinstance(expires, int):
             expires = timedelta(seconds=expires)
 
+        if check_exists:
+            try:
+                await asyncio.to_thread(
+                    settings.minio_client.stat_object,
+                    bucket_name=bucket,
+                    object_name=file_path,
+                )
+            except S3Error as exc:
+                if exc.code in ("NoSuchKey", "NoSuchBucket"):
+                    return None
+                logging.warning(f"MinIO S3 error checking {bucket}/{file_path}: {exc}")
+                return None
+            except Exception as exc:
+                logging.warning(f"MinIO connection/network error checking {bucket}/{file_path}: {exc}")
+                return None
+
         try:
-            await asyncio.to_thread(
-                settings.minio_client.stat_object,
+            return await asyncio.to_thread(
+                settings.minio_client.presigned_get_object,
                 bucket_name=bucket,
                 object_name=file_path,
+                expires=expires,
             )
-        except S3Error:
+        except Exception as exc:
+            logging.error(f"Failed to generate presigned GET URL for {bucket}/{file_path}: {exc}")
             return None
-
-        return await asyncio.to_thread(
-            settings.minio_client.presigned_get_object,
-            bucket_name=bucket,
-            object_name=file_path,
-            expires=expires,
-        )
 
     async def exists(
         self,
@@ -60,6 +72,9 @@ class MinioStorageService:
                 object_name=file_path,
             )
         except S3Error:
+            return False
+        except Exception as exc:
+            logging.warning(f"MinIO connection error checking exists for {bucket}/{file_path}: {exc}")
             return False
 
         return True

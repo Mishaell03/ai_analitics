@@ -6,6 +6,7 @@ from sqlalchemy import text
 
 from app.core.database import engine
 from app.core.config import settings
+from app.core.csrf import CSRFOriginMiddleware
 from app.core.minio_migration import migrate_legacy_storage
 from app.api.v1.router import router_v1
 from app.core.exception_handlers import register_exception_handlers
@@ -46,17 +47,23 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# порядок важен: CORS должен быть снаружи CSRF, иначе браузер
+# не увидит заголовки CORS у ответа 403
+register_exception_handlers(app)
+
+app.add_middleware(CSRFOriginMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
+    # домены прода задаются через CORS_ORIGINS
+    allow_origins=list(settings.cors_origins),
     # Allow the Vite dev server on any localhost/127.0.0.1 port so that a busy
     # port (which makes Vite pick the next one) does not break CORS/auth.
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_origin_regex=None if settings.is_product else r"https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-register_exception_handlers(app)
 
 app.include_router(router_v1)
 

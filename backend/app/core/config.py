@@ -1,8 +1,11 @@
+import logging
 import os
 from ipaddress import ip_network
 from pathlib import Path
 from dotenv import load_dotenv
 from minio import Minio
+
+logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 ENV_FILE = BASE_DIR / ".env"
@@ -55,6 +58,11 @@ class Settings:
         os.getenv("LESSON_CONTENT_MAX_UPLOAD_SIZE", "512000")
     )
 
+    # максимальный размер стандартного тела запроса (JSON/Form) - 10 МБ
+    max_standard_body_size: int = int(
+        os.getenv("MAX_STANDARD_BODY_SIZE", "10485760")
+    )
+
     # MEDIA
     # файлы курсов лежат в одном баке course-content и отдаются
     # только по presigned URL
@@ -99,13 +107,66 @@ class Settings:
     )
 
     # IP
-    trusted_proxies: list = [
-        ip_network(network.strip())
-        for network in os.getenv(
-            "TRUSTED_PROXIES"
-        ).split(",")
-    ]
+    @staticmethod
+    def _parse_trusted_proxies(raw: str | None) -> list:
+        default_proxies = ["127.0.0.0/8", "::1/128"]
+        if not raw or not raw.strip():
+            return [ip_network(net) for net in default_proxies]
+        networks = []
+        for item in raw.split(","):
+            trimmed = item.strip()
+            if not trimmed:
+                continue
+            try:
+                networks.append(ip_network(trimmed, strict=False))
+            except ValueError:
+                logging.getLogger(__name__).warning(
+                    f"Invalid network in TRUSTED_PROXIES: {trimmed}"
+                )
+        return networks or [ip_network(net) for net in default_proxies]
+
+    trusted_proxies: list = _parse_trusted_proxies(os.getenv("TRUSTED_PROXIES"))
     geoip_db_path: str = os.getenv("GEOIP_DB_PATH")
+
+    # CORS/CSRF
+    # домены фронтенда через запятую; пусто - работает только localhost-regex
+    cors_origins: tuple[str, ...] = tuple(
+        item.strip().rstrip("/")
+        for item in os.getenv("CORS_ORIGINS", "").split(",")
+        if item.strip()
+    )
+
+    # SESSIONS
+    session_ttl_days: int = int(os.getenv("SESSION_TTL_DAYS", "180"))
+    session_cookie_secure: bool = (
+        os.getenv("SESSION_COOKIE_SECURE", str(is_product)).lower() == "true"
+    )
+    session_cookie_samesite: str = os.getenv(
+        "SESSION_COOKIE_SAMESITE",
+        "none" if is_product else "lax",
+    ).lower()
+    if session_cookie_samesite not in {"lax", "strict", "none"}:
+        session_cookie_samesite = "lax"
+
+    # Браузеры отклоняют SameSite=None без Secure
+    if session_cookie_samesite == "none" and not session_cookie_secure:
+        session_cookie_secure = True
+
+    # RATE LIMIT (запросы с одного IP за окно)
+    auth_rate_limit_enabled: bool = (
+        os.getenv("AUTH_RATE_LIMIT_ENABLED", "true").lower() == "true"
+    )
+    auth_login_rate_limit: int = int(os.getenv("AUTH_LOGIN_RATE_LIMIT", "10"))
+    auth_register_rate_limit: int = int(os.getenv("AUTH_REGISTER_RATE_LIMIT", "5"))
+    auth_rate_limit_window_seconds: int = int(
+        os.getenv("AUTH_RATE_LIMIT_WINDOW_SECONDS", "60")
+    )
+
+    # MINIO
+    # сколько presign-запросов выполняем одновременно
+    minio_presign_concurrency: int = int(
+        os.getenv("MINIO_PRESIGN_CONCURRENCY", "10")
+    )
 
     # DATABASE URL
     @property
