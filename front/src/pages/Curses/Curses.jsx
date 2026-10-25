@@ -6,6 +6,7 @@ import {useCallback, useEffect, useMemo, useRef, useState,} from "react";
 import {api} from "@/api/axios.js";
 import {API_ROUTES} from "@/api/routes.js";
 import {ROUTES} from "@/router/AppRouter.jsx";
+import Description from "@/components/Markdown/Description.jsx";
 
 export function Courses() {
     const t = useTranslation("courses.courses");
@@ -281,7 +282,7 @@ export function Courses() {
                                             </span>
                                         </div>
 
-                                        <p>{course.description}</p>
+                                        {course.description && <Description content={course.description} className={styles.cardDescription} preview/>}
 
                                         {course.is_enrolled && (
                                             <div className={styles.courseProgress} data-complete={course.is_course_completed}>

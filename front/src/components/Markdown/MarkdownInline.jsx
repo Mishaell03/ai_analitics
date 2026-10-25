@@ -26,6 +26,11 @@ function MarkdownInline({nodes, media, labels, onMediaError}) {
 
 function renderNode(node, index, media, labels, onMediaError) {
     switch (node.type) {
+        case "break":
+            return node.compact
+                ? <span className={styles.descriptionSpacer} aria-hidden="true" key={index}/>
+                : <br key={index}/>;
+
         case "strong":
             return (
                 <strong key={index}>

@@ -262,6 +262,7 @@ export default {
     courseTitleField: "Название (до 255 символов)",
     courseSlugField: "Slug (до 255 символов, необязательно)",
     courseDescriptionField: "Описание (до 2000 символов)",
+    descriptionFormatHint: "Поддерживается Markdown: **жирный текст**. Переносы строк сохраняются.",
     courseTitleError: "Название курса обязательно и не длиннее 255 символов",
     courseSlugError: "Slug: только латиница, цифры и дефис, до 255 символов",
     courseDescriptionError: "Описание не длиннее 2000 символов",

@@ -5,6 +5,7 @@ import {api} from "@/api/axios.js";
 import {API_ROUTES} from "@/api/routes.js";
 import {ROUTES} from "@/router/AppRouter.jsx";
 import Markdown from "@/components/Markdown/Markdown.jsx";
+import Description from "@/components/Markdown/Description.jsx";
 import {buildAnswerMap} from "@/services/exercises.js";
 import {useTranslation} from "@/hooks/useTranslation.js";
 import styles from "./course.module.css";
@@ -217,7 +218,7 @@ export function Lesson() {
                           data-complete={Boolean(lesson?.lesson?.is_completed)}>
                         {lesson?.lesson?.is_completed ? t("lessonCompleted") : t("lessonNotCompleted")}
                     </span>
-                    {lesson?.lesson?.description && <p className={styles.description}>{lesson.lesson.description}</p>}
+                    {lesson?.lesson?.description && <Description content={lesson.lesson.description} className={styles.description}/>}
                     <Markdown content={content} answers={completedExercises} onExerciseCheck={checkExercise}
                               labels={{
                                   check: t("exerciseCheck"),

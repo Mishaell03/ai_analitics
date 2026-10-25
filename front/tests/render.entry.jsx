@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {renderToStaticMarkup} from "react-dom/server";
 import {MemoryRouter} from "react-router-dom";
 import Markdown from "@/components/Markdown/Markdown.jsx";
+import Description from "@/components/Markdown/Description.jsx";
 import {AuthProvider} from "@/context/AuthContext.jsx";
 import {Dashboard} from "@/pages/Admin/Dashboard/Dashboard.jsx";
 import {Users} from "@/pages/Admin/Users/Users.jsx";
@@ -34,6 +35,13 @@ import UserModal from "@/pages/Admin/Users/UserModal.jsx";
  *
  * Запуск: npm run test:render
  */
+
+const descriptionHtml = renderToStaticMarkup(<Description content={
+    "Освойте анализ данных с нуля!\n\nВас ждут понятные объяснения.\n\n**Подходит новичкам без опыта программирования.**"
+}/>);
+assert.equal((descriptionHtml.match(/<br\/>/g) ?? []).length, 2);
+assert.equal((descriptionHtml.match(/aria-hidden="true"/g) ?? []).length, 2);
+assert.ok(descriptionHtml.includes("<strong><span>Подходит новичкам без опыта программирования.</span></strong>"));
 
 const source = [
     "# Заголовок урока",

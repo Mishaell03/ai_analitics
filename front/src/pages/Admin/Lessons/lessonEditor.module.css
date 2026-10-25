@@ -89,6 +89,12 @@
     letter-spacing: 0.08em;
 }
 
+.descriptionHint {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
 .field input,
 .field textarea {
     width: 100%;

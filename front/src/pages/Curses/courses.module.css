@@ -586,7 +586,8 @@
     transform: translateX(4px);
 }
 
-.cardBody p {
+.cardBody p,
+.cardDescription {
     margin: 12px 0 0;
 
     color: var(--muted);
@@ -599,6 +600,15 @@
     -webkit-box-orient: vertical;
 
     overflow: hidden;
+}
+
+.cardDescription p {
+    margin: 0;
+}
+
+.cardDescription {
+    display: block;
+    overflow: visible;
 }
 
 .courseProgress {

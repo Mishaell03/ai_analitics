@@ -469,6 +469,7 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
                                     onChange={(event) => setDescription(event.target.value)}
                                     rows={3}
                                 />
+                                <small className={styles.descriptionHint}>{t("descriptionFormatHint")}</small>
                             </label>
 
                             <label className={styles.checkboxField}>

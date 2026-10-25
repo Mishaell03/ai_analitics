@@ -79,6 +79,14 @@ export function parseInline(source) {
     while (index < source.length) {
         const char = source[index];
 
+        // Одиночный Enter — видимый перенос строки (soft break).
+        if (char === "\n") {
+            flush();
+            nodes.push({type: "break"});
+            index += 1;
+            continue;
+        }
+
         // экранированный символ показываем как обычный
         if (char === "\\" && ESCAPABLE_PATTERN.test(source[index + 1] ?? "")) {
             buffer += source[index + 1];

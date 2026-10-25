@@ -54,6 +54,27 @@
 
 .paragraph {
     margin: 0 0 14px;
+    white-space: pre-wrap;
+}
+
+.markdown strong {
+    font-weight: 800;
+}
+
+.descriptionText {
+    overflow-wrap: anywhere;
+}
+
+.descriptionSpacer {
+    display: block;
+    height: 15px;
+}
+
+.descriptionText strong {
+    font-size: inherit;
+    line-height: inherit;
+    color: inherit;
+    font-weight: 800;
 }
 
 .link {

@@ -9,6 +9,7 @@ import {ROUTES} from "@/router/AppRouter.jsx";
 import {useAuth} from "@/context/AuthContext.jsx";
 import ImageCache from "@/context/ImageCache.js";
 import {formatPhone, validateProfile} from "@/services/mask.js";
+import Description from "@/components/Markdown/Description.jsx";
 
 const PAGE_SIZE = 100;
 
@@ -435,7 +436,7 @@ export function Profile() {
                                             </span>
                                         </div>
 
-                                        <p>{course.description}</p>
+                                        {course.description && <Description content={course.description} className={styles.courseDescription}/>}
 
                                         <div className={styles.courseCompletion}>
                                             {!course.is_course_completed && (

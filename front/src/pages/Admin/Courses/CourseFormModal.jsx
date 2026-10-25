@@ -127,6 +127,7 @@ function CourseFormModal({mode, course, saving, onClose, onSubmit, onError}) {
                         onChange={(event) => setDescription(event.target.value)}
                         rows={4}
                     />
+                    <small className={styles.fieldHint}>{t("descriptionFormatHint")}</small>
                 </label>
 
                 <div className={styles.cover}>

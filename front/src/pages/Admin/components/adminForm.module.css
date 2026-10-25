@@ -22,6 +22,14 @@
     letter-spacing: 0.08em;
 }
 
+.fieldHint {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.45;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
 .field input,
 .field textarea {
     width: 100%;

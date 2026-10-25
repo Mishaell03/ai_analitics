@@ -6,6 +6,7 @@ import {useCallback, useEffect, useState,} from "react";
 import {api} from "@/api/axios.js";
 import {API_ROUTES} from "@/api/routes.js";
 import {ROUTES} from "@/router/AppRouter.jsx";
+import Description from "@/components/Markdown/Description.jsx";
 
 const PAGE_SIZE = 20;
 
@@ -265,9 +266,7 @@ export function Course() {
                         </h1>
 
                         {course?.description && (
-                            <p className={styles.description}>
-                                {course.description}
-                            </p>
+                            <Description content={course.description} className={styles.description}/>
                         )}
 
                         {course?.is_enrolled && (
@@ -404,7 +403,7 @@ export function Course() {
                                                 )}
                                             </div>
 
-                                            {module.description && (<p>{module.description}</p>)}
+                                            {module.description && <Description content={module.description} className={styles.moduleDescription}/>}
 
                                             {module.content_url && (
                                                 <a href={module.content_url} target="_blank" rel="noreferrer"
@@ -442,7 +441,7 @@ export function Course() {
                                                             </span>
                                                             <span className={styles.lessonText}>
                                                                  <strong>{lesson.title}</strong>
-                                                                 {lesson.description && <small>{lesson.description}</small>}
+                                                                  {lesson.description && <Description content={lesson.description} className={styles.lessonDescription}/>}
                                                                  <small className={styles.lessonCompletionStatus}
                                                                         data-complete={lesson.is_completed}>
                                                                      {lesson.is_completed ? t("lessonCompleted") : t("lessonNotCompleted")}
