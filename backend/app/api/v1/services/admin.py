@@ -27,13 +27,14 @@ from app.core.errors import raise_backend_error
 from app.core.pagination import get_pagination, get_total_pages
 from app.models.auth import Provider, UserAuthMethod, UserSession
 from app.models.courses import Course, CourseModule, Lesson
-from app.models.enrollments_progress import CourseEnrollment, LessonAttempt
+from app.models.enrollments_progress import (
+    COMPLETED_CORRECTNESS,
+    CourseEnrollment,
+    LessonAttempt,
+)
 from app.models.errors import UserEventLog
 from app.models.users import User, UserConsent
 
-
-# верх шкалы correctness (CHECK 0..3): урок с такой попыткой считается решённым
-SOLVED_CORRECTNESS = 3
 
 # сколько последних попыток отдаём в карточке пользователя
 RECENT_ATTEMPTS_LIMIT = 20
@@ -664,7 +665,7 @@ class AdminService:
             .join(CourseModule, CourseModule.module_id == Lesson.module_id)
             .where(
                 LessonAttempt.user_id == user_id,
-                LessonAttempt.correctness == SOLVED_CORRECTNESS,
+                LessonAttempt.correctness == COMPLETED_CORRECTNESS,
             )
             .group_by(CourseModule.course_id)
         )

@@ -5,6 +5,9 @@ from app.core.database import Base
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
 
+# верх шкалы correctness (CHECK 0..3): урок с такой попыткой считается завершённым
+COMPLETED_CORRECTNESS = 3
+
 
 # V5__enrollments_attempts
 class CourseEnrollment(Base):

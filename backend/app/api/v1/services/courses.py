@@ -280,8 +280,14 @@ class BaseCoursesService:
             page: int = 1,
             page_size: int = 10,
             user_id: int | None = None,
+            enrolled_only: bool = False,
     ) -> CoursesResponse:
-        """MINIMAL INFORMATION OF THE COURSES"""
+        """MINIMAL INFORMATION OF THE COURSES
+
+        С enrolled_only=True возвращает только курсы, на которые записан
+        пользователь. Сортировка в этом режиме — по дате записи, как в
+        карточке пользователя админки; иначе остаётся порядок по course_id.
+        """
 
         pagination = get_pagination(
             page=page,
@@ -289,10 +295,40 @@ class BaseCoursesService:
         )
 
         # Total courses
-        total_result = await self.db.execute(
+        total_query = (
             select(func.count(Course.course_id))
             .where(is_published(Course))
         )
+
+        courses_query = (
+            select(Course)
+            .where(is_published(Course))
+        )
+
+        if enrolled_only:
+            enrollment_join = CourseEnrollment.course_id == Course.course_id
+
+            total_query = (
+                total_query
+                .join(CourseEnrollment, enrollment_join)
+                .where(CourseEnrollment.user_id == user_id)
+            )
+
+            courses_query = (
+                courses_query
+                .join(CourseEnrollment, enrollment_join)
+                .where(CourseEnrollment.user_id == user_id)
+            )
+
+            order_by = (
+                CourseEnrollment.created_at.desc(),
+                Course.course_id.desc(),
+            )
+
+        else:
+            order_by = (Course.course_id,)
+
+        total_result = await self.db.execute(total_query)
 
         total = total_result.scalar_one()
 
@@ -302,9 +338,8 @@ class BaseCoursesService:
         )
 
         result = await self.db.execute(
-            select(Course)
-            .where(is_published(Course))
-            .order_by(Course.course_id)
+            courses_query
+            .order_by(*order_by)
             .offset(pagination.offset)
             .limit(pagination.page_size)
         )
@@ -313,7 +348,10 @@ class BaseCoursesService:
 
         enrolled_ids = set()
 
-        if user_id is not None and courses:
+        if enrolled_only:
+            enrolled_ids = {course.course_id for course in courses}
+
+        elif user_id is not None and courses:
             enrolled_result = await self.db.execute(
                 select(CourseEnrollment.course_id)
                 .where(

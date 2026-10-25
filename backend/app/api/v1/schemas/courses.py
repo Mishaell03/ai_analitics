@@ -98,6 +98,30 @@ class LessonDetailResponse(BaseModel):
     lesson: LessonInfo
 
 
+# урок вместе с модулем: нужен для перехода к продолжению обучения
+class LearningLessonInfo(BaseModel):
+    module_id: int
+    module_title: str
+    module_position: int
+    lesson_id: int
+    title: str
+    description: str | None = None
+    position: int
+
+
+# следующий урок курса для текущего пользователя
+class ContinueLearningResponse(BaseModel):
+    course: CourseShortInfo
+    # последний завершённый урок по порядку курса, а не по времени попытки
+    last_completed_lesson: LearningLessonInfo | None = None
+    # первый доступный незавершённый урок в порядке курса
+    next_lesson: LearningLessonInfo | None = None
+    is_course_completed: bool = False
+    # считаются только опубликованные модули и уроки, доступные ученику
+    lessons_total: int = 0
+    lessons_completed: int = 0
+
+
 # кастомный блок внутри Markdown урока (тест, видео, задание)
 class CustomBlockResponse(BaseModel):
     type: str
