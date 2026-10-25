@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from "react";
+import {useCallback, useEffect, useRef, useState} from "react";
 import {useTranslation} from "@/hooks/useTranslation.js";
 import styles from "./profile.module.css";
 import {BookOpen, ImageOff, LogOut, Pencil, RefreshCw, ShieldCheck, Sparkles, User, X} from "lucide-react";
@@ -51,19 +51,6 @@ export function Profile() {
         refreshRef.current = refresh;
     }, [refresh]);
 
-    const handleRefresh = useCallback(async () => {
-        setError(false);
-        setRefreshing(true);
-
-        try {
-            await refreshRef.current();
-        } catch {
-            setError(true);
-        } finally {
-            setRefreshing(false);
-        }
-    }, []);
-
     const fetchCourses = useCallback(async () => {
         setError(false);
         setCoursesLoading(true);
@@ -73,6 +60,7 @@ export function Profile() {
                 params: {
                     page,
                     page_size: PAGE_SIZE,
+                    enrolled_only: true,
                 },
             });
 
@@ -84,6 +72,20 @@ export function Profile() {
             setCoursesLoading(false);
         }
     }, [page]);
+
+    const handleRefresh = useCallback(async () => {
+        setError(false);
+        setRefreshing(true);
+
+        try {
+            await refreshRef.current();
+            await fetchCourses();
+        } catch {
+            setError(true);
+        } finally {
+            setRefreshing(false);
+        }
+    }, [fetchCourses]);
 
     useEffect(() => {
         const {has_image: hasImage, avatar_key: avatarKey} = user ?? {};
@@ -117,10 +119,7 @@ export function Profile() {
         fetchCourses();
     }, [fetchCourses]);
 
-    const enrolledCourses = useMemo(
-        () => courses.filter((course) => course.is_enrolled),
-        [courses]
-    );
+    const enrolledCourses = courses;
 
     const handleNameChange = (event) => {
         setName(event.target.value);

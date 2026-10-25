@@ -12,6 +12,13 @@ export const API_ROUTES = {
 // Courses
     COURSES: "/courses",
     COURSE_BY_ID: (slug) => `/courses/${slug}`,
+    COURSE_NEXT_LESSON: (slug) => `/courses/${slug}/next-lesson`,
+    COURSE_LESSON: (slug, moduleId, lessonId) => `/courses/${slug}/modules/${moduleId}/lessons/${lessonId}`,
+    COURSE_LESSON_CONTENT: (slug, moduleId, lessonId) => `/courses/${slug}/modules/${moduleId}/lessons/${lessonId}/content`,
+    COURSE_EXERCISE_CHECK: (slug, moduleId, lessonId, exerciseId) =>
+        `/courses/${slug}/modules/${moduleId}/lessons/${lessonId}/exercises/${exerciseId}/check`,
+    COURSE_LESSON_COMPLETE: (slug, moduleId, lessonId) =>
+        `/courses/${slug}/modules/${moduleId}/lessons/${lessonId}/complete`,
     ENROLL_COURSE_BY_ID: (slug) => `/courses/enroll/${slug}`,
     UNENROLL_COURSE_BY_ID: (slug) => `/courses/unenroll/${slug}`,
 

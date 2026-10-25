@@ -148,6 +148,9 @@ class LessonContentResponse(BaseModel):
     content_type: str = "markdown"
     custom_blocks: list[CustomBlockResponse] = Field(default_factory=list)
     assets: list[LessonAssetResponse] = Field(default_factory=list)
+    # Успешные ответы текущего ученика по exercise_id. Значения остаются
+    # сериализованными строками и разбираются frontend через buildAnswerMap.
+    completed_exercises: dict[str, str] = Field(default_factory=dict)
 
 # result of the enrollment
 class EnrollmentResponse(BaseModel):

@@ -1,15 +1,17 @@
 import {useTranslation} from "@/hooks/useTranslation.js";
 import styles from "./course.module.css";
-import {ArrowLeft, ArrowRight, BookOpen, ChevronLeft, ChevronRight, ExternalLink, ImageOff, Play,} from "lucide-react";
-import {Link, useParams} from "react-router-dom";
+import {ArrowLeft, ArrowRight, BookOpen, ChevronLeft, ChevronRight, ExternalLink, ImageOff, Play, RefreshCw} from "lucide-react";
+import {Link, useNavigate, useParams} from "react-router-dom";
 import {useCallback, useEffect, useState,} from "react";
 import {api} from "@/api/axios.js";
 import {API_ROUTES} from "@/api/routes.js";
+import {ROUTES} from "@/router/AppRouter.jsx";
 
 const PAGE_SIZE = 20;
 
 export function Course() {
     const t = useTranslation("courses.course");
+    const navigate = useNavigate();
 
     const {slug} = useParams();
     const [course, setCourse] = useState(null);
@@ -18,6 +20,9 @@ export function Course() {
     const [totalPages, setTotalPages] = useState(1);
     const [enrolling, setEnrolling] = useState(false);
     const [showUnenrollModal, setShowUnenrollModal] = useState(false);
+    const [learning, setLearning] = useState(null);
+    const [learningLoading, setLearningLoading] = useState(false);
+    const [learningError, setLearningError] = useState(false);
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -52,6 +57,20 @@ export function Course() {
             setLoading(false);
         }
     }, [slug, page]);
+
+    const fetchLearning = useCallback(async () => {
+        if (!slug) return;
+        setLearningLoading(true);
+        setLearningError(false);
+        try {
+            const {data} = await api.get(API_ROUTES.COURSE_NEXT_LESSON(slug));
+            setLearning(data);
+        } catch {
+            setLearningError(true);
+        } finally {
+            setLearningLoading(false);
+        }
+    }, [slug]);
 
     const handleEnroll = async () => {
         if (!slug || enrolling) return;
@@ -114,6 +133,17 @@ export function Course() {
     useEffect(() => {
         fetchCourse();
     }, [fetchCourse]);
+
+    useEffect(() => {
+        if (course?.is_enrolled) fetchLearning();
+        else setLearning(null);
+    }, [course?.is_enrolled, fetchLearning]);
+
+    const openNextLesson = () => {
+        if (!learning?.next_lesson || !slug) return;
+        const {module_id: moduleId, lesson_id: lessonId} = learning.next_lesson;
+        navigate(`${ROUTES.lesson}/${slug}/modules/${moduleId}/lessons/${lessonId}`);
+    };
 
     const handlePreviousPage = () => {
         setPage((current) =>
@@ -208,11 +238,11 @@ export function Course() {
                                 </button>
                             ) : (
                                 <>
-                                    <button
-                                        // TODO: добавить ссылку на продолжение обучения
-                                        onClick="" type="button" className={styles.enrollButton}>
+                                    <button type="button" className={styles.enrollButton}
+                                            onClick={openNextLesson}
+                                            disabled={learningLoading || learningError || !learning?.next_lesson}>
                                         <Play/>
-                                        <span>{t("enrollingContinue")}</span>
+                                        <span>{learningLoading ? t("learningLoading") : learningError ? t("learningRetry") : learning?.is_course_completed ? t("courseCompleted") : learning?.next_lesson ? t("enrollingContinue") : t("noLessons")}</span>
                                         <ArrowRight/>
                                     </button>
 
@@ -222,6 +252,14 @@ export function Course() {
                                 </>
                             )}
                         </div>
+                        {learningLoading && <p role="status" className={styles.learningProgress}>{t("learningLoading")}</p>}
+                        {learningError && <button type="button" className={styles.learningRetry} onClick={fetchLearning}><RefreshCw/> {t("learningRetry")}</button>}
+                        {!learningLoading && !learningError && learning && (
+                            <div className={styles.learningProgress} aria-live="polite">
+                                <span>{learning.is_course_completed ? t("courseCompleted") : learning.next_lesson ? `${t("progress")}: ${learning.lessons_completed} / ${learning.lessons_total}` : t("noLessons")}</span>
+                                {learning.next_lesson && <span>{learning.next_lesson.module_title} · {learning.next_lesson.title}</span>}
+                            </div>
+                        )}
                     </div>
                 </div>
             </section>

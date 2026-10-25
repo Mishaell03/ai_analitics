@@ -11,6 +11,7 @@ registerCustomBlockRenderer("test", (block, context) => (
         block={block}
         answers={context.answers}
         labels={context.labels}
+        onCheck={context.onExerciseCheck}
     />
 ));
 
@@ -33,7 +34,7 @@ registerCustomBlockRenderer("test", (block, context) => (
  * answers — правильные ответы на задания по идентификатору задания.
  * labels — подписи интерфейса (например, «Правильный ответ»).
  */
-function Markdown({content, media, answers, labels, onMediaError, className}) {
+function Markdown({content, media, answers, labels, onMediaError, onExerciseCheck, className}) {
     const blocks = useMemo(() => markdownService.parse(content), [content]);
 
     if (!blocks.length) {
@@ -48,6 +49,7 @@ function Markdown({content, media, answers, labels, onMediaError, className}) {
                 answers={answers}
                 labels={labels}
                 onMediaError={onMediaError}
+                onExerciseCheck={onExerciseCheck}
             />
         </div>
     );

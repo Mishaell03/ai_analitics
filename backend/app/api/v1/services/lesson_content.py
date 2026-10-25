@@ -6,6 +6,7 @@ Markdown — в MinIO. Сервис проверяет доступ пользо
 """
 
 from fastapi import Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.courses import (
@@ -20,6 +21,11 @@ from app.core.markdown import MarkdownParser
 from app.core.minio_url import minio_storage
 from app.core.storage_paths import COURSE_CONTENT_BUCKET, lesson_content_path
 from app.models.courses import Lesson
+from app.models.enrollments_progress import (
+    COMPLETED_CORRECTNESS,
+    LessonAttempt,
+    PASSED_EXERCISES_KEY,
+)
 
 
 class LessonContentService(BaseCoursesService):
@@ -100,6 +106,7 @@ class LessonContentService(BaseCoursesService):
             lesson=lesson,
             course_id=course.course_id,
             error=error,
+            user_id=user_id,
         )
 
     async def get_lesson_content_admin(
@@ -169,6 +176,7 @@ class LessonContentService(BaseCoursesService):
             lesson: Lesson,
             course_id: int,
             error: dict,
+            user_id: int | None = None,
     ) -> LessonContentResponse:
         """ЧИТАЕТ И ОЧИЩАЕТ MARKDOWN УРОКА
 
@@ -205,6 +213,21 @@ class LessonContentService(BaseCoursesService):
 
         parsed = self._parser.parse(raw_content)
 
+        completed_exercises: dict[str, str] = {}
+        if user_id is not None:
+            attempts_result = await self.db.execute(
+                select(LessonAttempt.answers, LessonAttempt.correctness)
+                .where(
+                    LessonAttempt.user_id == user_id,
+                    LessonAttempt.lesson_id == lesson.lesson_id,
+                    LessonAttempt.answers.is_not(None),
+                )
+                .order_by(LessonAttempt.created_at, LessonAttempt.attempt_id)
+            )
+            completed_exercises = self._merge_completed_exercises(
+                attempts_result.all()
+            )
+
         content_url = await minio_storage.get_url(
             file_path=file_path,
             bucket=COURSE_CONTENT_BUCKET,
@@ -239,4 +262,40 @@ class LessonContentService(BaseCoursesService):
                 )
                 for asset in parsed.assets
             ],
+            completed_exercises=completed_exercises,
         )
+
+    @staticmethod
+    def _merge_completed_exercises(attempts) -> dict[str, str]:
+        """СОБИРАЕТ ТОЛЬКО УСПЕШНЫЕ ОТВЕТЫ ИЗ ПОПЫТОК ОДНОГО УЧЕНИКА."""
+
+        completed_exercises: dict[str, str] = {}
+        for attempt in attempts:
+            attempt_answers = attempt.answers
+            if not isinstance(attempt_answers, dict):
+                continue
+
+            passed_answers = attempt_answers.get(PASSED_EXERCISES_KEY)
+            if isinstance(passed_answers, dict):
+                completed_exercises.update(
+                    {
+                        exercise_id: answer
+                        for exercise_id, answer in passed_answers.items()
+                        if isinstance(exercise_id, str) and isinstance(answer, str)
+                    }
+                )
+
+            # Совместимость с ответами, сохранёнными до разделения
+            # прохождения задания и завершения всего урока.
+            if attempt.correctness == COMPLETED_CORRECTNESS:
+                completed_exercises.update(
+                    {
+                        exercise_id: answer
+                        for exercise_id, answer in attempt_answers.items()
+                        if exercise_id != PASSED_EXERCISES_KEY
+                        and isinstance(exercise_id, str)
+                        and isinstance(answer, str)
+                    }
+                )
+
+        return completed_exercises

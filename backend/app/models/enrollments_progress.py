@@ -7,6 +7,10 @@ from datetime import datetime
 
 # верх шкалы correctness (CHECK 0..3): урок с такой попыткой считается завершённым
 COMPLETED_CORRECTNESS = 3
+# correctness отдельного пройденного задания, пока весь урок не подтверждён
+PASSED_EXERCISE_CORRECTNESS = 2
+# пространство имён в JSONB LessonAttempt.answers для успешных заданий
+PASSED_EXERCISES_KEY = "__passed_exercises__"
 
 
 # V5__enrollments_attempts

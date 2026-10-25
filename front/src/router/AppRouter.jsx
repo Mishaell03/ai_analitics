@@ -4,6 +4,7 @@ export const ROUTES = {
     registration: "/registration",
     courses: '/courses',
     course: '/course',
+    lesson: '/course',
     profile: '/profile',
     admin: '/admin',
     admin_users: '/admin/users',
