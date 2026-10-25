@@ -1,7 +1,7 @@
 from typing import Any, NoReturn
 
 from fastapi import Request
-from sqlalchemy import func, select
+from sqlalchemy import and_, case, exists, func, literal, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import raise_backend_error
@@ -37,7 +37,11 @@ from app.core.storage_paths import (
 )
 from app.models.courses import Course, CourseModule, Lesson
 from app.core.pagination import get_pagination, get_total_pages
-from app.models.enrollments_progress import CourseEnrollment
+from app.models.enrollments_progress import (
+    COMPLETED_CORRECTNESS,
+    CourseEnrollment,
+    LessonAttempt,
+)
 
 
 def is_published(model):
@@ -273,6 +277,21 @@ class BaseCoursesService:
 
         return result.scalar_one_or_none() is not None
 
+    @staticmethod
+    def _lesson_completed_expression(user_id: int | None):
+        """CORRELATED ПРИЗНАК ЗАВЕРШЕНИЯ УРОКА ТЕКУЩИМ ПОЛЬЗОВАТЕЛЕМ."""
+
+        if user_id is None:
+            return literal(False)
+
+        return exists(
+            select(LessonAttempt.attempt_id).where(
+                LessonAttempt.user_id == user_id,
+                LessonAttempt.lesson_id == Lesson.lesson_id,
+                LessonAttempt.correctness == COMPLETED_CORRECTNESS,
+            )
+        ).correlate(Lesson)
+
     # ---------- публичное API ----------
 
     async def get_courses(
@@ -362,6 +381,52 @@ class BaseCoursesService:
 
             enrolled_ids = set(enrolled_result.scalars().all())
 
+        progress_by_course: dict[int, tuple[int, int]] = {}
+        progress_course_ids = enrolled_ids.intersection(
+            course.course_id for course in courses
+        )
+        if user_id is not None and progress_course_ids:
+            progress_result = await self.db.execute(
+                select(
+                    Course.course_id.label("course_id"),
+                    func.count(func.distinct(Lesson.lesson_id)).label("lessons_total"),
+                    func.count(
+                        func.distinct(
+                            case(
+                                (LessonAttempt.attempt_id.is_not(None), Lesson.lesson_id),
+                                else_=None,
+                            )
+                        )
+                    ).label("lessons_completed"),
+                )
+                .select_from(Course)
+                .outerjoin(
+                    CourseModule,
+                    and_(
+                        CourseModule.course_id == Course.course_id,
+                        is_published(CourseModule),
+                    ),
+                )
+                .outerjoin(
+                    Lesson,
+                    and_(Lesson.module_id == CourseModule.module_id, is_published(Lesson)),
+                )
+                .outerjoin(
+                    LessonAttempt,
+                    and_(
+                        LessonAttempt.lesson_id == Lesson.lesson_id,
+                        LessonAttempt.user_id == user_id,
+                        LessonAttempt.correctness == COMPLETED_CORRECTNESS,
+                    ),
+                )
+                .where(Course.course_id.in_(progress_course_ids))
+                .group_by(Course.course_id)
+            )
+            progress_by_course = {
+                row.course_id: (row.lessons_completed, row.lessons_total)
+                for row in progress_result.all()
+            }
+
         course_items = []
 
         cover_urls = await self._get_cover_urls(
@@ -369,6 +434,10 @@ class BaseCoursesService:
         )
 
         for course in courses:
+            lessons_completed, lessons_total = progress_by_course.get(
+                course.course_id,
+                (0, 0),
+            )
             course_items.append(
                 CourseItem(
                     slug=course.slug,
@@ -376,6 +445,11 @@ class BaseCoursesService:
                     description=course.description,
                     main_image_url=cover_urls.get(course.course_id),
                     is_enrolled=course.course_id in enrolled_ids,
+                    is_course_completed=(
+                        lessons_total > 0 and lessons_completed == lessons_total
+                    ),
+                    lessons_completed=lessons_completed,
+                    lessons_total=lessons_total,
                 )
             )
 
@@ -454,9 +528,50 @@ class BaseCoursesService:
 
         modules = modules_result.scalars().all()
 
+        module_progress: dict[int, tuple[int, int]] = {}
+        if is_enrolled and modules:
+            module_ids = [module.module_id for module in modules]
+            module_progress_result = await self.db.execute(
+                select(
+                    CourseModule.module_id.label("module_id"),
+                    func.count(func.distinct(Lesson.lesson_id)).label("lessons_total"),
+                    func.count(
+                        func.distinct(
+                            case(
+                                (LessonAttempt.attempt_id.is_not(None), Lesson.lesson_id),
+                                else_=None,
+                            )
+                        )
+                    ).label("lessons_completed"),
+                )
+                .select_from(CourseModule)
+                .outerjoin(
+                    Lesson,
+                    and_(Lesson.module_id == CourseModule.module_id, is_published(Lesson)),
+                )
+                .outerjoin(
+                    LessonAttempt,
+                    and_(
+                        LessonAttempt.lesson_id == Lesson.lesson_id,
+                        LessonAttempt.user_id == user_id,
+                        LessonAttempt.correctness == COMPLETED_CORRECTNESS,
+                    ),
+                )
+                .where(CourseModule.module_id.in_(module_ids))
+                .group_by(CourseModule.module_id)
+            )
+            module_progress = {
+                row.module_id: (row.lessons_completed, row.lessons_total)
+                for row in module_progress_result.all()
+            }
+
         module_items = []
 
         for module in modules:
+            lessons_completed, lessons_total = module_progress.get(
+                module.module_id,
+                (0, 0),
+            )
             module_content_url = None
 
             file_path = module_content_path(
@@ -478,6 +593,11 @@ class BaseCoursesService:
                     description=module.description,
                     position=module.position,
                     content_url=module_content_url,
+                    is_completed=(
+                        lessons_total > 0 and lessons_completed == lessons_total
+                    ),
+                    lessons_completed=lessons_completed,
+                    lessons_total=lessons_total,
                 )
             )
 
@@ -502,6 +622,46 @@ class BaseCoursesService:
                     bucket=COURSE_CONTENT_BUCKET,
                 )
 
+            course_lessons_completed = 0
+            course_lessons_total = 0
+            if is_enrolled:
+                course_progress_result = await self.db.execute(
+                    select(
+                        func.count(func.distinct(Lesson.lesson_id)).label("lessons_total"),
+                        func.count(
+                            func.distinct(
+                                case(
+                                    (LessonAttempt.attempt_id.is_not(None), Lesson.lesson_id),
+                                    else_=None,
+                                )
+                            )
+                        ).label("lessons_completed"),
+                    )
+                    .select_from(CourseModule)
+                    .outerjoin(
+                        Lesson,
+                        and_(
+                            Lesson.module_id == CourseModule.module_id,
+                            is_published(Lesson),
+                        ),
+                    )
+                    .outerjoin(
+                        LessonAttempt,
+                        and_(
+                            LessonAttempt.lesson_id == Lesson.lesson_id,
+                            LessonAttempt.user_id == user_id,
+                            LessonAttempt.correctness == COMPLETED_CORRECTNESS,
+                        ),
+                    )
+                    .where(
+                        CourseModule.course_id == course.course_id,
+                        is_published(CourseModule),
+                    )
+                )
+                course_progress = course_progress_result.one()
+                course_lessons_total = course_progress.lessons_total
+                course_lessons_completed = course_progress.lessons_completed
+
             course_info = CourseInfo(
                 slug=course.slug,
                 title=course.title,
@@ -509,6 +669,12 @@ class BaseCoursesService:
                 main_image_url=main_image_url,
                 content_url=content_url,
                 is_enrolled=is_enrolled,
+                is_course_completed=(
+                    course_lessons_total > 0
+                    and course_lessons_completed == course_lessons_total
+                ),
+                lessons_completed=course_lessons_completed,
+                lessons_total=course_lessons_total,
             )
 
         return CourseDetailResponse(
@@ -567,15 +733,37 @@ class BaseCoursesService:
         )
 
         # Total lessons: только опубликованные, иначе поедут страницы
+        completed_lesson_count = func.count(
+            func.distinct(
+                case(
+                    (LessonAttempt.attempt_id.is_not(None), Lesson.lesson_id),
+                    else_=None,
+                )
+            )
+        )
         total_result = await self.db.execute(
-            select(func.count(Lesson.lesson_id))
+            select(
+                func.count(func.distinct(Lesson.lesson_id)).label("lessons_total"),
+                (completed_lesson_count if is_enrolled else literal(0))
+                .label("lessons_completed"),
+            )
+            .select_from(Lesson)
+            .outerjoin(
+                LessonAttempt,
+                and_(
+                    LessonAttempt.lesson_id == Lesson.lesson_id,
+                    LessonAttempt.user_id == user_id,
+                    LessonAttempt.correctness == COMPLETED_CORRECTNESS,
+                ),
+            )
             .where(
                 Lesson.module_id == module.module_id,
                 is_published(Lesson),
             )
         )
-
-        total = total_result.scalar_one()
+        module_progress_row = total_result.one()
+        total = module_progress_row.lessons_total
+        module_lessons_completed = module_progress_row.lessons_completed
 
         total_pages = get_total_pages(
             total=total,
@@ -583,7 +771,11 @@ class BaseCoursesService:
         )
 
         lessons_result = await self.db.execute(
-            select(Lesson)
+            select(
+                Lesson,
+                self._lesson_completed_expression(user_id if is_enrolled else None)
+                .label("is_completed"),
+            )
             .where(
                 Lesson.module_id == module.module_id,
                 is_published(Lesson),
@@ -593,16 +785,17 @@ class BaseCoursesService:
             .limit(pagination.page_size)
         )
 
-        lessons = lessons_result.scalars().all()
+        lessons = lessons_result.all()
 
         lesson_items = [
             LessonItem(
-                lesson_id=lesson.lesson_id,
-                title=lesson.title,
-                description=lesson.description,
-                position=lesson.position,
+                lesson_id=row[0].lesson_id,
+                title=row[0].title,
+                description=row[0].description,
+                position=row[0].position,
+                is_completed=row[1],
             )
-            for lesson in lessons
+            for row in lessons
         ]
 
         # Module information only on the first page
@@ -630,6 +823,11 @@ class BaseCoursesService:
                 description=module.description,
                 position=module.position,
                 content_url=module_content_url,
+                is_completed=(
+                    is_enrolled and total > 0 and module_lessons_completed == total
+                ),
+                lessons_completed=module_lessons_completed,
+                lessons_total=total,
             )
 
         return LessonsResponse(
@@ -688,6 +886,19 @@ class BaseCoursesService:
             course_id=course.course_id,
         )
 
+        lesson_is_completed = False
+        if is_enrolled:
+            completed_result = await self.db.execute(
+                select(LessonAttempt.attempt_id)
+                .where(
+                    LessonAttempt.user_id == user_id,
+                    LessonAttempt.lesson_id == lesson.lesson_id,
+                    LessonAttempt.correctness == COMPLETED_CORRECTNESS,
+                )
+                .limit(1)
+            )
+            lesson_is_completed = completed_result.scalar_one_or_none() is not None
+
         # Lesson content only for enrolled users
         content_url = None
 
@@ -721,6 +932,7 @@ class BaseCoursesService:
                 description=lesson.description,
                 position=lesson.position,
                 content_url=content_url,
+                is_completed=lesson_is_completed,
             ),
         )
 

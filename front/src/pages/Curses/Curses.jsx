@@ -272,8 +272,17 @@ export function Courses() {
 
                                         <p>{course.description}</p>
 
-                                        <div className={styles.cardFooter}>
-                                            <span>{course.is_enrolled ? t("cardContinue") : t("cardAction")}</span>
+                                        {course.is_enrolled && (
+                                            <div className={styles.courseProgress} data-complete={course.is_course_completed}>
+                                                {!course.is_course_completed && <span>{t("courseInProgress")}</span>}
+                                                <small>{t("courseProgress")}: {course.lessons_completed}/{course.lessons_total}</small>
+                                            </div>
+                                        )}
+
+                                        <div className={styles.cardFooter} data-complete={course.is_course_completed}>
+                                            <span>{course.is_course_completed
+                                                ? t("courseCompleted")
+                                                : course.is_enrolled ? t("cardContinue") : t("cardAction")}</span>
                                             <span className={styles.cardLine}/>
                                         </div>
                                     </div>

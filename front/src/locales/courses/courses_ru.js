@@ -21,6 +21,9 @@ export default {
     cardCourse: "Курс",
     cardAction: "Подробнее",
     cardContinue: "Продолжить обучение",
+    courseCompleted: "Курс завершён",
+    courseInProgress: "Курс не завершён",
+    courseProgress: "Пройдено уроков",
 
     errorTitle: "Не удалось загрузить курсы",
     errorDescription: "Проверьте подключение к интернету и попробуйте ещё раз.",

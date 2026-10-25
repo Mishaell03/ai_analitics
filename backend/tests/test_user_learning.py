@@ -785,3 +785,79 @@ def test_next_lesson_requires_authentication(learning, api_client):
 
     assert response.status_code == 401
     assert response.json()["detail"]["code"] == "INVALID_SESSION"
+
+
+def test_completion_status_is_returned_for_courses_modules_and_lessons(learning, api_client):
+    """СТАТУСЫ ЗАВЕРШЕНИЯ ВЕРНЫ ДЛЯ УРОКА, МОДУЛЯ И КУРСА."""
+
+    add_attempt(learning.user_id, learning.lesson_ids["lesson_1"])
+    client = api_client(learning.user_token)
+
+    course_response = request(
+        client,
+        f"/api/v1/courses/{learning.course_slug}",
+        params={"page_size": 100},
+    )
+    assert course_response.status_code == 200
+    modules = course_response.json()["modules"]
+    module_1 = next(module for module in modules if module["title"] == "Module 1")
+    assert module_1["is_completed"] is False
+    assert module_1["lessons_completed"] == 1
+    assert module_1["lessons_total"] == 3
+
+    lessons_response = request(
+        client,
+        f"/api/v1/courses/{learning.course_slug}/modules/{module_1['module_id']}",
+    )
+    assert lessons_response.status_code == 200
+    lessons_body = lessons_response.json()
+    assert lessons_body["module"]["is_completed"] is False
+    completed = {
+        lesson["lesson_id"]: lesson["is_completed"]
+        for lesson in lessons_body["lessons"]
+    }
+    assert completed[learning.lesson_ids["lesson_1"]] is True
+    assert completed[learning.lesson_ids["lesson_2"]] is False
+
+    lesson_response = request(
+        client,
+        f"/api/v1/courses/{learning.course_slug}/modules/{module_1['module_id']}"
+        f"/lessons/{learning.lesson_ids['lesson_1']}",
+    )
+    assert lesson_response.status_code == 200
+    assert lesson_response.json()["lesson"]["is_completed"] is True
+
+    profile_response = request(
+        client,
+        "/api/v1/courses",
+        params={"enrolled_only": True, "page_size": 100},
+    )
+    profile_course = next(
+        item for item in profile_response.json()["courses"]
+        if item["slug"] == learning.course_slug
+    )
+    assert profile_course["is_course_completed"] is False
+    assert profile_course["lessons_completed"] == 1
+    assert profile_course["lessons_total"] == 6
+
+    for lesson_id in learning.visible_lesson_ids[1:]:
+        add_attempt(learning.user_id, lesson_id)
+
+    fully_completed = request(
+        client,
+        f"/api/v1/courses/{learning.course_slug}",
+        params={"page_size": 100},
+    )
+    assert all(module["is_completed"] for module in fully_completed.json()["modules"])
+
+    completed_profile = request(
+        client,
+        "/api/v1/courses",
+        params={"enrolled_only": True, "page_size": 100},
+    )
+    completed_course = next(
+        item for item in completed_profile.json()["courses"]
+        if item["slug"] == learning.course_slug
+    )
+    assert completed_course["is_course_completed"] is True
+    assert completed_course["lessons_completed"] == completed_course["lessons_total"]

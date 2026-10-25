@@ -571,6 +571,33 @@
     overflow: hidden;
 }
 
+.courseProgress {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin-top: 14px;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.courseProgress span {
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: rgb(182 95 253 / 0.09);
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.courseProgress[data-complete="true"] span {
+    background: rgb(42 166 104 / 0.1);
+    color: #21865b;
+}
+
+.courseProgress small {
+    color: var(--muted);
+}
+
 .cardFooter {
     margin-top: auto;
     padding-top: 18px;
@@ -583,6 +610,10 @@
 
     font-size: 12px;
     font-weight: 700;
+}
+
+.cardFooter[data-complete="true"] {
+    color: #21865b;
 }
 
 .cardLine {

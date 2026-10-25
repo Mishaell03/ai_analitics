@@ -214,18 +214,21 @@ class LessonContentService(BaseCoursesService):
         parsed = self._parser.parse(raw_content)
 
         completed_exercises: dict[str, str] = {}
+        lesson_is_completed = False
         if user_id is not None:
             attempts_result = await self.db.execute(
                 select(LessonAttempt.answers, LessonAttempt.correctness)
                 .where(
                     LessonAttempt.user_id == user_id,
                     LessonAttempt.lesson_id == lesson.lesson_id,
-                    LessonAttempt.answers.is_not(None),
                 )
                 .order_by(LessonAttempt.created_at, LessonAttempt.attempt_id)
             )
-            completed_exercises = self._merge_completed_exercises(
-                attempts_result.all()
+            attempt_rows = attempts_result.all()
+            completed_exercises = self._merge_completed_exercises(attempt_rows)
+            lesson_is_completed = any(
+                attempt.correctness == COMPLETED_CORRECTNESS
+                for attempt in attempt_rows
             )
 
         content_url = await minio_storage.get_url(
@@ -241,6 +244,7 @@ class LessonContentService(BaseCoursesService):
                 description=lesson.description,
                 position=lesson.position,
                 content_url=content_url,
+                is_completed=lesson_is_completed,
             ),
             content=parsed.content,
             content_type="markdown",

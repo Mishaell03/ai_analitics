@@ -7,6 +7,9 @@ class CourseItem(BaseModel):
     description: str | None = None
     main_image_url: str | None = None
     is_enrolled: bool = False
+    is_course_completed: bool = False
+    lessons_completed: int = 0
+    lessons_total: int = 0
 
 # users list of courses
 class CoursesResponse(BaseModel):
@@ -40,6 +43,9 @@ class ModuleItem(BaseModel):
     description: str | None = None
     position: int
     content_url: str | None = None
+    is_completed: bool = False
+    lessons_completed: int = 0
+    lessons_total: int = 0
 
 # info about course id (at page 1 have CourseInfo, next it = None)
 class CourseDetailResponse(BaseModel):
@@ -55,6 +61,7 @@ class LessonItem(BaseModel):
     title: str
     description: str | None = None
     position: int
+    is_completed: bool = False
 
 # detailed information about selected module
 # returned only on page 1 of lessons
@@ -64,6 +71,9 @@ class ModuleInfo(BaseModel):
     description: str | None = None
     position: int
     content_url: str | None = None
+    is_completed: bool = False
+    lessons_completed: int = 0
+    lessons_total: int = 0
 
 # list of lessons of selected module
 # at page 1 have ModuleInfo, next it = None
@@ -91,6 +101,7 @@ class LessonInfo(BaseModel):
     description: str | None = None
     position: int
     content_url: str | None = None
+    is_completed: bool = False
 
 class LessonDetailResponse(BaseModel):
     course: CourseShortInfo

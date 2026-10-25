@@ -38,6 +38,9 @@ export default {
     coursesTitle: "Мои курсы",
     coursesCount: "курсов в процессе",
     coursesContinue: "Продолжить",
+    courseCompleted: "Курс завершён",
+    courseInProgress: "Курс не завершён",
+    courseProgress: "Пройдено уроков",
     coursesLink: "Все курсы",
 
     coursesLoadingTitle: "Загружаем курсы",

@@ -437,8 +437,17 @@ export function Profile() {
 
                                         <p>{course.description}</p>
 
-                                        <div className={styles.cardFooter}>
-                                            <span>{t("coursesContinue")}</span>
+                                        <div className={styles.courseCompletion}>
+                                            {!course.is_course_completed && (
+                                                <span data-complete="false">{t("courseInProgress")}</span>
+                                            )}
+                                            <small>
+                                                {t("courseProgress")}: {course.lessons_completed}/{course.lessons_total}
+                                            </small>
+                                        </div>
+
+                                        <div className={styles.cardFooter} data-complete={course.is_course_completed}>
+                                            <span>{course.is_course_completed ? t("courseCompleted") : t("coursesContinue")}</span>
                                             <span className={styles.cardLine}/>
                                         </div>
                                     </div>

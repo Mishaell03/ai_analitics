@@ -1,6 +1,6 @@
 import {useTranslation} from "@/hooks/useTranslation.js";
 import styles from "./course.module.css";
-import {ArrowLeft, ArrowRight, BookOpen, ChevronLeft, ChevronRight, ExternalLink, ImageOff, Play, RefreshCw} from "lucide-react";
+import {ArrowLeft, ArrowRight, BookOpen, CheckCircle2, ChevronLeft, ChevronRight, ExternalLink, ImageOff, Play, RefreshCw} from "lucide-react";
 import {Link, useNavigate, useParams} from "react-router-dom";
 import {useCallback, useEffect, useState,} from "react";
 import {api} from "@/api/axios.js";
@@ -16,6 +16,8 @@ export function Course() {
     const {slug} = useParams();
     const [course, setCourse] = useState(null);
     const [modules, setModules] = useState([]);
+    const [expandedModule, setExpandedModule] = useState(null);
+    const [moduleLessons, setModuleLessons] = useState({});
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [enrolling, setEnrolling] = useState(false);
@@ -72,6 +74,43 @@ export function Course() {
         }
     }, [slug]);
 
+    const fetchModuleLessons = useCallback(async (moduleId, requestedPage = 1) => {
+        setModuleLessons((current) => ({
+            ...current,
+            [moduleId]: {...current[moduleId], loading: true, error: false},
+        }));
+        try {
+            const {data} = await api.get(API_ROUTES.COURSE_MODULE_LESSONS(slug, moduleId), {
+                params: {page: requestedPage, page_size: 100},
+            });
+            setModuleLessons((current) => ({
+                ...current,
+                [moduleId]: {
+                    lessons: data.lessons ?? [],
+                    page: data.current_page ?? requestedPage,
+                    totalPages: data.total_pages ?? 1,
+                    loading: false,
+                    error: false,
+                },
+            }));
+        } catch {
+            setModuleLessons((current) => ({
+                ...current,
+                [moduleId]: {...current[moduleId], loading: false, error: true},
+            }));
+        }
+    }, [slug]);
+
+    const toggleModule = (moduleId) => {
+        if (!course?.is_enrolled) return;
+        if (expandedModule === moduleId) {
+            setExpandedModule(null);
+            return;
+        }
+        setExpandedModule(moduleId);
+        if (!moduleLessons[moduleId]) fetchModuleLessons(moduleId);
+    };
+
     const handleEnroll = async () => {
         if (!slug || enrolling) return;
 
@@ -115,6 +154,8 @@ export function Course() {
                     }
                     : current
             );
+            setExpandedModule(null);
+            setModuleLessons({});
 
             setShowUnenrollModal(false);
         } catch {
@@ -229,6 +270,16 @@ export function Course() {
                             </p>
                         )}
 
+                        {course?.is_enrolled && (
+                            <div className={styles.courseProgressStatus} data-complete={course.is_course_completed}>
+                                <CheckCircle2 aria-hidden="true"/>
+                                <span>
+                                    <strong>{course.is_course_completed ? t("courseCompleted") : t("courseInProgress")}</strong>
+                                    <small>{t("courseProgress")}: {course.lessons_completed}/{course.lessons_total}</small>
+                                </span>
+                            </div>
+                        )}
+
                         <div className={styles.courseActions}>
                             {!course?.is_enrolled ? (
                                 <button type="button" className={styles.enrollButton} onClick={handleEnroll}
@@ -318,7 +369,8 @@ export function Course() {
                         <div className={styles.modules}>
                             {modules.map(
                                 (module, index) => (
-                                    <article className={styles.module} key={module.module_id}>
+                                    <article className={styles.module} data-complete={course?.is_enrolled && module.is_completed}
+                                             key={module.module_id}>
                                         <div className={styles.moduleNumber}>
                                             {String((page - 1) * PAGE_SIZE + index + 1).padStart(2, "0")}
                                         </div>
@@ -326,7 +378,22 @@ export function Course() {
                                             <div className={styles.moduleTop}>
                                                 <div>
                                                     <span className={styles.moduleLabel}>{t("moduleLabel")}</span>
-                                                    <h3>{module.title}</h3>
+                                                    {course?.is_enrolled && (
+                                                        <span className={styles.completionStatus}
+                                                              data-complete={module.is_completed}>
+                                                            {module.is_completed
+                                                                ? `${t("moduleCompleted")} · ${module.lessons_completed}/${module.lessons_total}`
+                                                                : `${t("moduleInProgress")} · ${module.lessons_completed}/${module.lessons_total}`}
+                                                        </span>
+                                                    )}
+                                                    {course?.is_enrolled ? (
+                                                        <button type="button" className={styles.moduleToggle}
+                                                                aria-expanded={expandedModule === module.module_id}
+                                                                onClick={() => toggleModule(module.module_id)}>
+                                                            <h3>{module.title}</h3>
+                                                            <ChevronRight aria-hidden="true"/>
+                                                        </button>
+                                                    ) : <h3>{module.title}</h3>}
                                                 </div>
 
                                                 {module.content_url && (
@@ -346,6 +413,57 @@ export function Course() {
                                                     <ExternalLink/>
                                                 </a>
                                             )}
+
+                                            {course?.is_enrolled && expandedModule === module.module_id && (() => {
+                                                const moduleState = moduleLessons[module.module_id];
+                                                if (!moduleState || moduleState.loading) {
+                                                    return <div className={styles.lessonListLoading} role="status">
+                                                        <span/><span/><span/>
+                                                    </div>;
+                                                }
+                                                if (moduleState.error) {
+                                                    return <div className={styles.moduleLessonsError} role="alert">
+                                                        <span>{t("errorDescription")}</span>
+                                                        <button type="button" onClick={() => fetchModuleLessons(module.module_id, moduleState.page ?? 1)}>
+                                                            {t("errorRetry")}
+                                                        </button>
+                                                    </div>;
+                                                }
+                                                if (!moduleState.lessons.length) {
+                                                    return <p className={styles.moduleLessonsEmpty}>{t("emptyLessonsTitle")}</p>;
+                                                }
+                                                return <div className={styles.moduleLessons}>
+                                                    {moduleState.lessons.map((lesson, lessonIndex) => (
+                                                        <Link className={styles.lessonLink} data-complete={lesson.is_completed}
+                                                              to={`${ROUTES.lesson}/${slug}/modules/${module.module_id}/lessons/${lesson.lesson_id}`}
+                                                              key={lesson.lesson_id}>
+                                                            <span className={styles.lessonIndex}>
+                                                                {String((moduleState.page - 1) * 100 + lessonIndex + 1).padStart(2, "0")}
+                                                            </span>
+                                                            <span className={styles.lessonText}>
+                                                                 <strong>{lesson.title}</strong>
+                                                                 {lesson.description && <small>{lesson.description}</small>}
+                                                                 <small className={styles.lessonCompletionStatus}
+                                                                        data-complete={lesson.is_completed}>
+                                                                     {lesson.is_completed ? t("lessonCompleted") : t("lessonNotCompleted")}
+                                                                 </small>
+                                                             </span>
+                                                            <ArrowRight aria-hidden="true"/>
+                                                        </Link>
+                                                    ))}
+                                                    {moduleState.totalPages > 1 && <div className={styles.lessonPagination}>
+                                                        <button type="button" disabled={moduleState.page <= 1}
+                                                                onClick={() => fetchModuleLessons(module.module_id, moduleState.page - 1)}>
+                                                            <ChevronLeft aria-hidden="true"/>{t("paginationPrevious")}
+                                                        </button>
+                                                        <span>{moduleState.page} / {moduleState.totalPages}</span>
+                                                        <button type="button" disabled={moduleState.page >= moduleState.totalPages}
+                                                                onClick={() => fetchModuleLessons(module.module_id, moduleState.page + 1)}>
+                                                            {t("paginationNext")}<ChevronRight aria-hidden="true"/>
+                                                        </button>
+                                                    </div>}
+                                                </div>;
+                                            })()}
                                         </div>
                                     </article>
                                 )

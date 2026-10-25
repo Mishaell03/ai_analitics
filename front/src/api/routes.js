@@ -13,6 +13,7 @@ export const API_ROUTES = {
     COURSES: "/courses",
     COURSE_BY_ID: (slug) => `/courses/${slug}`,
     COURSE_NEXT_LESSON: (slug) => `/courses/${slug}/next-lesson`,
+    COURSE_MODULE_LESSONS: (slug, moduleId) => `/courses/${slug}/modules/${moduleId}`,
     COURSE_LESSON: (slug, moduleId, lessonId) => `/courses/${slug}/modules/${moduleId}/lessons/${lessonId}`,
     COURSE_LESSON_CONTENT: (slug, moduleId, lessonId) => `/courses/${slug}/modules/${moduleId}/lessons/${lessonId}/content`,
     COURSE_EXERCISE_CHECK: (slug, moduleId, lessonId, exerciseId) =>
