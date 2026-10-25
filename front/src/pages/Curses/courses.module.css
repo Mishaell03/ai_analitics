@@ -198,8 +198,7 @@
 
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 20px;
+    gap: 10px;
 }
 
 .search {
@@ -207,7 +206,8 @@
     align-items: center;
     gap: 12px;
 
-    width: 370px;
+    flex: 1;
+    width: auto;
     max-width: 100%;
 
     padding: 0 17px;
@@ -259,45 +259,75 @@
 }
 
 .filterWrapper {
+    position: relative;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: 10px;
 }
 
-.filterIcon {
+.filterToggle {
     display: flex;
     align-items: center;
     justify-content: center;
-
-    width: 38px;
-    height: 38px;
-
+    width: 46px;
+    height: 46px;
+    padding: 0;
+    border: 1px solid rgb(128 128 128 / 0.12);
     border-radius: 12px;
-
-    color: var(--muted);
     background: var(--card);
+    color: var(--muted);
+    cursor: pointer;
+    transition: 0.2s ease;
 }
 
-.filterIcon svg {
+.filterToggle:hover,
+.filterToggle[aria-expanded="true"] {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.filterToggle svg {
     width: 17px;
     height: 17px;
 }
 
 .filters {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 10px);
+    right: 0;
     display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 8px;
+    flex-direction: column;
+    min-width: 220px;
+    gap: 4px;
+    padding: 8px;
+    border: 1px solid rgb(128 128 128 / 0.12);
+    border-radius: 14px;
+    background: var(--card);
+    box-shadow: 0 14px 36px rgb(0 0 0 / 0.14);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transform-origin: top right;
+    transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+}
+
+.filters[data-open="true"] {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
 }
 
 .filter {
-    padding: 10px 16px;
+    width: 100%;
+    padding: 11px 12px;
 
     border: 1px solid transparent;
     border-radius: 12px;
 
     background: transparent;
     color: var(--muted);
+    text-align: left;
 
     font-size: 13px;
     font-weight: 600;
@@ -855,20 +885,6 @@
         margin-top: 10px;
     }
 
-    .toolbar {
-        align-items: flex-start;
-        flex-direction: column;
-    }
-
-    .filterWrapper,
-    .filters {
-        width: 100%;
-    }
-
-    .filters {
-        justify-content: flex-start;
-    }
-
     .grid {
         grid-template-columns:
             repeat(2, minmax(0, 1fr));
@@ -910,28 +926,6 @@
 
     .toolbar {
         margin-bottom: 42px;
-    }
-
-    .search {
-        width: 100%;
-    }
-
-    .filterIcon {
-        display: none;
-    }
-
-    .filters {
-        overflow-x: auto;
-
-        flex-wrap: nowrap;
-
-        padding-bottom: 3px;
-
-        scrollbar-width: none;
-    }
-
-    .filters::-webkit-scrollbar {
-        display: none;
     }
 
     .filter {

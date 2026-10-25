@@ -302,6 +302,7 @@ class BaseCoursesService:
             user_id: int | None = None,
             enrolled_only: bool = False,
             search_query: str | None = None,
+            enrollment_filter: str = "all",
     ) -> CoursesResponse:
         """MINIMAL INFORMATION OF THE COURSES
 
@@ -326,7 +327,8 @@ class BaseCoursesService:
             .where(is_published(Course))
         )
 
-        if enrolled_only:
+        should_filter_enrolled = enrolled_only or enrollment_filter == "enrolled"
+        if should_filter_enrolled:
             enrollment_join = CourseEnrollment.course_id == Course.course_id
 
             total_query = (
@@ -348,6 +350,16 @@ class BaseCoursesService:
 
         else:
             order_by = (Course.course_id,)
+
+            if enrollment_filter == "not_enrolled" and user_id is not None:
+                has_enrollment = exists(
+                    select(CourseEnrollment.enrollment_id).where(
+                        CourseEnrollment.user_id == user_id,
+                        CourseEnrollment.course_id == Course.course_id,
+                    )
+                ).correlate(Course)
+                total_query = total_query.where(~has_enrollment)
+                courses_query = courses_query.where(~has_enrollment)
 
         normalized_query = normalize_search_text(search_query)
         if normalized_query:
@@ -374,7 +386,7 @@ class BaseCoursesService:
 
         enrolled_ids = set()
 
-        if enrolled_only:
+        if should_filter_enrolled:
             enrolled_ids = {course.course_id for course in courses}
 
         elif user_id is not None and courses:

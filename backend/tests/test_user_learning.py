@@ -891,3 +891,26 @@ def test_course_catalog_search_ranks_exact_and_fuzzy_matches(learning, api_clien
     )
     assert empty_response.status_code == 200
     assert empty_response.json()["total_pages"] >= 1
+
+
+def test_course_catalog_enrollment_filters(learning, api_client):
+    client = api_client(learning.user_token)
+
+    enrolled_response = request(
+        client,
+        "/api/v1/courses",
+        params={"enrollment_filter": "enrolled", "page_size": 100},
+    )
+    not_enrolled_response = request(
+        client,
+        "/api/v1/courses",
+        params={"enrollment_filter": "not_enrolled", "page_size": 100},
+    )
+    assert enrolled_response.status_code == 200
+    assert not_enrolled_response.status_code == 200
+
+    enrolled_slugs = {item["slug"] for item in enrolled_response.json()["courses"]}
+    not_enrolled_slugs = {item["slug"] for item in not_enrolled_response.json()["courses"]}
+    assert learning.course_slug in enrolled_slugs
+    assert learning.course_slug not in not_enrolled_slugs
+    assert enrolled_slugs.isdisjoint(not_enrolled_slugs)

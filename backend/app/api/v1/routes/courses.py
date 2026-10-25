@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Request, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -54,6 +56,10 @@ async def get_courses(
             default=False,
             description="Вернуть только курсы, на которые записан текущий пользователь",
         ),
+        enrollment_filter: Literal["all", "enrolled", "not_enrolled"] = Query(
+            default="all",
+            description="Фильтр каталога по записи текущего пользователя",
+        ),
 ):
     courses = await BaseCoursesService(db).get_courses(
         page=page,
@@ -61,6 +67,7 @@ async def get_courses(
         user_id=current.user.user_id,
         enrolled_only=enrolled_only,
         search_query=search_query,
+        enrollment_filter=enrollment_filter,
     )
 
     await user_event_logs(
@@ -896,4 +903,3 @@ async def delete_module_flat_alias3(
     )
 
     return result
-

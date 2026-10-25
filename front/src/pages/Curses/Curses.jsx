@@ -20,6 +20,7 @@ export function Courses() {
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [activeFilter, setActiveFilter] = useState("all");
+    const [filtersOpen, setFiltersOpen] = useState(false);
     const requestVersion = useRef(0);
     const searchDebounceTimer = useRef(null);
 
@@ -30,16 +31,12 @@ export function Courses() {
                 label: t("filterAll"),
             },
             {
-                id: "analytics",
-                label: t("filterAnalytics"),
+                id: "enrolled",
+                label: t("filterEnrolled"),
             },
             {
-                id: "ai",
-                label: t("filterAi"),
-            },
-            {
-                id: "career",
-                label: t("filterCareer"),
+                id: "not_enrolled",
+                label: t("filterNotEnrolled"),
             },
         ],
         [t]
@@ -60,6 +57,7 @@ export function Courses() {
                 params: {
                     page,
                     ...(query ? {q: query} : {}),
+                    ...(activeFilter !== "all" ? {enrollment_filter: activeFilter} : {}),
                 },
             });
 
@@ -72,7 +70,7 @@ export function Courses() {
         } finally {
             if (requestId === requestVersion.current) setLoading(false);
         }
-    }, [page, debouncedSearch]);
+    }, [page, debouncedSearch, activeFilter]);
 
     useEffect(() => () => window.clearTimeout(searchDebounceTimer.current), []);
 
@@ -84,22 +82,14 @@ export function Courses() {
      * ---------- filtering ----------
      */
 
-    const filteredCourses = useMemo(() => {
-        return courses.filter((course) => {
-            const matchesCategory =
-                activeFilter === "all" ||
-                !course.category ||
-                course.category === activeFilter;
-
-            return matchesCategory;
-        });
-    }, [courses, activeFilter]);
+    const filteredCourses = courses;
 
     /*
      * ---------- handlers ----------
      */
 
     const handleFilterChange = (filter) => {
+        setPage(1);
         setActiveFilter(filter);
     };
 
@@ -172,9 +162,18 @@ export function Courses() {
                 </label>
 
                 <div className={styles.filterWrapper}>
-                    <div className={styles.filterIcon}><SlidersHorizontal/></div>
+                    <button
+                        type="button"
+                        className={styles.filterToggle}
+                        aria-expanded={filtersOpen}
+                        aria-controls="course-filters"
+                        aria-label={t("additionalFilters")}
+                        onClick={() => setFiltersOpen((open) => !open)}
+                    >
+                        <SlidersHorizontal/>
+                    </button>
 
-                    <div className={styles.filters}>
+                    <div className={styles.filters} id="course-filters" data-open={filtersOpen}>
                         {filters.map((filter) => (
                             <button key={filter.id} type="button" className={styles.filter}
                                     data-active={activeFilter === filter.id}
