@@ -861,3 +861,33 @@ def test_completion_status_is_returned_for_courses_modules_and_lessons(learning,
     )
     assert completed_course["is_course_completed"] is True
     assert completed_course["lessons_completed"] == completed_course["lessons_total"]
+
+
+def test_course_catalog_search_ranks_exact_and_fuzzy_matches(learning, api_client):
+    client = api_client(learning.user_token)
+
+    exact_response = request(
+        client,
+        "/api/v1/courses",
+        params={"q": "Pytest learning course", "page_size": 100},
+    )
+    assert exact_response.status_code == 200
+    exact_slugs = [item["slug"] for item in exact_response.json()["courses"]]
+    assert exact_slugs[0] == learning.course_slug
+
+    typo_response = request(
+        client,
+        "/api/v1/courses",
+        params={"q": "pytes learning cours", "page_size": 100},
+    )
+    assert typo_response.status_code == 200
+    typo_slugs = [item["slug"] for item in typo_response.json()["courses"]]
+    assert learning.course_slug in typo_slugs
+
+    empty_response = request(
+        client,
+        "/api/v1/courses",
+        params={"q": "   ", "page_size": 100},
+    )
+    assert empty_response.status_code == 200
+    assert empty_response.json()["total_pages"] >= 1

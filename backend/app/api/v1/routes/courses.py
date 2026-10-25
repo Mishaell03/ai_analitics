@@ -44,6 +44,12 @@ async def get_courses(
         current: CurrentUserContext = Depends(get_current_user),
         page: int = Query(1, ge=1),
         page_size: int = Query(20, ge=1, le=100),
+        search_query: str | None = Query(
+            default=None,
+            alias="q",
+            max_length=100,
+            description="Поиск по названию, описанию и идентификатору курса",
+        ),
         enrolled_only: bool = Query(
             default=False,
             description="Вернуть только курсы, на которые записан текущий пользователь",
@@ -54,6 +60,7 @@ async def get_courses(
         page_size=page_size,
         user_id=current.user.user_id,
         enrolled_only=enrolled_only,
+        search_query=search_query,
     )
 
     await user_event_logs(
@@ -889,5 +896,4 @@ async def delete_module_flat_alias3(
     )
 
     return result
-
 

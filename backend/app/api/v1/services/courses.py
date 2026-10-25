@@ -42,6 +42,7 @@ from app.models.enrollments_progress import (
     CourseEnrollment,
     LessonAttempt,
 )
+from app.api.v1.services.course_search import normalize_search_text, rank_courses
 
 
 def is_published(model):
@@ -300,6 +301,7 @@ class BaseCoursesService:
             page_size: int = 10,
             user_id: int | None = None,
             enrolled_only: bool = False,
+            search_query: str | None = None,
     ) -> CoursesResponse:
         """MINIMAL INFORMATION OF THE COURSES
 
@@ -347,23 +349,28 @@ class BaseCoursesService:
         else:
             order_by = (Course.course_id,)
 
-        total_result = await self.db.execute(total_query)
+        normalized_query = normalize_search_text(search_query)
+        if normalized_query:
+            # Поиск ранжирует весь опубликованный каталог до пагинации,
+            # иначе совпадения с более высоким score на соседних страницах
+            # могли бы оказаться ниже менее релевантных результатов.
+            result = await self.db.execute(courses_query.order_by(*order_by))
+            courses = rank_courses(normalized_query, result.scalars().all())
+            total = len(courses)
+            offset = pagination.offset
+            courses = courses[offset:offset + pagination.page_size]
+        else:
+            total_result = await self.db.execute(total_query)
+            total = total_result.scalar_one()
+            result = await self.db.execute(
+                courses_query
+                .order_by(*order_by)
+                .offset(pagination.offset)
+                .limit(pagination.page_size)
+            )
+            courses = result.scalars().all()
 
-        total = total_result.scalar_one()
-
-        total_pages = get_total_pages(
-            total=total,
-            page_size=pagination.page_size,
-        )
-
-        result = await self.db.execute(
-            courses_query
-            .order_by(*order_by)
-            .offset(pagination.offset)
-            .limit(pagination.page_size)
-        )
-
-        courses = result.scalars().all()
+        total_pages = get_total_pages(total=total, page_size=pagination.page_size)
 
         enrolled_ids = set()
 

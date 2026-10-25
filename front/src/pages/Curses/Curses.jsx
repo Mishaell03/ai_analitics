@@ -2,7 +2,7 @@ import {useTranslation} from "@/hooks/useTranslation.js";
 import styles from "./courses.module.css";
 import {ArrowRight, ChevronLeft, ChevronRight, ImageOff, Search, SlidersHorizontal} from "lucide-react";
 import {Link} from "react-router-dom";
-import {useCallback, useEffect, useMemo, useState,} from "react";
+import {useCallback, useEffect, useMemo, useRef, useState,} from "react";
 import {api} from "@/api/axios.js";
 import {API_ROUTES} from "@/api/routes.js";
 import {ROUTES} from "@/router/AppRouter.jsx";
@@ -18,7 +18,10 @@ export function Courses() {
     const [error, setError] = useState(false);
 
     const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [activeFilter, setActiveFilter] = useState("all");
+    const requestVersion = useRef(0);
+    const searchDebounceTimer = useRef(null);
 
     const filters = useMemo(
         () => [
@@ -47,24 +50,31 @@ export function Courses() {
      */
 
     const fetchCourses = useCallback(async () => {
+        const requestId = ++requestVersion.current;
         setLoading(true);
         setError(false);
 
         try {
+            const query = debouncedSearch.trim().replace(/\s+/g, " ");
             const {data} = await api.get(API_ROUTES.COURSES, {
                 params: {
                     page,
+                    ...(query ? {q: query} : {}),
                 },
             });
 
+            if (requestId !== requestVersion.current) return;
             setCourses(data.courses ?? []);
             setTotalPages(data.total_pages ?? 1);
         } catch {
+            if (requestId !== requestVersion.current) return;
             setError(true);
         } finally {
-            setLoading(false);
+            if (requestId === requestVersion.current) setLoading(false);
         }
-    }, [page]);
+    }, [page, debouncedSearch]);
+
+    useEffect(() => () => window.clearTimeout(searchDebounceTimer.current), []);
 
     useEffect(() => {
         fetchCourses();
@@ -75,26 +85,15 @@ export function Courses() {
      */
 
     const filteredCourses = useMemo(() => {
-        const query = search.trim().toLowerCase();
-
         return courses.filter((course) => {
-            const matchesSearch =
-                !query ||
-                course.title
-                    ?.toLowerCase()
-                    .includes(query) ||
-                course.description
-                    ?.toLowerCase()
-                    .includes(query);
-
             const matchesCategory =
                 activeFilter === "all" ||
                 !course.category ||
                 course.category === activeFilter;
 
-            return matchesSearch && matchesCategory;
+            return matchesCategory;
         });
-    }, [courses, search, activeFilter]);
+    }, [courses, activeFilter]);
 
     /*
      * ---------- handlers ----------
@@ -105,12 +104,24 @@ export function Courses() {
     };
 
     const handleSearchChange = (event) => {
-        setSearch(event.target.value);
+        const value = event.target.value;
+        setSearch(value);
+        window.clearTimeout(searchDebounceTimer.current);
+        searchDebounceTimer.current = window.setTimeout(
+            () => {
+                setPage(1);
+                setDebouncedSearch(value);
+            },
+            300,
+        );
     };
 
     const handleResetFilters = () => {
+        window.clearTimeout(searchDebounceTimer.current);
         setSearch("");
+        setDebouncedSearch("");
         setActiveFilter("all");
+        setPage(1);
     };
 
 
@@ -156,6 +167,7 @@ export function Courses() {
                     <Search/>
 
                     <input type="search" value={search} onChange={handleSearchChange}
+                           aria-label={t("searchPlaceholder")}
                            placeholder={t("searchPlaceholder")}/>
                 </label>
 
