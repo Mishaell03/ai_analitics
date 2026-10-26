@@ -9,6 +9,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.backend_error_logs import MAX_BODY_LENGTH, backend_error_logs
 from app.core.config import settings
+from app.services.sandbox.config import MAX_REQUEST_BYTES
 
 # тела запросов, которые имеет смысл сохранять для диагностики.
 # multipart/form-data намеренно не читается: это могут быть загрузки
@@ -45,7 +46,9 @@ class RequestBodyMiddleware:
         content_type = headers.get(b"content-type", b"").decode("latin-1").lower()
 
         # Для multipart/form-data допускаем большие загрузки видео
-        if content_type.startswith("multipart/form-data"):
+        if scope.get("path", "").rstrip("/") == "/api/v1/sandbox/execute":
+            max_allowed = MAX_REQUEST_BYTES
+        elif content_type.startswith("multipart/form-data"):
             max_allowed = settings.media_max_video_size + (15 * 1024 * 1024)
         else:
             max_allowed = getattr(settings, "max_standard_body_size", 10 * 1024 * 1024)

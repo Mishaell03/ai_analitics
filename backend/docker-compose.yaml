@@ -1,4 +1,66 @@
 services:
+  sandbox_runner:
+    profiles: [sandbox]
+    build:
+      context: .
+      dockerfile: infra/sandbox/runner.Dockerfile
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      SANDBOX_RUNNER_TOKEN: ${SANDBOX_RUNNER_TOKEN:-}
+      SANDBOX_IMAGE: ${SANDBOX_IMAGE:-analytics-sandbox:1.0}
+      SANDBOX_RUNTIME: ${SANDBOX_RUNTIME:-runc}
+      SANDBOX_CONCURRENCY: ${SANDBOX_CONCURRENCY:-3}
+      SANDBOX_HEAVY_CONCURRENCY: ${SANDBOX_HEAVY_CONCURRENCY:-1}
+      SANDBOX_LOCK_FILE: /run/sandbox-runner/runner.lock
+    volumes:
+      - ${SANDBOX_DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
+      - sandbox_runner_state:/run/sandbox-runner
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    cpus: 0.5
+    mem_limit: 256m
+    pids_limit: 64
+    logging:
+      driver: local
+      options:
+        max-size: 5m
+        max-file: "2"
+    networks:
+      - sandbox_net
+
+  # Optional containerized API: no Docker socket, Docker CLI or host mounts.
+  sandbox_api:
+    profiles: [sandbox-api]
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+    restart: unless-stopped
+    init: true
+    user: "65534:65534"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    env_file: .env
+    environment:
+      DB_HOST: postgres
+      MINIO_ENDPOINT: minio:9000
+      MINIO_MIGRATE_ON_STARTUP: "false"
+      SANDBOX_RUNNER_ENDPOINT: http://sandbox_runner:8090
+      SANDBOX_RUNNER_TOKEN: ${SANDBOX_RUNNER_TOKEN:-}
+      SANDBOX_ASSIGNMENT_PROFILES: ${SANDBOX_ASSIGNMENT_PROFILES:-{}}
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    networks:
+      - data_net
+      - ai_backend_net
+      - sandbox_net
+
   postgres:
     image: postgres:18.6-trixie
     restart: unless-stopped
@@ -88,10 +150,14 @@ services:
       - ai_egress_net
 
 volumes:
+  sandbox_runner_state:
   postgres_data:
   minio_data:
 
 networks:
+  sandbox_net:
+    driver: bridge
+    internal: true
   data_net:
     driver: bridge
     internal: true

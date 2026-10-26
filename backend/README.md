@@ -2,6 +2,8 @@
 
 FastAPI приложение для платформы онлайн-обучения.
 
+Python Sandbox: [архитектура, запуск, настройки и тесты](infra/sandbox/README.md).
+
 ---
 
 ## Структура
@@ -432,4 +434,4 @@ make storage-migrate          # перенести старые файлы MinIO
 make storage-refresh          # обновить файлы MinIO
 ```
 
---- 
+---
