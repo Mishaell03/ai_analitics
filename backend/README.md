@@ -422,11 +422,14 @@ docker-compose down           # остановка
 docker-compose down -v        # остановка + удалить данные
 docker-compose logs -f        # логи
 
+docker run --rm --network ai_proxy_net curlimages/curl:latest -sS --max-time 30 -x http://xray:10810 https://api.ipify.org # проверка работоспособности xray контейнера
+
 # Миграции
 make migrate                  # применить миграции
 make seed                     # загрузить сиды
 make fresh                    # сбросить БД + миграции + сиды
 make storage-migrate          # перенести старые файлы MinIO в course-content
+make storage-refresh          # обновить файлы MinIO
 ```
 
 --- 

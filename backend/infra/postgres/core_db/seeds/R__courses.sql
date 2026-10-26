@@ -554,7 +554,14 @@ INSERT INTO exercise_answers (lesson_id, exercise_id, answer) VALUES
     (1, 'lesson_01_test_03', '{"type":"choice","correct":["Суммировать `quantity × unit_price` только для `completed`."]}'),
     (1, 'lesson_01_test_04', '{"type":"choice","correct":["7 заказов, по числу разных `order_id`."]}'),
     (1, 'lesson_01_test_05', '{"type":"choice","correct":["Home имеет наибольшую учебную выручку в выборке."]}'),
-    (1, 'lesson_01_test_06', '{"type":"choice","correct":["Во втором периоде выручка ниже на 540 рублей; причина неизвестна."]}')
+    (1, 'lesson_01_test_06', '{"type":"choice","correct":["Во втором периоде выручка ниже на 540 рублей; причина неизвестна."]}'),
+    -- course-content/1/1/2.md: номера верных вариантов 2, 3, 1, 4, 2, 3.
+    (2, 'lesson_02_test_01', '{"type":"choice","correct":["10 строк данных и 9 столбцов."]}'),
+    (2, 'lesson_02_test_02', '{"type":"choice","correct":["Один заказ содержит две товарные позиции."]}'),
+    (2, 'lesson_02_test_03', '{"type":"choice","correct":["В CSV это текст, который программа может распознать как дату."]}'),
+    (2, 'lesson_02_test_04', '{"type":"choice","correct":["Чтобы запятая внутри названия не разделяла поле."]}'),
+    (2, 'lesson_02_test_05', '{"type":"choice","correct":["Зафиксировать повтор уникального ключа и уточнить источник."]}'),
+    (2, 'lesson_02_test_06', '{"type":"choice","correct":["Проверить пропуски, числовые правила и согласованность статусов."]}')
 ON CONFLICT (lesson_id, exercise_id) DO UPDATE SET
     answer = EXCLUDED.answer,
     updated_at = NOW();

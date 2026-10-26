@@ -41,6 +41,13 @@ seed:
 storage-migrate:
 	python -m app.core.minio_migration
 
+.PHONY: s3-refresh
+
+storage-refresh:
+	@echo "Refreshing MinIO buckets and seeds..."
+	@docker compose run --rm --no-deps minio_init
+	@echo "MinIO refresh completed."
+
 fresh:
 	@for db in $(shell echo $(DATABASES) | tr ',' ' '); do \
 		echo "Reset $$db"; \
