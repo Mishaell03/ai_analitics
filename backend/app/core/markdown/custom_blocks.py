@@ -98,15 +98,18 @@ class TestBlockHandler(CustomBlockHandler):
 
     def parse(self, content: str) -> CustomBlock:
         exercise_id, body = split_exercise_header(content)
+        data = {"exercise_id": exercise_id, "body": body}
+        # Язык задаёт автор урока, а не запрос ученика. Только явный заголовок.
+        lines = body.splitlines()
+        if exercise_id and lines and lines[0] in {"language: python", "language: sql"}:
+            data["language"] = lines[0].removeprefix("language: ")
+            data["body"] = "\n".join(lines[1:]).strip()
 
         return CustomBlock(
             type=self.type,
             content=content,
             implemented=False,
-            data={
-                "exercise_id": exercise_id,
-                "body": body,
-            },
+            data=data,
         )
 
 

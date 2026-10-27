@@ -23,3 +23,7 @@ services:
   xray:
     ports:
       - "127.0.0.1:10810:10810"
+
+networks:
+  data_net:
+    internal: false

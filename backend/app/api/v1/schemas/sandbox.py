@@ -17,11 +17,12 @@ class CodeRequest(BaseModel):
     @classmethod
     def validate_code(cls, value: str) -> str:
         if len(value.encode("utf-8")) > MAX_CODE_BYTES or not value.strip():
-            raise ValueError("Python source is empty or too large")
+            raise ValueError("Source is empty or too large")
         return value
 
 
 class SandboxExecuteRequest(CodeRequest):
+    language: Literal["sql", "python"] = "python"
     course_slug: str = Field(min_length=1, max_length=255)
     module_id: int = Field(gt=0)
     lesson_id: int = Field(gt=0)
@@ -40,3 +41,22 @@ class ExecutionResult(BaseModel):
     duration: float
     output_limited: bool = False
     memory_limited: bool = False
+
+
+class ExerciseSubmitRequest(CodeRequest):
+    language: Literal["sql", "python"]
+
+
+class StudentExerciseResponse(BaseModel):
+    exercise_id: str
+    body: str
+    language: Literal["sql", "python"] | None = None
+    execution_enabled: bool = False
+    is_completed: bool = False
+
+
+class ExerciseSubmissionResponse(BaseModel):
+    execution: ExecutionResult
+    execution_succeeded: bool
+    is_correct: bool | None
+    attempt_id: int

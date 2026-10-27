@@ -46,7 +46,11 @@ class RequestBodyMiddleware:
         content_type = headers.get(b"content-type", b"").decode("latin-1").lower()
 
         # Для multipart/form-data допускаем большие загрузки видео
-        if scope.get("path", "").rstrip("/") == "/api/v1/sandbox/execute":
+        path = scope.get("path", "").rstrip("/")
+        is_execution = path == "/api/v1/sandbox/execute" or (
+            path.startswith("/api/v1/courses/") and "/exercises/" in path and path.endswith("/submit")
+        )
+        if is_execution:
             max_allowed = MAX_REQUEST_BYTES
         elif content_type.startswith("multipart/form-data"):
             max_allowed = settings.media_max_video_size + (15 * 1024 * 1024)
@@ -68,7 +72,9 @@ class RequestBodyMiddleware:
         # 2. Потоковый подсчёт байт и селективное кэширование малых тел для логов
         bytes_received = 0
         buffered_chunks = []
-        should_capture = any(content_type.startswith(val) for val in CAPTURED_BODY_CONTENT_TYPES)
+        should_capture = not is_execution and any(
+            content_type.startswith(val) for val in CAPTURED_BODY_CONTENT_TYPES
+        )
 
         async def counting_receive():
             nonlocal bytes_received

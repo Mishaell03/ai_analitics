@@ -117,11 +117,11 @@ def test_assignment_access_and_trusted_profile(monkeypatch, enrolled, exists, pr
     db = SimpleNamespace(execute=AsyncMock(return_value=SimpleNamespace(
         scalar_one_or_none=Mock(return_value=1 if exists else None))))
     service = SandboxService(db)
-    service._get_course = AsyncMock(return_value=SimpleNamespace(course_id=1))
-    service._get_module = AsyncMock(return_value=SimpleNamespace(module_id=2))
-    service._get_lesson = AsyncMock(return_value=SimpleNamespace(lesson_id=3))
-    service._is_enrolled = AsyncMock(return_value=enrolled)
     service._raise = AsyncMock(side_effect=HTTPException(403))
+    monkeypatch.setattr(service_module.StudentExerciseService, "get_exercise", AsyncMock(
+        return_value=SimpleNamespace(language="python"),
+        side_effect=None if enrolled else HTTPException(403),
+    ))
     execute = AsyncMock(return_value="result")
     monkeypatch.setattr(service_module, "execute_code", execute)
     current = SimpleNamespace(user=SimpleNamespace(user_id=7), session=SimpleNamespace(
@@ -220,6 +220,32 @@ def test_public_body_limit_before_validation():
         assert response.status_code == 413
         assert response.json()["detail"]["code"] == "PAYLOAD_TOO_LARGE"
     asyncio.run(scenario())
+
+
+def test_transport_has_total_deadline(monkeypatch):
+    from app.services.sandbox import transport
+
+    monkeypatch.setenv("SANDBOX_RUNNER_TOKEN", "t" * 32)
+    client_class = httpx.AsyncClient
+    timeout = asyncio.timeout
+    deadlines = []
+
+    def short_deadline(seconds):
+        deadlines.append(seconds)
+        return timeout(0.01)
+
+    async def slow_response(request):
+        await asyncio.sleep(1)
+        return httpx.Response(200)
+
+    monkeypatch.setattr(transport.asyncio, "timeout", short_deadline)
+    monkeypatch.setattr(transport.httpx, "AsyncClient", lambda **kwargs: client_class(
+        **kwargs, transport=httpx.MockTransport(slow_response)))
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(transport.execute_code("pass", "light"))
+    assert deadlines == [45]
+    assert exc.value.status_code == 503
+    assert exc.value.detail["code"] == "SANDBOX_UNAVAILABLE"
 
 
 def test_api_image_has_no_docker_socket():

@@ -1,5 +1,6 @@
 """Ограниченный внутренний HTTP-интерфейс, без Docker в процессе API."""
 
+import asyncio
 import json
 
 import httpx
@@ -48,7 +49,8 @@ async def execute_code(code: str, profile: str) -> ExecutionResult:
     if len(config.token) < 32:
         raise HTTPException(503, detail={"code": "SANDBOX_UNAVAILABLE", "message": "Sandbox unavailable"})
     try:
-        async with httpx.AsyncClient(trust_env=False, timeout=get_sandbox_limits(profile)["timeout"] + 40) as client:
+        deadline = get_sandbox_limits(profile)["timeout"] + 40
+        async with asyncio.timeout(deadline), httpx.AsyncClient(trust_env=False, timeout=deadline) as client:
             async with client.stream(
                     "POST", f"{config.endpoint.rstrip('/')}/execute",
                     headers={"Authorization": f"Bearer {config.token}"},
@@ -67,5 +69,5 @@ async def execute_code(code: str, profile: str) -> ExecutionResult:
                     if len(body) > MAX_OUTPUT_BYTES * 6 + 4096:
                         raise ValueError("Runner response too large")
                 return ExecutionResult.model_validate(json.loads(body))
-    except (httpx.HTTPError, ValueError):
+    except (httpx.HTTPError, ValueError, TimeoutError):
         raise HTTPException(503, detail={"code": "SANDBOX_UNAVAILABLE", "message": "Sandbox unavailable"})
