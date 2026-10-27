@@ -73,6 +73,7 @@ function ModuleFormModal({mode, module, saving, onClose, onSubmit, onError}) {
                         onChange={(event) => setDescription(event.target.value)}
                         rows={4}
                     />
+                    <small className={styles.fieldHint}>{t("descriptionFormatHint")}</small>
                 </label>
 
                 <label className={styles.checkboxField}>

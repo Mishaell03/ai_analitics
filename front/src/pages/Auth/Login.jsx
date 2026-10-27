@@ -1,7 +1,8 @@
 import duck from "@/assets/auth/login_duck.png";
 import duckMobile from "@/assets/auth/up_duck.png";
 import {useState} from "react";
-import {getTranslation} from "@/locales/i18n.js";
+import {useTranslation} from "@/hooks/useTranslation.js";
+import {getLanguage} from "@/locales/i18n.js";
 import styles from "./login.module.css";
 import {Eye, EyeOff} from "lucide-react";
 import cloud from "@/assets/auth/cloud.png"
@@ -24,9 +25,8 @@ export function Login() {
     const [loading, setLoading] = useState(false);
 
     const {setUser} = useAuth();
-    const language = "ru";
-    const t = (key) => getTranslation(`auth.login.${key}`, language);
-    const tError = (key) => getTranslation(`error.error.${key}`, language);
+    const t = useTranslation("auth.login");
+    const tError = useTranslation("error.error");
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -58,7 +58,7 @@ export function Login() {
 
                     device_id: getDeviceId(),
                     device_name: getDeviceName(),
-                    language: language,
+                    language: getLanguage(),
                 }
             );
             console.log(response);

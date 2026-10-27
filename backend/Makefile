@@ -8,10 +8,9 @@ print-env:
 	echo $(POSTGRES_USER)
 
 DB_URL=jdbc:postgresql://$(DB_HOST):$(DB_PORT)
-PSQL_BASE=postgresql://$(POSTGRES_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)
 
 migrate:
-	@set -a && source .env && set +a && \
+	@set -e; set -a && source .env && set +a && \
 	for db in $$(echo $$DATABASES | tr ',' ' '); do \
 		echo "Migrating $$db"; \
 		docker run --rm \
@@ -25,7 +24,7 @@ migrate:
 	done
 
 seed:
-	@set -a && source .env && set +a && \
+	@set -e; set -a && source .env && set +a && \
 	for db in $$(echo $$DATABASES | tr ',' ' '); do \
 		echo "Seeding $$db"; \
 		docker run --rm \
@@ -38,11 +37,24 @@ seed:
 			migrate; \
 	done
 
+storage-migrate:
+	python -m app.core.minio_migration
+
+.PHONY: s3-refresh
+
+storage-refresh:
+	@echo "Refreshing MinIO buckets and seeds..."
+	@docker compose run --rm --no-deps minio_init
+	@echo "MinIO refresh completed."
+
 fresh:
-	@for db in $(shell echo $(DATABASES) | tr ',' ' '); do \
+	@set -e; set -a && source .env && set +a && \
+	for db in $$(echo "$$DATABASES" | tr ',' ' '); do \
 		echo "Reset $$db"; \
-		psql $(PSQL_BASE)/$$db \
+		PGPASSWORD="$$POSTGRES_PASSWORD" psql \
+			-h "$$DB_HOST" -p "$$DB_PORT" -U "$$POSTGRES_USER" -d "$$db" \
+			-v ON_ERROR_STOP=1 \
 			-c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"; \
 	done
-	make migrate
-	make seed
+	$(MAKE) migrate
+	$(MAKE) seed

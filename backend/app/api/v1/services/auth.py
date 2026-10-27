@@ -10,10 +10,12 @@ from starlette.requests import Request
 
 from app.api.v1.dto.auth_service import BaseAuthContext
 from app.api.v1.schemas.auth import BaseAuthRequest, ConsentItem, RegisterRequest, _AuthData
+from app.core.config import settings
 from app.core.errors import raise_backend_error
+from app.core.tokens import hash_session_token
 from app.models.auth import UserAuthMethod, UserSession, Provider
 from app.models.users import User, UserConsent
-from app.core.clients_ip import get_client_ip
+from app.core.clients_ip import get_client_ip, safe_inet_ip
 from app.utils.phone import normalize_phone
 
 # согласия, без которых регистрация невозможна
@@ -86,7 +88,7 @@ class BaseAuthService:
         self.db.add(auth_method)
 
         # remember consents on data processing with ip and policy version
-        client_ip = get_client_ip(request)
+        client_ip = safe_inet_ip(get_client_ip(request))
 
         for consent_code, is_accepted in consents:
             self.db.add(
@@ -275,12 +277,13 @@ class BaseAuthService:
             device_id=data.device_id,
             platform='web',
             user_id=user.user_id,
-            session=session_token,
-            ip=get_client_ip(request),
+            # в БД храним только хэш, наружу уходит исходный токен
+            session=hash_session_token(session_token),
+            ip=safe_inet_ip(get_client_ip(request)),
             language=data.language,
             provider=provider.code,
             device_name=data.device_name,
-            expires_at=now + timedelta(days=180),
+            expires_at=now + timedelta(days=settings.session_ttl_days),
         )
 
         self.db.add(user_session)

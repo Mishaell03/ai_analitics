@@ -22,7 +22,7 @@ from app.api.v1.schemas.courses import (
 from app.api.v1.services.courses import BaseCoursesService
 from app.core.config import settings
 from app.core.minio_url import minio_storage
-from app.core.storage_paths import LESSON_CONTENT_BUCKET, lesson_content_path
+from app.core.storage_paths import COURSE_CONTENT_BUCKET, lesson_content_path
 from app.models.courses import Lesson
 
 # урок — это Markdown, поэтому и тип файла такой же
@@ -107,7 +107,7 @@ class LessonAdminService(BaseCoursesService):
 
             upload = await self._build_upload(
                 request=request,
-                course_slug=course.slug,
+                course_id=course.course_id,
                 module_id=module.module_id,
                 lesson_id=lesson.lesson_id,
                 error=error,
@@ -200,7 +200,7 @@ class LessonAdminService(BaseCoursesService):
 
         return await self._build_upload(
             request=request,
-            course_slug=course.slug,
+            course_id=course.course_id,
             module_id=module.module_id,
             lesson_id=lesson.lesson_id,
             error=error,
@@ -209,7 +209,7 @@ class LessonAdminService(BaseCoursesService):
     async def _build_upload(
             self,
             request: Request,
-            course_slug: str,
+            course_id: int,
             module_id: int,
             lesson_id: int,
             error: dict,
@@ -217,13 +217,13 @@ class LessonAdminService(BaseCoursesService):
         """ССЫЛКА НА ЗАГРУЗКУ ФАЙЛА УРОКА В MINIO"""
 
         file_path = lesson_content_path(
-            course_slug=course_slug,
+            course_id=course_id,
             module_id=module_id,
             lesson_id=lesson_id,
         )
 
         if file_path is None:
-            # slug курса нельзя использовать как часть пути
+            # id нельзя использовать как часть пути
             await self._raise(
                 request=request,
                 code="INVALID_COURSE_SLUG",
@@ -233,7 +233,7 @@ class LessonAdminService(BaseCoursesService):
         max_size = settings.lesson_content_max_upload_size
 
         upload = await minio_storage.get_upload_url(
-            bucket=LESSON_CONTENT_BUCKET,
+            bucket=COURSE_CONTENT_BUCKET,
             file_path=file_path,
             max_size=max_size,
             content_type=MARKDOWN_CONTENT_TYPE,

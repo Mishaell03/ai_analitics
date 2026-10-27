@@ -7,13 +7,16 @@ import styles from "./confirmModal.module.css";
  * Один компонент на все подтверждения админки: удаление курса,
  * модуля или урока, блокировка пользователя. Тон кнопки передаётся
  * параметром tone: danger — опасное действие, ok — безопасное.
+ *
+ * Тексты кнопок передаёт вызывающий код: компонент не знает
+ * про язык и не содержит готовых строк.
  */
 function ConfirmModal({
     title,
     description,
-    confirmText = "Подтвердить",
-    busyText = "Выполняем...",
-    cancelText = "Отмена",
+    confirmText,
+    busyText,
+    cancelText,
     tone = "danger",
     icon: Icon = TriangleAlert,
     busy = false,

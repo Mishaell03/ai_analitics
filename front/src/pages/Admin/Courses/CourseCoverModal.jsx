@@ -7,7 +7,7 @@ import {
 } from "@/api/media.js";
 import {formatBytes} from "@/services/format.js";
 import {IMAGE_ACCEPT, MEDIA_LIMITS} from "@/services/media.js";
-import {getErrorMessage, useFileUpload} from "@/hooks/useFileUpload.js";
+import {getLocalizedErrorMessage, useFileUpload} from "@/hooks/useFileUpload.js";
 import ConfirmModal from "@/components/ConfirmModal/ConfirmModal.jsx";
 import AdminModal from "@/pages/Admin/components/AdminModal.jsx";
 import {useAdminTranslation} from "@/pages/Admin/hooks/useAdminTranslation.js";
@@ -50,7 +50,7 @@ function CourseCoverModal({course, onClose, onSaved}) {
             if (requestError?.response?.status === 404) {
                 setImage(null);
             } else {
-                setLoadError(getErrorMessage(requestError, t("coverLoadError")));
+                setLoadError(getLocalizedErrorMessage(requestError, t, t("coverLoadError")));
             }
         } finally {
             setLoading(false);
@@ -112,7 +112,7 @@ function CourseCoverModal({course, onClose, onSaved}) {
 
             onSaved?.(null);
         } catch (requestError) {
-            setError(new Error(getErrorMessage(requestError, t("coverDeleteError"))));
+            setError(new Error(getLocalizedErrorMessage(requestError, t, t("coverDeleteError"))));
             setDeleteConfirm(false);
         } finally {
             setDeleting(false);
@@ -160,9 +160,11 @@ function CourseCoverModal({course, onClose, onSaved}) {
 
         return (
             <div className={styles.meta}>
-                <span>
-                    {image.width} × {image.height}
-                </span>
+                {image.width > 0 && image.height > 0 && (
+                    <span>
+                        {image.width} × {image.height}
+                    </span>
+                )}
 
                 <span>{formatBytes(image.size_bytes)}</span>
 
@@ -207,7 +209,7 @@ function CourseCoverModal({course, onClose, onSaved}) {
             {error && (
                 <p className={styles.error}>
                     <TriangleAlert/>
-                    {error.message}
+                    {getLocalizedErrorMessage(error, t, t("coverUploadError"))}
                 </p>
             )}
 

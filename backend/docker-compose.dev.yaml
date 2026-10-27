@@ -1,0 +1,31 @@
+services:
+  sandbox_runner:
+    ports:
+      - "127.0.0.1:8090:8090"
+
+  sandbox_api:
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  pgadmin:
+    ports:
+      - "127.0.0.1:5050:80"
+
+  minio:
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+
+  xray:
+    ports:
+      - "127.0.0.1:10810:10810"
+
+networks:
+  sandbox_net:
+    internal: false
+  data_net:
+    internal: false

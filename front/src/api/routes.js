@@ -12,6 +12,14 @@ export const API_ROUTES = {
 // Courses
     COURSES: "/courses",
     COURSE_BY_ID: (slug) => `/courses/${slug}`,
+    COURSE_NEXT_LESSON: (slug) => `/courses/${slug}/next-lesson`,
+    COURSE_MODULE_LESSONS: (slug, moduleId) => `/courses/${slug}/modules/${moduleId}`,
+    COURSE_LESSON: (slug, moduleId, lessonId) => `/courses/${slug}/modules/${moduleId}/lessons/${lessonId}`,
+    COURSE_LESSON_CONTENT: (slug, moduleId, lessonId) => `/courses/${slug}/modules/${moduleId}/lessons/${lessonId}/content`,
+    COURSE_EXERCISE_CHECK: (slug, moduleId, lessonId, exerciseId) =>
+        `/courses/${slug}/modules/${moduleId}/lessons/${lessonId}/exercises/${exerciseId}/check`,
+    COURSE_LESSON_COMPLETE: (slug, moduleId, lessonId) =>
+        `/courses/${slug}/modules/${moduleId}/lessons/${lessonId}/complete`,
     ENROLL_COURSE_BY_ID: (slug) => `/courses/enroll/${slug}`,
     UNENROLL_COURSE_BY_ID: (slug) => `/courses/unenroll/${slug}`,
 
@@ -58,4 +66,9 @@ export const API_ROUTES = {
         `/admin/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/media`,
     ADMIN_LESSON_MEDIA_ITEM: (lessonId, mediaKey) => `/admin/lessons/${lessonId}/media/${mediaKey}`,
     ADMIN_MEDIA_URL: (mediaKey) => `/admin/media/${mediaKey}/url`,
+
+// Admin exercises: правильные ответы на задания урока
+    ADMIN_LESSON_EXERCISES: (lessonId) => `/admin/lessons/${lessonId}/exercises`,
+    ADMIN_LESSON_EXERCISE_ANSWER: (lessonId, exerciseId) =>
+        `/admin/lessons/${lessonId}/exercises/${exerciseId}/answer`,
 };

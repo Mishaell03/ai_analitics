@@ -29,6 +29,7 @@ VALUES
     ('MEDIA_IMAGE_RESOLUTION_TOO_LARGE', 422),
     ('MEDIA_VIDEO_CODEC_NOT_SUPPORTED', 415),
     ('MEDIA_VIDEO_RESOLUTION_TOO_LARGE', 422),
+    ('EXERCISE_ANSWER_NOT_FOUND', 404),
     ('INVALID_PHONE_FORMAT', 422),
     ('PHONE_ALREADY_EXISTS', 409),
     ('CONSENT_REQUIRED', 422),
@@ -123,6 +124,9 @@ VALUES
 
     ('MEDIA_VIDEO_RESOLUTION_TOO_LARGE', 'en', 'Video resolution is too large'),
     ('MEDIA_VIDEO_RESOLUTION_TOO_LARGE', 'ru', 'Разрешение видео слишком большое'),
+
+    ('EXERCISE_ANSWER_NOT_FOUND', 'en', 'Correct answer for the exercise not found'),
+    ('EXERCISE_ANSWER_NOT_FOUND', 'ru', 'Правильный ответ на задание не найден'),
 
     ('INVALID_PHONE_FORMAT', 'en', 'Invalid phone format. Expected +7 (XXX) XXX-XX-XX'),
     ('INVALID_PHONE_FORMAT', 'ru', 'Неверный формат телефона. Ожидается +7 (XXX) XXX-XX-XX'),

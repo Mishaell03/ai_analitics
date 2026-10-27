@@ -8,11 +8,11 @@ export default {
     onlineLearning: "онлайн-обучение",
 
     searchPlaceholder: "Найти курс...",
+    additionalFilters: "Дополнительные фильтры",
 
     filterAll: "Все курсы",
-    filterAnalytics: "Аналитика",
-    filterAi: "Искусственный интеллект",
-    filterCareer: "Карьера",
+    filterEnrolled: "Мои курсы",
+    filterNotEnrolled: "Доступные",
 
     catalogEyebrow: "Каталог обучения",
     catalogTitle: "Выберите свой курс",
@@ -21,13 +21,16 @@ export default {
     cardCourse: "Курс",
     cardAction: "Подробнее",
     cardContinue: "Продолжить обучение",
+    courseCompleted: "Курс завершён",
+    courseInProgress: "Курс не завершён",
+    courseProgress: "Пройдено уроков",
 
     errorTitle: "Не удалось загрузить курсы",
     errorDescription: "Проверьте подключение к интернету и попробуйте ещё раз.",
     errorRetry: "Попробовать снова",
 
     emptyTitle: "Ничего не найдено",
-    emptyDescription: "Попробуйте изменить поисковый запрос или выбрать другую категорию.",
+    emptyDescription: "Попробуйте изменить поисковый запрос или параметры фильтра.",
     emptyReset: "Сбросить фильтры",
 
     paginationLabel: "Навигация по страницам",

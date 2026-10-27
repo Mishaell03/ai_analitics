@@ -1,6 +1,6 @@
 import orangeSpiral from "@/assets/artefacts/orange_spiral_3d.png";
 import violetSpiral from "@/assets/artefacts/violet_spiral_3d.png";
-import {getTranslation} from "@/locales/i18n.js";
+import {useTranslation} from "@/hooks/useTranslation.js";
 import styles from "./home.module.css";
 import {ArrowRight, Award, Briefcase, GraduationCap, Layers, ShoppingBag, Tags, Users,} from "lucide-react";
 import {Link, useNavigate} from "react-router-dom";
@@ -8,26 +8,24 @@ import duck from "@/assets/home/smart_duck.png";
 import bg from "@/assets/home/bg.webp";
 import {ROUTES} from "@/router/AppRouter.jsx";
 
-const language = "ru";
-
 export function Home() {
     const navigate = useNavigate();
-    const t = (key) => getTranslation(`home.home.${key}`, language);
+    const t = useTranslation("home.home");
 
     const stats = [
         {
             icon: GraduationCap,
-            value: "0 лет",
+            value: t("stats.experienceValue"),
             label: t("stats.experience"),
         },
         {
             icon: Users,
-            value: "< 500 000 учеников",
+            value: t("stats.studentsValue"),
             label: t("stats.students"),
         },
         {
             icon: Award,
-            value: "< 30 курсов",
+            value: t("stats.coursesValue"),
             label: t("stats.courses"),
         },
     ];

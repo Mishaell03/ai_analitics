@@ -34,7 +34,19 @@ test("абзац собирает текст до пустой строки", ()
 
     assert.equal(blocks.length, 2);
     assert.equal(blocks[0].type, "paragraph");
-    assert.equal(blocks[0].children[0].value, "Первая строка\nвторая строка");
+    assert.deepEqual(
+        blocks[0].children.map((node) => node.type === "text" ? node.value : node.type),
+        ["Первая строка", "break", "вторая строка"],
+    );
+});
+
+test("одиночный Enter превращается в перенос строки, включая жирный текст", () => {
+    const blocks = parse("Первая строка\n**жирная\nстрока**");
+    const children = blocks[0].children;
+    const strong = children.find((node) => node.type === "strong");
+
+    assert.equal(children[1].type, "break");
+    assert.equal(strong.children[1].type, "break");
 });
 
 test("инлайн-разметка разбирается в узлы", () => {

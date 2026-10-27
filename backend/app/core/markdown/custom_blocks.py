@@ -9,13 +9,45 @@
     2. зарегистрировать обработчик в реестре.
 
 Пока собственных обработчиков нет, любой тип блока разбирается
-заглушкой и отдаётся клиенту как есть.
+заглушкой и отдаётся как есть.
 """
 
+import re
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 
 from app.core.markdown.models import CustomBlock
+
+# идентификатор задания задаётся первой строкой содержимого блока:
+#
+#     :::test
+#     id: python-variables
+#     Текст задания
+#     :::
+_EXERCISE_ID_LINE_RE = re.compile(
+    r"^id:\s*(?P<exercise_id>[A-Za-z0-9_-]{1,64})\s*$",
+    re.IGNORECASE,
+)
+
+
+def split_exercise_header(content: str) -> tuple[str | None, str]:
+    """ОТДЕЛЯЕТ ИДЕНТИФИКАТОР ЗАДАНИЯ ОТ ТЕКСТА
+
+    Возвращает идентификатор задания (None, если его нет) и текст
+    задания без строки с идентификатором.
+    """
+
+    lines = content.splitlines()
+
+    if not lines:
+        return None, content
+
+    match = _EXERCISE_ID_LINE_RE.match(lines[0])
+
+    if match is None:
+        return None, content
+
+    return match.group("exercise_id"), "\n".join(lines[1:]).strip()
 
 
 class CustomBlockHandler(ABC):
@@ -47,6 +79,40 @@ class PlaceholderCustomBlockHandler(CustomBlockHandler):
         )
 
 
+class TestBlockHandler(CustomBlockHandler):
+    """ЗАДАНИЕ УРОКА
+
+    Задание записывается в Markdown так:
+
+        :::test
+        id: python-variables
+        Текст задания
+        :::
+
+    Идентификатор связывает задание с правильным ответом, который
+    хранится в базе. Само задание (вопрос, варианты ответа) пока
+    не разбирается: клиент получает его как есть.
+    """
+
+    type = "test"
+
+    def parse(self, content: str) -> CustomBlock:
+        exercise_id, body = split_exercise_header(content)
+        data = {"exercise_id": exercise_id, "body": body}
+        # Язык задаёт автор урока, а не запрос ученика. Только явный заголовок.
+        lines = body.splitlines()
+        if exercise_id and lines and lines[0] in {"language: python", "language: sql"}:
+            data["language"] = lines[0].removeprefix("language: ")
+            data["body"] = "\n".join(lines[1:]).strip()
+
+        return CustomBlock(
+            type=self.type,
+            content=content,
+            implemented=False,
+            data=data,
+        )
+
+
 class CustomBlockRegistry:
     """РЕЕСТР ОБРАБОТЧИКОВ КАСТОМНЫХ БЛОКОВ"""
 
@@ -73,3 +139,9 @@ class CustomBlockRegistry:
             handler = PlaceholderCustomBlockHandler(block_type)
 
         return handler.parse(content)
+
+
+def default_custom_block_registry() -> CustomBlockRegistry:
+    """РЕЕСТР СОБСТВЕННЫМИ ОБРАБОТЧИКАМИ"""
+
+    return CustomBlockRegistry(handlers=[TestBlockHandler()])

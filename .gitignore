@@ -65,6 +65,7 @@ wheels/
 # =========================
 
 *.log
+backend/infra/xray/config.json
 
 # Uploaded/generated files
 uploads/
@@ -108,3 +109,4 @@ tmp/
 temp/
 *.tmp
 *.temp
+.sandbox-runner.lock

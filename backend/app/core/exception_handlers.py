@@ -1,3 +1,4 @@
+import json
 import logging
 
 from fastapi import FastAPI, Request
@@ -5,12 +6,15 @@ from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.backend_error_logs import MAX_BODY_LENGTH, backend_error_logs
+from app.core.config import settings
+from app.services.sandbox.config import MAX_REQUEST_BYTES
 
-# тела запросов без явного content-length читать не нужно
-CAPTURED_BODY_CONTENT_TYPES = ("application/json", "application/x-www-form-urlencoded", "multipart/form-data")
+# тела запросов, которые имеет смысл сохранять для диагностики.
+# multipart/form-data намеренно не читается: это могут быть загрузки
+# в сотни мегабайт, и буферизовать их в память нельзя.
+CAPTURED_BODY_CONTENT_TYPES = ("application/json", "application/x-www-form-urlencoded")
 
 # статусы, которые попадают в backend_error_logs (все 5xx добавляются автоматически)
 LOGGED_STATUS_CODES = frozenset({
@@ -20,25 +24,103 @@ LOGGED_STATUS_CODES = frozenset({
 })
 
 
-class RequestBodyMiddleware(BaseHTTPMiddleware):
-    """Кэширует тело запроса, чтобы exception handler мог его прочитать."""
+class RequestBodyMiddleware:
+    """Чистый ASGI middleware для ограничения размера тела (HTTP 413)
 
-    async def dispatch(self, request: Request, call_next):
-        request.state.raw_body = None
+    и кэширования небольших тел (до MAX_BODY_LENGTH) в request.state.raw_body
+    для логов исключений без накладных расходов BaseHTTPMiddleware.
+    """
 
-        content_type = request.headers.get("content-type", "")
+    def __init__(self, app):
+        self.app = app
 
-        if any(content_type.startswith(value) for value in CAPTURED_BODY_CONTENT_TYPES):
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        state = scope.setdefault("state", {})
+        state["raw_body"] = None
+
+        headers = dict(scope.get("headers", []))
+        content_type = headers.get(b"content-type", b"").decode("latin-1").lower()
+
+        # Для multipart/form-data допускаем большие загрузки видео
+        path = scope.get("path", "").rstrip("/")
+        is_execution = path == "/api/v1/sandbox/execute" or (
+            path.startswith("/api/v1/courses/") and "/exercises/" in path and path.endswith("/submit")
+        )
+        if is_execution:
+            max_allowed = MAX_REQUEST_BYTES
+        elif content_type.startswith("multipart/form-data"):
+            max_allowed = settings.media_max_video_size + (15 * 1024 * 1024)
+        else:
+            max_allowed = getattr(settings, "max_standard_body_size", 10 * 1024 * 1024)
+
+        # 1. Быстрая проверка размера по заголовку Content-Length
+        content_length_raw = headers.get(b"content-length")
+        if content_length_raw:
             try:
-                raw_body = await request.body()
+                body_length = int(content_length_raw)
+            except ValueError:
+                body_length = 0
 
-                if len(raw_body) <= MAX_BODY_LENGTH:
-                    request.state.raw_body = raw_body
+            if body_length > max_allowed:
+                await self._send_413(send, max_allowed)
+                return
 
-            except Exception as e:
-                logging.exception(f"read request body exception: {e}")
+        # 2. Потоковый подсчёт байт и селективное кэширование малых тел для логов
+        bytes_received = 0
+        buffered_chunks = []
+        should_capture = not is_execution and any(
+            content_type.startswith(val) for val in CAPTURED_BODY_CONTENT_TYPES
+        )
 
-        return await call_next(request)
+        async def counting_receive():
+            nonlocal bytes_received
+            message = await receive()
+            if message.get("type") == "http.request":
+                chunk = message.get("body", b"")
+                bytes_received += len(chunk)
+                if bytes_received > max_allowed:
+                    raise ValueError("PAYLOAD_TOO_LARGE")
+
+                if should_capture and bytes_received <= MAX_BODY_LENGTH:
+                    buffered_chunks.append(chunk)
+                    state["raw_body"] = b"".join(buffered_chunks)
+                elif should_capture and bytes_received > MAX_BODY_LENGTH:
+                    state["raw_body"] = None
+
+            return message
+
+        try:
+            await self.app(scope, counting_receive, send)
+        except ValueError as exc:
+            if str(exc) == "PAYLOAD_TOO_LARGE":
+                await self._send_413(send, max_allowed)
+            else:
+                raise
+
+    @staticmethod
+    async def _send_413(send, max_allowed: int):
+        payload = json.dumps({
+            "detail": {
+                "code": "PAYLOAD_TOO_LARGE",
+                "message": f"Request body exceeds maximum allowed size ({max_allowed} bytes)",
+            }
+        }).encode("utf-8")
+        await send({
+            "type": "http.response.start",
+            "status": 413,
+            "headers": [
+                (b"content-type", b"application/json"),
+                (b"content-length", str(len(payload)).encode("utf-8")),
+            ],
+        })
+        await send({
+            "type": "http.response.body",
+            "body": payload,
+        })
 
 
 async def _log_backend_error(

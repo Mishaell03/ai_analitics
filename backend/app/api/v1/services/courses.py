@@ -1,7 +1,7 @@
 from typing import Any, NoReturn
 
 from fastapi import Request
-from sqlalchemy import func, select
+from sqlalchemy import and_, case, exists, func, literal, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import raise_backend_error
@@ -27,13 +27,22 @@ from app.api.v1.schemas.courses import (
 from app.core.config import settings
 from app.core.minio_url import minio_storage
 from app.core.storage_paths import (
-    LESSON_CONTENT_BUCKET,
-    MEDIA_BUCKET,
+    COURSE_CONTENT_BUCKET,
+    course_content_path,
+    course_cover_object_key,
+    course_prefix,
     lesson_content_path,
+    module_content_path,
+    module_prefix,
 )
 from app.models.courses import Course, CourseModule, Lesson
 from app.core.pagination import get_pagination, get_total_pages
-from app.models.enrollments_progress import CourseEnrollment
+from app.models.enrollments_progress import (
+    COMPLETED_CORRECTNESS,
+    CourseEnrollment,
+    LessonAttempt,
+)
+from app.api.v1.services.course_search import normalize_search_text, rank_courses
 
 
 def is_published(model):
@@ -200,8 +209,8 @@ class BaseCoursesService:
     async def _get_cover_urls(self, course_ids: list[int]) -> dict[int, str | None]:
         """ССЫЛКИ НА ОБЛОЖКИ КУРСОВ
 
-        Если у курса есть загруженная обложка, берётся она,
-        иначе — старый файл из бака course-content.
+        Обложка всегда лежит по фиксированному пути
+        `{course_id}/main.webp`; запись в БД нужна только для метаданных.
         """
 
         from app.models.media import CourseImage
@@ -218,24 +227,40 @@ class BaseCoursesService:
         urls: dict[int, str | None] = {}
 
         for course_id in course_ids:
-            cover = covers.get(course_id)
+            object_key = course_cover_object_key(course_id=course_id)
 
-            if cover is not None:
-                urls[course_id] = await minio_storage.get_url(
-                    file_path=cover.object_key,
-                    expires=settings.media_url_ttl,
-                    bucket=MEDIA_BUCKET,
-                )
+            if object_key is None:
+                urls[course_id] = None
 
                 continue
 
+            expires = (
+                settings.media_url_ttl
+                if covers.get(course_id) is not None
+                else settings.image_url_ttl
+            )
+
             urls[course_id] = await minio_storage.get_url(
-                file_path=f"{course_id}/main.webp",
-                expires=settings.image_url_ttl,
-                bucket="course-content",
+                file_path=object_key,
+                expires=expires,
+                bucket=COURSE_CONTENT_BUCKET,
             )
 
         return urls
+
+    async def _get_cover_url(self, course_id: int) -> str | None:
+        """ССЫЛКА НА ОБЛОЖКУ ОДНОГО КУРСА"""
+
+        object_key = course_cover_object_key(course_id=course_id)
+
+        if object_key is None:
+            return None
+
+        return await minio_storage.get_url(
+            file_path=object_key,
+            expires=settings.image_url_ttl,
+            bucket=COURSE_CONTENT_BUCKET,
+        )
 
     async def _is_enrolled(self, user_id: int | None, course_id: int) -> bool:
         """ЗАПИСАН ЛИ ПОЛЬЗОВАТЕЛЬ НА КУРС"""
@@ -253,6 +278,21 @@ class BaseCoursesService:
 
         return result.scalar_one_or_none() is not None
 
+    @staticmethod
+    def _lesson_completed_expression(user_id: int | None):
+        """CORRELATED ПРИЗНАК ЗАВЕРШЕНИЯ УРОКА ТЕКУЩИМ ПОЛЬЗОВАТЕЛЕМ."""
+
+        if user_id is None:
+            return literal(False)
+
+        return exists(
+            select(LessonAttempt.attempt_id).where(
+                LessonAttempt.user_id == user_id,
+                LessonAttempt.lesson_id == Lesson.lesson_id,
+                LessonAttempt.correctness == COMPLETED_CORRECTNESS,
+            )
+        ).correlate(Lesson)
+
     # ---------- публичное API ----------
 
     async def get_courses(
@@ -260,8 +300,16 @@ class BaseCoursesService:
             page: int = 1,
             page_size: int = 10,
             user_id: int | None = None,
+            enrolled_only: bool = False,
+            search_query: str | None = None,
+            enrollment_filter: str = "all",
     ) -> CoursesResponse:
-        """MINIMAL INFORMATION OF THE COURSES"""
+        """MINIMAL INFORMATION OF THE COURSES
+
+        С enrolled_only=True возвращает только курсы, на которые записан
+        пользователь. Сортировка в этом режиме — по дате записи, как в
+        карточке пользователя админки; иначе остаётся порядок по course_id.
+        """
 
         pagination = get_pagination(
             page=page,
@@ -269,31 +317,79 @@ class BaseCoursesService:
         )
 
         # Total courses
-        total_result = await self.db.execute(
+        total_query = (
             select(func.count(Course.course_id))
             .where(is_published(Course))
         )
 
-        total = total_result.scalar_one()
-
-        total_pages = get_total_pages(
-            total=total,
-            page_size=pagination.page_size,
-        )
-
-        result = await self.db.execute(
+        courses_query = (
             select(Course)
             .where(is_published(Course))
-            .order_by(Course.course_id)
-            .offset(pagination.offset)
-            .limit(pagination.page_size)
         )
 
-        courses = result.scalars().all()
+        should_filter_enrolled = enrolled_only or enrollment_filter == "enrolled"
+        if should_filter_enrolled:
+            enrollment_join = CourseEnrollment.course_id == Course.course_id
+
+            total_query = (
+                total_query
+                .join(CourseEnrollment, enrollment_join)
+                .where(CourseEnrollment.user_id == user_id)
+            )
+
+            courses_query = (
+                courses_query
+                .join(CourseEnrollment, enrollment_join)
+                .where(CourseEnrollment.user_id == user_id)
+            )
+
+            order_by = (
+                CourseEnrollment.created_at.desc(),
+                Course.course_id.desc(),
+            )
+
+        else:
+            order_by = (Course.course_id,)
+
+            if enrollment_filter == "not_enrolled" and user_id is not None:
+                has_enrollment = exists(
+                    select(CourseEnrollment.enrollment_id).where(
+                        CourseEnrollment.user_id == user_id,
+                        CourseEnrollment.course_id == Course.course_id,
+                    )
+                ).correlate(Course)
+                total_query = total_query.where(~has_enrollment)
+                courses_query = courses_query.where(~has_enrollment)
+
+        normalized_query = normalize_search_text(search_query)
+        if normalized_query:
+            # Поиск ранжирует весь опубликованный каталог до пагинации,
+            # иначе совпадения с более высоким score на соседних страницах
+            # могли бы оказаться ниже менее релевантных результатов.
+            result = await self.db.execute(courses_query.order_by(*order_by))
+            courses = rank_courses(normalized_query, result.scalars().all())
+            total = len(courses)
+            offset = pagination.offset
+            courses = courses[offset:offset + pagination.page_size]
+        else:
+            total_result = await self.db.execute(total_query)
+            total = total_result.scalar_one()
+            result = await self.db.execute(
+                courses_query
+                .order_by(*order_by)
+                .offset(pagination.offset)
+                .limit(pagination.page_size)
+            )
+            courses = result.scalars().all()
+
+        total_pages = get_total_pages(total=total, page_size=pagination.page_size)
 
         enrolled_ids = set()
 
-        if user_id is not None and courses:
+        if should_filter_enrolled:
+            enrolled_ids = {course.course_id for course in courses}
+
+        elif user_id is not None and courses:
             enrolled_result = await self.db.execute(
                 select(CourseEnrollment.course_id)
                 .where(
@@ -304,6 +400,52 @@ class BaseCoursesService:
 
             enrolled_ids = set(enrolled_result.scalars().all())
 
+        progress_by_course: dict[int, tuple[int, int]] = {}
+        progress_course_ids = enrolled_ids.intersection(
+            course.course_id for course in courses
+        )
+        if user_id is not None and progress_course_ids:
+            progress_result = await self.db.execute(
+                select(
+                    Course.course_id.label("course_id"),
+                    func.count(func.distinct(Lesson.lesson_id)).label("lessons_total"),
+                    func.count(
+                        func.distinct(
+                            case(
+                                (LessonAttempt.attempt_id.is_not(None), Lesson.lesson_id),
+                                else_=None,
+                            )
+                        )
+                    ).label("lessons_completed"),
+                )
+                .select_from(Course)
+                .outerjoin(
+                    CourseModule,
+                    and_(
+                        CourseModule.course_id == Course.course_id,
+                        is_published(CourseModule),
+                    ),
+                )
+                .outerjoin(
+                    Lesson,
+                    and_(Lesson.module_id == CourseModule.module_id, is_published(Lesson)),
+                )
+                .outerjoin(
+                    LessonAttempt,
+                    and_(
+                        LessonAttempt.lesson_id == Lesson.lesson_id,
+                        LessonAttempt.user_id == user_id,
+                        LessonAttempt.correctness == COMPLETED_CORRECTNESS,
+                    ),
+                )
+                .where(Course.course_id.in_(progress_course_ids))
+                .group_by(Course.course_id)
+            )
+            progress_by_course = {
+                row.course_id: (row.lessons_completed, row.lessons_total)
+                for row in progress_result.all()
+            }
+
         course_items = []
 
         cover_urls = await self._get_cover_urls(
@@ -311,6 +453,10 @@ class BaseCoursesService:
         )
 
         for course in courses:
+            lessons_completed, lessons_total = progress_by_course.get(
+                course.course_id,
+                (0, 0),
+            )
             course_items.append(
                 CourseItem(
                     slug=course.slug,
@@ -318,6 +464,11 @@ class BaseCoursesService:
                     description=course.description,
                     main_image_url=cover_urls.get(course.course_id),
                     is_enrolled=course.course_id in enrolled_ids,
+                    is_course_completed=(
+                        lessons_total > 0 and lessons_completed == lessons_total
+                    ),
+                    lessons_completed=lessons_completed,
+                    lessons_total=lessons_total,
                 )
             )
 
@@ -396,16 +547,62 @@ class BaseCoursesService:
 
         modules = modules_result.scalars().all()
 
+        module_progress: dict[int, tuple[int, int]] = {}
+        if is_enrolled and modules:
+            module_ids = [module.module_id for module in modules]
+            module_progress_result = await self.db.execute(
+                select(
+                    CourseModule.module_id.label("module_id"),
+                    func.count(func.distinct(Lesson.lesson_id)).label("lessons_total"),
+                    func.count(
+                        func.distinct(
+                            case(
+                                (LessonAttempt.attempt_id.is_not(None), Lesson.lesson_id),
+                                else_=None,
+                            )
+                        )
+                    ).label("lessons_completed"),
+                )
+                .select_from(CourseModule)
+                .outerjoin(
+                    Lesson,
+                    and_(Lesson.module_id == CourseModule.module_id, is_published(Lesson)),
+                )
+                .outerjoin(
+                    LessonAttempt,
+                    and_(
+                        LessonAttempt.lesson_id == Lesson.lesson_id,
+                        LessonAttempt.user_id == user_id,
+                        LessonAttempt.correctness == COMPLETED_CORRECTNESS,
+                    ),
+                )
+                .where(CourseModule.module_id.in_(module_ids))
+                .group_by(CourseModule.module_id)
+            )
+            module_progress = {
+                row.module_id: (row.lessons_completed, row.lessons_total)
+                for row in module_progress_result.all()
+            }
+
         module_items = []
 
         for module in modules:
+            lessons_completed, lessons_total = module_progress.get(
+                module.module_id,
+                (0, 0),
+            )
             module_content_url = None
 
-            if is_enrolled:
+            file_path = module_content_path(
+                course_id=course.course_id,
+                module_id=module.module_id,
+            )
+
+            if is_enrolled and file_path is not None:
                 module_content_url = await minio_storage.get_url(
-                    file_path=f"{module.module_id}/content.md",
+                    file_path=file_path,
                     expires=settings.content_url_ttl,
-                    bucket="module-content",
+                    bucket=COURSE_CONTENT_BUCKET,
                 )
 
             module_items.append(
@@ -415,6 +612,11 @@ class BaseCoursesService:
                     description=module.description,
                     position=module.position,
                     content_url=module_content_url,
+                    is_completed=(
+                        lessons_total > 0 and lessons_completed == lessons_total
+                    ),
+                    lessons_completed=lessons_completed,
+                    lessons_total=lessons_total,
                 )
             )
 
@@ -428,11 +630,56 @@ class BaseCoursesService:
 
             main_image_url = cover_urls.get(course.course_id)
 
-            content_url = await minio_storage.get_url(
-                file_path=f"{course.course_id}/content.md",
-                expires=settings.content_url_ttl,
-                bucket="course-content",
-            )
+            file_path = course_content_path(course_id=course.course_id)
+
+            content_url = None
+
+            if file_path is not None:
+                content_url = await minio_storage.get_url(
+                    file_path=file_path,
+                    expires=settings.content_url_ttl,
+                    bucket=COURSE_CONTENT_BUCKET,
+                )
+
+            course_lessons_completed = 0
+            course_lessons_total = 0
+            if is_enrolled:
+                course_progress_result = await self.db.execute(
+                    select(
+                        func.count(func.distinct(Lesson.lesson_id)).label("lessons_total"),
+                        func.count(
+                            func.distinct(
+                                case(
+                                    (LessonAttempt.attempt_id.is_not(None), Lesson.lesson_id),
+                                    else_=None,
+                                )
+                            )
+                        ).label("lessons_completed"),
+                    )
+                    .select_from(CourseModule)
+                    .outerjoin(
+                        Lesson,
+                        and_(
+                            Lesson.module_id == CourseModule.module_id,
+                            is_published(Lesson),
+                        ),
+                    )
+                    .outerjoin(
+                        LessonAttempt,
+                        and_(
+                            LessonAttempt.lesson_id == Lesson.lesson_id,
+                            LessonAttempt.user_id == user_id,
+                            LessonAttempt.correctness == COMPLETED_CORRECTNESS,
+                        ),
+                    )
+                    .where(
+                        CourseModule.course_id == course.course_id,
+                        is_published(CourseModule),
+                    )
+                )
+                course_progress = course_progress_result.one()
+                course_lessons_total = course_progress.lessons_total
+                course_lessons_completed = course_progress.lessons_completed
 
             course_info = CourseInfo(
                 slug=course.slug,
@@ -441,6 +688,12 @@ class BaseCoursesService:
                 main_image_url=main_image_url,
                 content_url=content_url,
                 is_enrolled=is_enrolled,
+                is_course_completed=(
+                    course_lessons_total > 0
+                    and course_lessons_completed == course_lessons_total
+                ),
+                lessons_completed=course_lessons_completed,
+                lessons_total=course_lessons_total,
             )
 
         return CourseDetailResponse(
@@ -499,15 +752,37 @@ class BaseCoursesService:
         )
 
         # Total lessons: только опубликованные, иначе поедут страницы
+        completed_lesson_count = func.count(
+            func.distinct(
+                case(
+                    (LessonAttempt.attempt_id.is_not(None), Lesson.lesson_id),
+                    else_=None,
+                )
+            )
+        )
         total_result = await self.db.execute(
-            select(func.count(Lesson.lesson_id))
+            select(
+                func.count(func.distinct(Lesson.lesson_id)).label("lessons_total"),
+                (completed_lesson_count if is_enrolled else literal(0))
+                .label("lessons_completed"),
+            )
+            .select_from(Lesson)
+            .outerjoin(
+                LessonAttempt,
+                and_(
+                    LessonAttempt.lesson_id == Lesson.lesson_id,
+                    LessonAttempt.user_id == user_id,
+                    LessonAttempt.correctness == COMPLETED_CORRECTNESS,
+                ),
+            )
             .where(
                 Lesson.module_id == module.module_id,
                 is_published(Lesson),
             )
         )
-
-        total = total_result.scalar_one()
+        module_progress_row = total_result.one()
+        total = module_progress_row.lessons_total
+        module_lessons_completed = module_progress_row.lessons_completed
 
         total_pages = get_total_pages(
             total=total,
@@ -515,7 +790,11 @@ class BaseCoursesService:
         )
 
         lessons_result = await self.db.execute(
-            select(Lesson)
+            select(
+                Lesson,
+                self._lesson_completed_expression(user_id if is_enrolled else None)
+                .label("is_completed"),
+            )
             .where(
                 Lesson.module_id == module.module_id,
                 is_published(Lesson),
@@ -525,16 +804,17 @@ class BaseCoursesService:
             .limit(pagination.page_size)
         )
 
-        lessons = lessons_result.scalars().all()
+        lessons = lessons_result.all()
 
         lesson_items = [
             LessonItem(
-                lesson_id=lesson.lesson_id,
-                title=lesson.title,
-                description=lesson.description,
-                position=lesson.position,
+                lesson_id=row[0].lesson_id,
+                title=row[0].title,
+                description=row[0].description,
+                position=row[0].position,
+                is_completed=row[1],
             )
-            for lesson in lessons
+            for row in lessons
         ]
 
         # Module information only on the first page
@@ -543,12 +823,17 @@ class BaseCoursesService:
         if pagination.page == 1:
             module_content_url = None
 
+            file_path = module_content_path(
+                course_id=course.course_id,
+                module_id=module.module_id,
+            )
+
             # Module content only for enrolled users
-            if is_enrolled:
+            if is_enrolled and file_path is not None:
                 module_content_url = await minio_storage.get_url(
-                    file_path=f"{module.module_id}/content.md",
+                    file_path=file_path,
                     expires=settings.content_url_ttl,
-                    bucket="module-content",
+                    bucket=COURSE_CONTENT_BUCKET,
                 )
 
             module_info = ModuleInfo(
@@ -557,6 +842,11 @@ class BaseCoursesService:
                 description=module.description,
                 position=module.position,
                 content_url=module_content_url,
+                is_completed=(
+                    is_enrolled and total > 0 and module_lessons_completed == total
+                ),
+                lessons_completed=module_lessons_completed,
+                lessons_total=total,
             )
 
         return LessonsResponse(
@@ -615,11 +905,24 @@ class BaseCoursesService:
             course_id=course.course_id,
         )
 
+        lesson_is_completed = False
+        if is_enrolled:
+            completed_result = await self.db.execute(
+                select(LessonAttempt.attempt_id)
+                .where(
+                    LessonAttempt.user_id == user_id,
+                    LessonAttempt.lesson_id == lesson.lesson_id,
+                    LessonAttempt.correctness == COMPLETED_CORRECTNESS,
+                )
+                .limit(1)
+            )
+            lesson_is_completed = completed_result.scalar_one_or_none() is not None
+
         # Lesson content only for enrolled users
         content_url = None
 
         lesson_file_path = lesson_content_path(
-            course_slug=course.slug,
+            course_id=course.course_id,
             module_id=module.module_id,
             lesson_id=lesson.lesson_id,
         )
@@ -628,7 +931,7 @@ class BaseCoursesService:
             content_url = await minio_storage.get_url(
                 file_path=lesson_file_path,
                 expires=settings.content_url_ttl,
-                bucket=LESSON_CONTENT_BUCKET,
+                bucket=COURSE_CONTENT_BUCKET,
             )
 
         return LessonDetailResponse(
@@ -648,6 +951,7 @@ class BaseCoursesService:
                 description=lesson.description,
                 position=lesson.position,
                 content_url=content_url,
+                is_completed=lesson_is_completed,
             ),
         )
 
@@ -899,11 +1203,7 @@ class BaseCoursesService:
                 error=error,
             )
 
-        main_image_url = await minio_storage.get_url(
-            file_path=f"{course.course_id}/main.webp",
-            expires=settings.image_url_ttl,
-            bucket="course-content",
-        )
+        main_image_url = await self._get_cover_url(course_id=course.course_id)
 
         from app.api.v1.schemas.courses import CourseAdminResponse
 
@@ -1002,11 +1302,7 @@ class BaseCoursesService:
                 error=error,
             )
 
-        main_image_url = await minio_storage.get_url(
-            file_path=f"{course.course_id}/main.webp",
-            expires=settings.image_url_ttl,
-            bucket="course-content",
-        )
+        main_image_url = await self._get_cover_url(course_id=course.course_id)
 
         return CourseAdminResponse(
             slug=course.slug,
@@ -1050,6 +1346,16 @@ class BaseCoursesService:
         await self.db.delete(course)
         await self.db.commit()
 
+        # после удаления курса в хранилище не должно остаться его файлов:
+        # обложки, текстов уроков, медиа и вводных текстов
+        prefix = course_prefix(course_id=course.course_id)
+
+        if prefix is not None:
+            await minio_storage.delete_prefix(
+                bucket=COURSE_CONTENT_BUCKET,
+                prefix=prefix,
+            )
+
         from app.api.v1.schemas.courses import EnrollmentResponse
         return EnrollmentResponse(success=True)
 
@@ -1081,11 +1387,7 @@ class BaseCoursesService:
         await self.db.commit()
         await self.db.refresh(course)
 
-        main_image_url = await minio_storage.get_url(
-            file_path=f"{course.course_id}/main.webp",
-            expires=settings.image_url_ttl,
-            bucket="course-content",
-        )
+        main_image_url = await self._get_cover_url(course_id=course.course_id)
 
         from app.api.v1.schemas.courses import CourseAdminResponse
         return CourseAdminResponse(
@@ -1129,11 +1431,7 @@ class BaseCoursesService:
         await self.db.commit()
         await self.db.refresh(course)
 
-        main_image_url = await minio_storage.get_url(
-            file_path=f"{course.course_id}/main.webp",
-            expires=settings.image_url_ttl,
-            bucket="course-content",
-        )
+        main_image_url = await self._get_cover_url(course_id=course.course_id)
 
         from app.api.v1.schemas.courses import CourseAdminResponse
         return CourseAdminResponse(
@@ -1513,6 +1811,18 @@ class BaseCoursesService:
         await self.db.delete(module)
         await self.db.commit()
 
+        # файлы модуля: его вводный текст и Markdown всех уроков
+        prefix = module_prefix(
+            course_id=module.course_id,
+            module_id=module.module_id,
+        )
+
+        if prefix is not None:
+            await minio_storage.delete_prefix(
+                bucket=COURSE_CONTENT_BUCKET,
+                prefix=prefix,
+            )
+
         from app.api.v1.schemas.courses import EnrollmentResponse
         return EnrollmentResponse(success=True)
 
@@ -1767,7 +2077,7 @@ class BaseCoursesService:
 
         for lesson in lessons:
             file_path = lesson_content_path(
-                course_slug=course.slug,
+                course_id=course.course_id,
                 module_id=module.module_id,
                 lesson_id=lesson.lesson_id,
             )
@@ -1778,7 +2088,7 @@ class BaseCoursesService:
             if file_path is not None:
                 has_content = await minio_storage.exists(
                     file_path=file_path,
-                    bucket=LESSON_CONTENT_BUCKET,
+                    bucket=COURSE_CONTENT_BUCKET,
                 )
 
             items.append(
@@ -1980,7 +2290,7 @@ class BaseCoursesService:
 
         for lesson in sorted(lessons.values(), key=lambda item: item.position):
             file_path = lesson_content_path(
-                course_slug=course.slug,
+                course_id=course.course_id,
                 module_id=module.module_id,
                 lesson_id=lesson.lesson_id,
             )
@@ -1990,7 +2300,7 @@ class BaseCoursesService:
             if file_path is not None:
                 has_content = await minio_storage.exists(
                     file_path=file_path,
-                    bucket=LESSON_CONTENT_BUCKET,
+                    bucket=COURSE_CONTENT_BUCKET,
                 )
 
             items.append(
@@ -2087,7 +2397,7 @@ class BaseCoursesService:
         )
 
         file_path = lesson_content_path(
-            course_slug=course.slug,
+            course_id=course.course_id,
             module_id=module.module_id,
             lesson_id=lesson.lesson_id,
         )
@@ -2101,7 +2411,7 @@ class BaseCoursesService:
         if file_path is not None:
             await minio_storage.delete_file(
                 file_path=file_path,
-                bucket=LESSON_CONTENT_BUCKET,
+                bucket=COURSE_CONTENT_BUCKET,
             )
 
         return EnrollmentResponse(success=True)

@@ -13,7 +13,10 @@ import re
 from markdown_it import MarkdownIt
 from markdown_it.token import Token
 
-from app.core.markdown.custom_blocks import CustomBlockRegistry
+from app.core.markdown.custom_blocks import (
+    CustomBlockRegistry,
+    default_custom_block_registry,
+)
 from app.core.markdown.models import CustomBlock, LessonAsset, ParsedMarkdown
 from app.core.markdown.sanitizer import MarkdownSanitizer
 from app.core.storage_paths import (
@@ -61,7 +64,7 @@ class MarkdownParser:
             custom_blocks: CustomBlockRegistry | None = None,
     ):
         self._sanitizer = sanitizer or MarkdownSanitizer()
-        self._custom_blocks = custom_blocks or CustomBlockRegistry()
+        self._custom_blocks = custom_blocks or default_custom_block_registry()
         self._markdown = MarkdownIt("commonmark").enable("table")
 
     def parse(self, source: str) -> ParsedMarkdown:

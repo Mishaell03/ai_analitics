@@ -3,6 +3,8 @@ import {FileText, Link2, Pencil, TriangleAlert} from "lucide-react";
 import {api} from "@/api/axios.js";
 import {API_ROUTES} from "@/api/routes.js";
 import {listLessonMedia, refreshMediaUrl} from "@/api/media.js";
+import {listExerciseAnswers} from "@/api/exercises.js";
+import {buildAnswerMap} from "@/services/exercises.js";
 import Markdown from "@/components/Markdown/Markdown.jsx";
 import Badge from "@/components/Badge/Badge.jsx";
 import AdminModal from "@/pages/Admin/components/AdminModal.jsx";
@@ -20,6 +22,9 @@ import styles from "./lessonContent.module.css";
  * Ссылки на медиа раскрываются по идентификатору: в Markdown живёт
  * asset:media_key, а картинку и видео отдаёт хранилище по временной
  * ссылке из списка медиафайлов урока.
+ *
+ * Правильные ответы на задания приходят из базы: в тексте урока их
+ * нет, поэтому читатель видит отмеченные варианты только здесь.
  */
 function LessonContentModal({courseSlug, moduleId, lesson, onClose, onEdit}) {
     const t = useAdminTranslation();
@@ -31,6 +36,9 @@ function LessonContentModal({courseSlug, moduleId, lesson, onClose, onEdit}) {
     // медиафайлы урока по идентификатору: для раскрытия ссылок в Markdown
     const [media, setMedia] = useState({});
     const [mediaOpen, setMediaOpen] = useState(false);
+
+    // правильные ответы на задания по идентификатору задания
+    const [answers, setAnswers] = useState({});
 
     const fetchContent = useCallback(async () => {
         setError(false);
@@ -67,6 +75,17 @@ function LessonContentModal({courseSlug, moduleId, lesson, onClose, onEdit}) {
         }
     }, [courseSlug, moduleId, lesson.lesson_id]);
 
+    // правильные ответы на задания: у урока их может не быть
+    const fetchAnswers = useCallback(async () => {
+        try {
+            const data = await listExerciseAnswers(lesson.lesson_id);
+
+            setAnswers(buildAnswerMap(data.answers));
+        } catch {
+            setAnswers({});
+        }
+    }, [lesson.lesson_id]);
+
     // ссылка на файл протухла — берём новую
     const handleMediaError = useCallback(async (mediaKey) => {
         try {
@@ -84,7 +103,8 @@ function LessonContentModal({courseSlug, moduleId, lesson, onClose, onEdit}) {
     useEffect(() => {
         fetchContent();
         fetchMedia();
-    }, [fetchContent, fetchMedia]);
+        fetchAnswers();
+    }, [fetchContent, fetchMedia, fetchAnswers]);
 
     const renderSkeleton = () => (
         <div className={styles.skeletonBody}>
@@ -173,6 +193,11 @@ function LessonContentModal({courseSlug, moduleId, lesson, onClose, onEdit}) {
                             <Markdown
                                 content={content.content}
                                 media={media}
+                                answers={answers}
+                                labels={{
+                                    answer: t("adminLessonAnswerLabel"),
+                                    image: t("adminLessonImageLabel"),
+                                }}
                                 onMediaError={handleMediaError}
                             />
                         )

@@ -1,4 +1,4 @@
-import {getTranslation} from "@/locales/i18n.js";
+import {useTranslation} from "@/hooks/useTranslation.js";
 import styles from "./about.module.css";
 
 import {
@@ -20,11 +20,9 @@ import aboutTeamImage from "@/assets/about/team.webp";
 import aboutMissionImage from "@/assets/about/mission.webp";
 import {ROUTES} from "@/router/AppRouter.jsx";
 
-const language = "ru";
-
 export function About() {
     const navigate = useNavigate();
-    const t = (key) => getTranslation(`about.about.${key}`, language);
+    const t = useTranslation("about.about");
 
     const features = [
         {

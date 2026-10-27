@@ -1,9 +1,12 @@
+from typing import Literal
+
 from fastapi import APIRouter, Request, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.courses import (
     CoursesResponse,
     CourseDetailResponse,
+    ContinueLearningResponse,
     LessonDetailResponse,
     LessonContentResponse,
     LessonsResponse,
@@ -26,6 +29,7 @@ from app.api.v1.schemas.media import (
 )
 from app.api.v1.services.courses import BaseCoursesService
 from app.api.v1.services.course_image import CourseImageService
+from app.api.v1.services.learning import LearningService
 from app.api.v1.services.lesson_content import LessonContentService
 from app.api.v1.services.lesson_media import LessonMediaService
 from app.core.database import get_db
@@ -42,11 +46,28 @@ async def get_courses(
         current: CurrentUserContext = Depends(get_current_user),
         page: int = Query(1, ge=1),
         page_size: int = Query(20, ge=1, le=100),
+        search_query: str | None = Query(
+            default=None,
+            alias="q",
+            max_length=100,
+            description="Поиск по названию, описанию и идентификатору курса",
+        ),
+        enrolled_only: bool = Query(
+            default=False,
+            description="Вернуть только курсы, на которые записан текущий пользователь",
+        ),
+        enrollment_filter: Literal["all", "enrolled", "not_enrolled"] = Query(
+            default="all",
+            description="Фильтр каталога по записи текущего пользователя",
+        ),
 ):
     courses = await BaseCoursesService(db).get_courses(
         page=page,
         page_size=page_size,
         user_id=current.user.user_id,
+        enrolled_only=enrolled_only,
+        search_query=search_query,
+        enrollment_filter=enrollment_filter,
     )
 
     await user_event_logs(
@@ -94,6 +115,36 @@ async def get_course(
     )
 
     return course
+
+
+@router.get("/{course_slug}/next-lesson", response_model=ContinueLearningResponse)
+async def get_next_lesson(
+        course_slug: str,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_user),
+):
+    result = await LearningService(db).get_next_lesson(
+        course_slug=course_slug,
+        request=request,
+        language=current.session.language,
+        device_id=current.session.device_id,
+        session_id=current.session.id,
+        user_id=current.user.user_id,
+        platform=current.session.platform,
+    )
+
+    await user_event_logs(
+        request=request,
+        event="SUCCESS_GET_NEXT_LESSON",
+        status_code=200,
+        device_id=current.session.device_id,
+        user_id=current.user.user_id,
+        session_id=current.session.id,
+        platform=current.session.platform,
+    )
+
+    return result
 
 
 @router.get("/{course_slug}/modules/{module_id}", response_model=LessonsResponse )
@@ -852,5 +903,3 @@ async def delete_module_flat_alias3(
     )
 
     return result
-
-

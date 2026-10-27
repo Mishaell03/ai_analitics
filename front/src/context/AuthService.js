@@ -110,9 +110,19 @@ const AuthService = {
     },
 
     /**
-     * Выход: очищаем хранилище и кэш аватара.
+     * Выход: отзываем cookie-сессию на сервере и очищаем хранилище.
+     *
+     * Сессия теперь живёт в HttpOnly-cookie, поэтому просто удалить
+     * данные из localStorage недостаточно: без запроса к /logout
+     * cookie останется в браузере.
      */
     async logout() {
+        try {
+            await api.post(API_ROUTES.LOGOUT);
+        } catch {
+            // сессия могла уже истечь — локальные данные всё равно чистим
+        }
+
         AuthStorage.clearUser();
         AuthStorage.markGuest();
         await ImageCache.clear();

@@ -30,7 +30,7 @@ from app.core.config import settings
 from app.core.minio_url import minio_storage
 from app.core.pagination import get_pagination, get_total_pages
 from app.core.storage_paths import (
-    MEDIA_BUCKET,
+    COURSE_CONTENT_BUCKET,
     generate_media_key,
     media_object_key,
 )
@@ -161,7 +161,7 @@ class LessonMediaService(BaseCoursesService):
         await minio_storage.put_stream(
             data=payload,
             length=size_bytes,
-            bucket=MEDIA_BUCKET,
+            bucket=COURSE_CONTENT_BUCKET,
             file_path=object_key,
             content_type=content_type,
         )
@@ -202,7 +202,7 @@ class LessonMediaService(BaseCoursesService):
             # файл загружен, но в базу не попал — убираем его
             await minio_storage.delete_file(
                 file_path=object_key,
-                bucket=MEDIA_BUCKET,
+                bucket=COURSE_CONTENT_BUCKET,
             )
 
             await self._raise(
@@ -213,7 +213,7 @@ class LessonMediaService(BaseCoursesService):
 
         url = await minio_storage.get_url(
             file_path=media.object_key,
-            bucket=MEDIA_BUCKET,
+            bucket=COURSE_CONTENT_BUCKET,
             expires=settings.media_url_ttl,
         )
 
@@ -340,7 +340,7 @@ class LessonMediaService(BaseCoursesService):
         for media in result.scalars().all():
             url = await minio_storage.get_url(
                 file_path=media.object_key,
-                bucket=MEDIA_BUCKET,
+                bucket=COURSE_CONTENT_BUCKET,
                 expires=settings.media_url_ttl,
             )
 
@@ -396,7 +396,7 @@ class LessonMediaService(BaseCoursesService):
 
         url = await minio_storage.get_url(
             file_path=media.object_key,
-            bucket=MEDIA_BUCKET,
+            bucket=COURSE_CONTENT_BUCKET,
             expires=settings.media_url_ttl,
         )
 
@@ -443,7 +443,7 @@ class LessonMediaService(BaseCoursesService):
 
         url = await minio_storage.get_url(
             file_path=media.object_key,
-            bucket=MEDIA_BUCKET,
+            bucket=COURSE_CONTENT_BUCKET,
             expires=settings.media_url_ttl,
         )
 
@@ -531,7 +531,7 @@ class LessonMediaService(BaseCoursesService):
 
         url = await minio_storage.get_url(
             file_path=media.object_key,
-            bucket=MEDIA_BUCKET,
+            bucket=COURSE_CONTENT_BUCKET,
             expires=settings.media_url_ttl,
         )
 
@@ -617,7 +617,7 @@ class LessonMediaService(BaseCoursesService):
 
         await minio_storage.delete_file(
             file_path=media.object_key,
-            bucket=MEDIA_BUCKET,
+            bucket=COURSE_CONTENT_BUCKET,
         )
 
         logging.info("media deleted: media=%s", media.media_key)

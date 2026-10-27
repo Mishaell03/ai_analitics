@@ -1,15 +1,47 @@
 import assert from "node:assert/strict";
 import {renderToStaticMarkup} from "react-dom/server";
+import {MemoryRouter} from "react-router-dom";
 import Markdown from "@/components/Markdown/Markdown.jsx";
+import Description from "@/components/Markdown/Description.jsx";
+import {AuthProvider} from "@/context/AuthContext.jsx";
+import {Dashboard} from "@/pages/Admin/Dashboard/Dashboard.jsx";
+import {Users} from "@/pages/Admin/Users/Users.jsx";
+import AdminCourses from "@/pages/Admin/Courses/AdminCourses.jsx";
+import AdminLayout from "@/pages/Admin/AdminLayout.jsx";
+import AdminSidebar from "@/pages/Admin/AdminSidebar.jsx";
+import AdminPageHeader from "@/pages/Admin/components/AdminPageHeader.jsx";
+import AdminPagination from "@/pages/Admin/components/AdminPagination.jsx";
+import AdminModal from "@/pages/Admin/components/AdminModal.jsx";
+import AdminToast from "@/pages/Admin/components/AdminToast.jsx";
+import ConfirmModal from "@/components/ConfirmModal/ConfirmModal.jsx";
+import CoursesTable from "@/pages/Admin/Courses/CoursesTable.jsx";
+import ModulesTable from "@/pages/Admin/Courses/ModulesTable.jsx";
+import CourseFormModal from "@/pages/Admin/Courses/CourseFormModal.jsx";
+import ModuleFormModal from "@/pages/Admin/Courses/ModuleFormModal.jsx";
+import CourseCoverModal from "@/pages/Admin/Courses/CourseCoverModal.jsx";
+import LessonsPanel from "@/pages/Admin/Lessons/LessonsPanel.jsx";
+import LessonsTable from "@/pages/Admin/Lessons/LessonsTable.jsx";
+import LessonEditor from "@/pages/Admin/Lessons/LessonEditor.jsx";
+import LessonContentModal from "@/pages/Admin/Lessons/LessonContentModal.jsx";
+import LessonMediaModal from "@/pages/Admin/Lessons/LessonMediaModal.jsx";
+import LessonExercisesPanel from "@/pages/Admin/Lessons/LessonExercisesPanel.jsx";
+import UserModal from "@/pages/Admin/Users/UserModal.jsx";
 
 /**
- * Проверка отрисовки Markdown.
+ * Проверка отрисовки Markdown и админки.
  *
  * Компоненты собираются в SSR-режиме Vite, поэтому здесь проверяется
  * именно разметка: какие элементы появились и как они выглядят.
  *
  * Запуск: npm run test:render
  */
+
+const descriptionHtml = renderToStaticMarkup(<Description content={
+    "Освойте анализ данных с нуля!\n\nВас ждут понятные объяснения.\n\n**Подходит новичкам без опыта программирования.**"
+}/>);
+assert.equal((descriptionHtml.match(/<br\/>/g) ?? []).length, 2);
+assert.equal((descriptionHtml.match(/aria-hidden="true"/g) ?? []).length, 2);
+assert.ok(descriptionHtml.includes("<strong><span>Подходит новичкам без опыта программирования.</span></strong>"));
 
 const source = [
     "# Заголовок урока",
@@ -35,6 +67,22 @@ const source = [
     "",
     "![Схема](assets/variables.png)",
     "",
+    "![Схема работы](asset:m_0123456789abcdef)",
+    "",
+    "![Ролик](asset:m_9876543210fedcba)",
+    "",
+    ":::test",
+    "id: python-variables",
+    "Какой тип вернёт `type(1.0)`?",
+    "- [ ] Вариант 1",
+    "- [ ] Вариант 2",
+    ":::",
+    "",
+    ":::test",
+    "id: python-code",
+    "Напишите функцию",
+    ":::",
+    "",
     ":::test",
     "Какой тип вернёт `type(1.0)`?",
     ":::",
@@ -42,7 +90,34 @@ const source = [
     "<script>alert(1)</script>",
 ].join("\n");
 
-const markup = renderToStaticMarkup(<Markdown content={source}/>);
+// медиафайлы урока: по идентификатору backend отдаёт временную ссылку
+const media = {
+    m_0123456789abcdef: {
+        media_key: "m_0123456789abcdef",
+        kind: "image",
+        url: "http://localhost:9000/course-content/1/media/m_0123456789abcdef.webp",
+    },
+    m_9876543210fedcba: {
+        media_key: "m_9876543210fedcba",
+        kind: "video",
+        url: "http://localhost:9000/course-content/1/media/m_9876543210fedcba.mp4",
+    },
+};
+
+// правильные ответы на задания: приходят из базы, в разметке их нет
+const answers = {
+    "python-variables": {type: "choice", correct: ["Вариант 2"]},
+    "python-code": {type: "text", value: "print(value)"},
+};
+
+const markup = renderToStaticMarkup(
+    <Markdown
+        content={source}
+        media={media}
+        answers={answers}
+        labels={{answer: "Правильный ответ"}}
+    />
+);
 
 // заголовки, абзацы и выделение
 assert.match(markup, /<h1[^>]*>[\s\S]*?Заголовок урока[\s\S]*?<\/h1>/);
@@ -66,8 +141,24 @@ assert.match(markup, /tokenString/);
 // картинка без готовой ссылки показывается заглушкой
 assert.match(markup, /imagePlaceholder[^>]*>Схема</);
 
-// кастомный блок
-assert.match(markup, /data-type="test"/);
+// ссылка на медиа раскрывается по идентификатору
+assert.match(markup, /<img[^>]*m_0123456789abcdef\.webp/);
+assert.match(markup, /<video[^>]*m_9876543210fedcba\.mp4/);
+assert.ok(!markup.includes("asset:m_"));
+
+// задание показывается отдельным блоком
+assert.match(markup, /testBlock/);
+
+// задание: варианты с чекбоксами, правильный отмечен
+assert.match(markup, /python-variables/);
+assert.match(markup, /Вариант 1/);
+assert.match(markup, /Вариант 2/);
+assert.match(markup, /type="checkbox"[^>]*checked=""/);
+assert.match(markup, /data-correct="true"/);
+
+// ответ с вводом кода показан отдельным полем
+assert.match(markup, /Правильный ответ/);
+assert.match(markup, /print\(value\)/);
 
 // опасная ссылка остаётся текстом, а не ссылкой
 assert.ok(!markup.includes('href="javascript:'));
@@ -78,3 +169,190 @@ assert.ok(!markup.includes("<script>"));
 assert.match(markup, /&lt;script&gt;/);
 
 console.log("Markdown отрисовывается корректно");
+
+/* ---------- админка ---------- */
+
+// страницы админки живут внутри провайдера сессии и роутера
+const renderAdmin = (node) => renderToStaticMarkup(
+    <MemoryRouter>
+        <AuthProvider>{node}</AuthProvider>
+    </MemoryRouter>
+);
+
+const adminCases = {
+    Dashboard: <Dashboard/>,
+    Users: <Users/>,
+    AdminCourses: <AdminCourses/>,
+    AdminLayout: <AdminLayout/>,
+    AdminSidebar: <AdminSidebar/>,
+    AdminPageHeader: (
+        <AdminPageHeader eyebrow="Раздел" title="Заголовок" subtitle="Описание"/>
+    ),
+    AdminPagination: (
+        <AdminPagination
+            page={1}
+            totalPages={3}
+            onPrevious={() => {}}
+            onNext={() => {}}
+            label="Страница 1 из 3"
+            previousLabel="Назад"
+            nextLabel="Вперёд"
+        />
+    ),
+    AdminToast: <AdminToast message={{type: "success", text: "Готово"}}/>,
+    AdminModal: (
+        <AdminModal onClose={() => {}} ariaLabel="Окно">
+            <p>Содержимое окна</p>
+        </AdminModal>
+    ),
+    ConfirmModal: (
+        <ConfirmModal
+            title="Удалить?"
+            description="Курс"
+            confirmText="Удалить"
+            busyText="Удаление..."
+            cancelText="Отмена"
+            onConfirm={() => {}}
+            onClose={() => {}}
+        />
+    ),
+    CoursesTable: (
+        <CoursesTable
+            courses={[{slug: "s", title: "Курс", is_active: true}]}
+            page={1}
+            totalPages={1}
+            loading={false}
+            saving={false}
+            onSelectCourse={() => {}}
+            onCreateCourse={() => {}}
+            onOpenCover={() => {}}
+            onEditCourse={() => {}}
+            onToggleStatus={() => {}}
+            onDeleteCourse={() => {}}
+            onPreviousPage={() => {}}
+            onNextPage={() => {}}
+        />
+    ),
+    ModulesTable: (
+        <ModulesTable
+            courses={[{slug: "s", title: "Курс"}]}
+            selectedCourseSlug=""
+            selectedModuleId={null}
+            modules={[]}
+            loading={false}
+            error={null}
+            reordering={false}
+            saving={false}
+            dragIndex={null}
+            dragOverIndex={null}
+            getDragProps={() => ({})}
+            onSelectCourse={() => {}}
+            onCreateModule={() => {}}
+            onRetry={() => {}}
+            onSelectModule={() => {}}
+            onEditModule={() => {}}
+            onToggleStatus={() => {}}
+            onDeleteModule={() => {}}
+        />
+    ),
+    CourseFormModal: (
+        <CourseFormModal
+            mode="create"
+            course={{title: "", slug: "", description: "", is_active: false}}
+            saving={false}
+            onClose={() => {}}
+            onSubmit={() => {}}
+            onError={() => {}}
+        />
+    ),
+    ModuleFormModal: (
+        <ModuleFormModal
+            mode="create"
+            module={{title: "", description: "", is_active: false}}
+            saving={false}
+            onClose={() => {}}
+            onSubmit={() => {}}
+            onError={() => {}}
+        />
+    ),
+    CourseCoverModal: (
+        <CourseCoverModal
+            course={{slug: "s", title: "Курс"}}
+            onClose={() => {}}
+            onSaved={() => {}}
+        />
+    ),
+    LessonsPanel: <LessonsPanel courseSlug="" module={null}/>,
+    LessonsTable: (
+        <LessonsTable
+            lessons={[]}
+            loading={false}
+            error={null}
+            reordering={false}
+            saving={false}
+            dragIndex={null}
+            dragOverIndex={null}
+            getDragProps={() => ({})}
+            onRetry={() => {}}
+            onEdit={() => {}}
+            onToggleStatus={() => {}}
+            onOpen={() => {}}
+            onDelete={() => {}}
+        />
+    ),
+    LessonEditor: (
+        <LessonEditor
+            courseSlug="s"
+            moduleId={1}
+            lesson={null}
+            onClose={() => {}}
+            onSaved={() => {}}
+        />
+    ),
+    LessonContentModal: (
+        <LessonContentModal
+            courseSlug="s"
+            moduleId={1}
+            lesson={{lesson_id: 1, title: "Урок", position: 1, is_published: false}}
+            onClose={() => {}}
+            onEdit={() => {}}
+        />
+    ),
+    LessonMediaModal: (
+        <LessonMediaModal
+            courseSlug="s"
+            moduleId={1}
+            lesson={{lesson_id: 1, title: "Урок"}}
+            onClose={() => {}}
+            onChanged={() => {}}
+        />
+    ),
+    LessonExercisesPanel: (
+        <LessonExercisesPanel
+            exercises={[{
+                exercise_id: "python-variables",
+                question: "Какой тип?",
+                options: [{text: "Вариант 1", checked: true}],
+            }]}
+            onToggleOption={() => {}}
+            onChangeId={() => {}}
+        />
+    ),
+    UserModal: (
+        <UserModal userId={1} onClose={() => {}} onUserUpdated={() => {}}/>
+    ),
+};
+
+for (const [name, node] of Object.entries(adminCases)) {
+    const adminMarkup = renderAdmin(node);
+
+    assert.ok(adminMarkup.length > 0, `${name} не отрисовался`);
+}
+
+// страница курсов показывает заголовок раздела из переводов
+const coursesMarkup = renderAdmin(<AdminCourses/>);
+
+assert.match(coursesMarkup, /Управление курсами/);
+assert.match(coursesMarkup, /Курсы и модули/);
+
+console.log("Админка отрисовывается корректно");

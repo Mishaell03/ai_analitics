@@ -1,7 +1,19 @@
 import {useMemo} from "react";
 import {markdownService} from "@/services/markdown/MarkdownService.js";
 import MarkdownBlocks from "@/components/Markdown/MarkdownBlocks.jsx";
+import MarkdownTestBlock from "@/components/Markdown/MarkdownTestBlock.jsx";
+import {registerCustomBlockRenderer} from "@/components/Markdown/customBlockRenderers.js";
 import styles from "./markdown.module.css";
+
+// задание — встроенный тип блока: свой отрисовщик сразу после импорта
+registerCustomBlockRenderer("test", (block, context) => (
+    <MarkdownTestBlock
+        block={block}
+        answers={context.answers}
+        labels={context.labels}
+        onCheck={context.onExerciseCheck}
+    />
+));
 
 /**
  * Показывает Markdown урока.
@@ -18,8 +30,11 @@ import styles from "./markdown.module.css";
  * По нему раскрываются ссылки вида ![Схема](asset:m_0123456789abcdef):
  * в Markdown попадает только идентификатор, а сам файл отдаётся
  * хранилищем по временной ссылке.
+ *
+ * answers — правильные ответы на задания по идентификатору задания.
+ * labels — подписи интерфейса (например, «Правильный ответ»).
  */
-function Markdown({content, media, onMediaError, className}) {
+function Markdown({content, media, answers, labels, onMediaError, onExerciseCheck, className}) {
     const blocks = useMemo(() => markdownService.parse(content), [content]);
 
     if (!blocks.length) {
@@ -28,7 +43,14 @@ function Markdown({content, media, onMediaError, className}) {
 
     return (
         <div className={className ? `${styles.markdown} ${className}` : styles.markdown}>
-            <MarkdownBlocks blocks={blocks} media={media} onMediaError={onMediaError}/>
+            <MarkdownBlocks
+                blocks={blocks}
+                media={media}
+                answers={answers}
+                labels={labels}
+                onMediaError={onMediaError}
+                onExerciseCheck={onExerciseCheck}
+            />
         </div>
     );
 }

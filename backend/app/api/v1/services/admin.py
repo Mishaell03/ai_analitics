@@ -22,20 +22,26 @@ from app.api.v1.schemas.admin import (
     DashboardTopCourse,
 )
 from app.core.avatars import get_avatar_url
+from app.core.config import settings
 from app.core.errors import raise_backend_error
 from app.core.pagination import get_pagination, get_total_pages
 from app.models.auth import Provider, UserAuthMethod, UserSession
 from app.models.courses import Course, CourseModule, Lesson
-from app.models.enrollments_progress import CourseEnrollment, LessonAttempt
+from app.models.enrollments_progress import (
+    COMPLETED_CORRECTNESS,
+    CourseEnrollment,
+    LessonAttempt,
+)
 from app.models.errors import UserEventLog
 from app.models.users import User, UserConsent
 
 
-# верх шкалы correctness (CHECK 0..3): урок с такой попыткой считается решённым
-SOLVED_CORRECTNESS = 3
-
 # сколько последних попыток отдаём в карточке пользователя
 RECENT_ATTEMPTS_LIMIT = 20
+
+# верхняя граница для счётчиков дашборда: защита от limit(None) = без лимита
+MAX_DASHBOARD_ITEMS = 100
+DEFAULT_DASHBOARD_ITEMS = 5
 
 
 def is_active_session():
@@ -68,8 +74,8 @@ class AdminService:
 
     async def get_dashboard(
             self,
-            users: int | None = 5,
-            top_courses: int | None = 5,
+            users: int | None = DEFAULT_DASHBOARD_ITEMS,
+            top_courses: int | None = DEFAULT_DASHBOARD_ITEMS,
             # period: int | None = 14,
             # date_of: date | None = None,
             # date_to: date | None = None,
@@ -77,8 +83,12 @@ class AdminService:
         """COUNTERS OF THE MAIN TABLES, LAST REGISTERED USERS AND TOP COURSES"""
 
         totals = await self._get_totals()
-        latest_users = await self._get_latest_users(users_count=users)
-        top_courses = await self._get_top_courses(top_courses=top_courses)
+        latest_users = await self._get_latest_users(
+            users_count=self._clamp_count(users),
+        )
+        top_courses = await self._get_top_courses(
+            top_courses=self._clamp_count(top_courses),
+        )
 
         return DashboardResponse(
             total_users=totals["total_users"],
@@ -123,6 +133,56 @@ class AdminService:
             "total_active_sessions": row.total_active_sessions,
         }
 
+    @staticmethod
+    def _clamp_count(value: int | None) -> int:
+        """Границы для счётчиков дашборда.
+
+        None раньше попадал в SQLAlchemy .limit(None), что означает
+        «без лимита» — запрос возвращал всю таблицу.
+        """
+
+        if value is None:
+            return DEFAULT_DASHBOARD_ITEMS
+
+        return max(1, min(int(value), MAX_DASHBOARD_ITEMS))
+
+    async def _presign_avatars(self, rows) -> list[str | None]:
+        """Подписывает аватары параллельно с ограничением параллелизма.
+
+        Использует семафор для предотвращения перегрузки пула соединений MinIO.
+        Принимает любые строки (Row / User / tuples), у которых есть атрибуты
+        или индексы img и is_default_img.
+        """
+
+        semaphore = asyncio.Semaphore(
+            max(1, settings.minio_presign_concurrency)
+        )
+
+        async def signed(img: str | None, is_default_img) -> str | None:
+            async with semaphore:
+                return await get_avatar_url(
+                    img=img,
+                    is_default_img=bool(is_default_img),
+                )
+
+        tasks = []
+        for row in rows:
+            if hasattr(row, "img"):
+                img = row.img
+                is_default_img = getattr(row, "is_default_img", True)
+            elif isinstance(row, (tuple, list)):
+                if len(row) == 2:
+                    img, is_default_img = row[0], row[1]
+                elif len(row) >= 6:
+                    img, is_default_img = row[3], row[4]
+                else:
+                    img, is_default_img = row[0], True
+            else:
+                img, is_default_img = None, True
+            tasks.append(signed(img, is_default_img))
+
+        return list(await asyncio.gather(*tasks))
+
     async def _get_latest_users(self, users_count: int) -> list[DashboardLatestUser]:
         result = await self.db.execute(
             select(
@@ -134,16 +194,13 @@ class AdminService:
                 User.created_at,
             )
             .order_by(User.created_at.desc(), User.user_id.desc())
-            .limit(users_count)
+            .limit(self._clamp_count(users_count))
         )
 
         rows = result.all()
 
-        # на каждый аватар уходит stat + presign, поэтому подписываем параллельно
-        img_urls = await asyncio.gather(*(
-            get_avatar_url(img=img, is_default_img=bool(is_default_img))
-            for _, _, _, img, is_default_img, _ in rows
-        ))
+        # на каждый аватар уходит stat + presign, подписываем с ограничением
+        img_urls = await self._presign_avatars(rows)
 
         return [
             DashboardLatestUser(
@@ -174,7 +231,7 @@ class AdminService:
             .outerjoin(CourseEnrollment, CourseEnrollment.course_id == Course.course_id)
             .group_by(Course.course_id, Course.title)
             .order_by(enrollments_count.desc(), Course.course_id.asc())
-            .limit(top_courses)
+            .limit(self._clamp_count(top_courses))
         )
 
         return [
@@ -243,10 +300,8 @@ class AdminService:
 
         rows = result.all()
 
-        img_urls = await asyncio.gather(*(
-            get_avatar_url(img=row.img, is_default_img=bool(row.is_default_img))
-            for row in rows
-        ))
+        # Подписываем аватары с контролируемым параллелизмом
+        img_urls = await self._presign_avatars(rows)
 
         users = [
             AdminUserItem(
@@ -610,7 +665,7 @@ class AdminService:
             .join(CourseModule, CourseModule.module_id == Lesson.module_id)
             .where(
                 LessonAttempt.user_id == user_id,
-                LessonAttempt.correctness == SOLVED_CORRECTNESS,
+                LessonAttempt.correctness == COMPLETED_CORRECTNESS,
             )
             .group_by(CourseModule.course_id)
         )

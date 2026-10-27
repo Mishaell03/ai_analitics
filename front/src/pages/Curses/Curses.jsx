@@ -1,17 +1,15 @@
-import {getTranslation} from "@/locales/i18n.js";
+import {useTranslation} from "@/hooks/useTranslation.js";
 import styles from "./courses.module.css";
 import {ArrowRight, ChevronLeft, ChevronRight, ImageOff, Search, SlidersHorizontal} from "lucide-react";
 import {Link} from "react-router-dom";
-import {useCallback, useEffect, useMemo, useState,} from "react";
+import {useCallback, useEffect, useMemo, useRef, useState,} from "react";
 import {api} from "@/api/axios.js";
 import {API_ROUTES} from "@/api/routes.js";
 import {ROUTES} from "@/router/AppRouter.jsx";
-
-const language = "ru";
+import Description from "@/components/Markdown/Description.jsx";
 
 export function Courses() {
-    const t = (key) =>
-        getTranslation(`courses.courses.${key}`, language);
+    const t = useTranslation("courses.courses");
 
     const [courses, setCourses] = useState([]);
     const [page, setPage] = useState(1);
@@ -21,7 +19,11 @@ export function Courses() {
     const [error, setError] = useState(false);
 
     const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [activeFilter, setActiveFilter] = useState("all");
+    const [filtersOpen, setFiltersOpen] = useState(false);
+    const requestVersion = useRef(0);
+    const searchDebounceTimer = useRef(null);
 
     const filters = useMemo(
         () => [
@@ -30,19 +32,15 @@ export function Courses() {
                 label: t("filterAll"),
             },
             {
-                id: "analytics",
-                label: t("filterAnalytics"),
+                id: "enrolled",
+                label: t("filterEnrolled"),
             },
             {
-                id: "ai",
-                label: t("filterAi"),
-            },
-            {
-                id: "career",
-                label: t("filterCareer"),
+                id: "not_enrolled",
+                label: t("filterNotEnrolled"),
             },
         ],
-        []
+        [t]
     );
 
     /*
@@ -50,24 +48,32 @@ export function Courses() {
      */
 
     const fetchCourses = useCallback(async () => {
+        const requestId = ++requestVersion.current;
         setLoading(true);
         setError(false);
 
         try {
+            const query = debouncedSearch.trim().replace(/\s+/g, " ");
             const {data} = await api.get(API_ROUTES.COURSES, {
                 params: {
                     page,
+                    ...(query ? {q: query} : {}),
+                    ...(activeFilter !== "all" ? {enrollment_filter: activeFilter} : {}),
                 },
             });
 
+            if (requestId !== requestVersion.current) return;
             setCourses(data.courses ?? []);
             setTotalPages(data.total_pages ?? 1);
         } catch {
+            if (requestId !== requestVersion.current) return;
             setError(true);
         } finally {
-            setLoading(false);
+            if (requestId === requestVersion.current) setLoading(false);
         }
-    }, [page]);
+    }, [page, debouncedSearch, activeFilter]);
+
+    useEffect(() => () => window.clearTimeout(searchDebounceTimer.current), []);
 
     useEffect(() => {
         fetchCourses();
@@ -77,43 +83,36 @@ export function Courses() {
      * ---------- filtering ----------
      */
 
-    const filteredCourses = useMemo(() => {
-        const query = search.trim().toLowerCase();
-
-        return courses.filter((course) => {
-            const matchesSearch =
-                !query ||
-                course.title
-                    ?.toLowerCase()
-                    .includes(query) ||
-                course.description
-                    ?.toLowerCase()
-                    .includes(query);
-
-            const matchesCategory =
-                activeFilter === "all" ||
-                !course.category ||
-                course.category === activeFilter;
-
-            return matchesSearch && matchesCategory;
-        });
-    }, [courses, search, activeFilter]);
+    const filteredCourses = courses;
 
     /*
      * ---------- handlers ----------
      */
 
     const handleFilterChange = (filter) => {
+        setPage(1);
         setActiveFilter(filter);
     };
 
     const handleSearchChange = (event) => {
-        setSearch(event.target.value);
+        const value = event.target.value;
+        setSearch(value);
+        window.clearTimeout(searchDebounceTimer.current);
+        searchDebounceTimer.current = window.setTimeout(
+            () => {
+                setPage(1);
+                setDebouncedSearch(value);
+            },
+            300,
+        );
     };
 
     const handleResetFilters = () => {
+        window.clearTimeout(searchDebounceTimer.current);
         setSearch("");
+        setDebouncedSearch("");
         setActiveFilter("all");
+        setPage(1);
     };
 
 
@@ -159,13 +158,23 @@ export function Courses() {
                     <Search/>
 
                     <input type="search" value={search} onChange={handleSearchChange}
+                           aria-label={t("searchPlaceholder")}
                            placeholder={t("searchPlaceholder")}/>
                 </label>
 
                 <div className={styles.filterWrapper}>
-                    <div className={styles.filterIcon}><SlidersHorizontal/></div>
+                    <button
+                        type="button"
+                        className={styles.filterToggle}
+                        aria-expanded={filtersOpen}
+                        aria-controls="course-filters"
+                        aria-label={t("additionalFilters")}
+                        onClick={() => setFiltersOpen((open) => !open)}
+                    >
+                        <SlidersHorizontal/>
+                    </button>
 
-                    <div className={styles.filters}>
+                    <div className={styles.filters} id="course-filters" data-open={filtersOpen}>
                         {filters.map((filter) => (
                             <button key={filter.id} type="button" className={styles.filter}
                                     data-active={activeFilter === filter.id}
@@ -273,10 +282,19 @@ export function Courses() {
                                             </span>
                                         </div>
 
-                                        <p>{course.description}</p>
+                                        {course.description && <Description content={course.description} className={styles.cardDescription} preview/>}
 
-                                        <div className={styles.cardFooter}>
-                                            <span>{course.is_enrolled ? t("cardContinue") : t("cardAction")}</span>
+                                        {course.is_enrolled && (
+                                            <div className={styles.courseProgress} data-complete={course.is_course_completed}>
+                                                {!course.is_course_completed && <span>{t("courseInProgress")}</span>}
+                                                <small>{t("courseProgress")}: {course.lessons_completed}/{course.lessons_total}</small>
+                                            </div>
+                                        )}
+
+                                        <div className={styles.cardFooter} data-complete={course.is_course_completed}>
+                                            <span>{course.is_course_completed
+                                                ? t("courseCompleted")
+                                                : course.is_enrolled ? t("cardContinue") : t("cardAction")}</span>
                                             <span className={styles.cardLine}/>
                                         </div>
                                     </div>

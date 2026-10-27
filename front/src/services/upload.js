@@ -7,9 +7,35 @@
  *
  * Поля формы нужно отправить все и обязательно вместе с файлом:
  * политика MinIO проверяет подпись, ключ и тип содержимого.
+ *
+ * Ошибки сервиса несут код, а не готовый текст: переводит их
+ * интерфейс, иначе сообщение осталось бы на одном языке.
  */
 
 const MARKDOWN_CONTENT_TYPE = "text/markdown";
+
+// коды ошибок загрузки
+export const UPLOAD_ERROR_CODES = {
+    urlMissing: "uploadUrlMissing",
+    tooLarge: "uploadFileTooLarge",
+    rejected: "uploadRejected",
+};
+
+/**
+ * Ошибка загрузки с кодом для перевода.
+ *
+ * @param {string} code код ошибки
+ * @param {string} detail техническая деталь
+ * @returns {Error}
+ */
+function uploadError(code, detail) {
+    const error = new Error(code);
+
+    error.code = code;
+    error.detail = detail;
+
+    return error;
+}
 
 /**
  * Загружает Markdown урока по ссылке из бэкенда.
@@ -24,13 +50,13 @@ const MARKDOWN_CONTENT_TYPE = "text/markdown";
  */
 export async function uploadLessonMarkdown(upload, content, fileName = "lesson.md") {
     if (!upload?.url) {
-        throw new Error("Ссылка на загрузку не получена");
+        throw uploadError(UPLOAD_ERROR_CODES.urlMissing);
     }
 
     const size = new Blob([content]).size;
 
     if (upload.max_size && size > upload.max_size) {
-        throw new Error("Файл больше, чем принимает хранилище");
+        throw uploadError(UPLOAD_ERROR_CODES.tooLarge, `${size} > ${upload.max_size}`);
     }
 
     const body = new FormData();
@@ -51,7 +77,7 @@ export async function uploadLessonMarkdown(upload, content, fileName = "lesson.m
     });
 
     if (!response.ok) {
-        throw new Error(`Хранилище отклонило файл: ${response.status}`);
+        throw uploadError(UPLOAD_ERROR_CODES.rejected, String(response.status));
     }
 
     return true;

@@ -1,5 +1,5 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from "react";
-import {getTranslation} from "@/locales/i18n.js";
+import {useCallback, useEffect, useRef, useState} from "react";
+import {useTranslation} from "@/hooks/useTranslation.js";
 import styles from "./profile.module.css";
 import {BookOpen, ImageOff, LogOut, Pencil, RefreshCw, ShieldCheck, Sparkles, User, X} from "lucide-react";
 import {Link, useNavigate} from "react-router-dom";
@@ -9,15 +9,16 @@ import {ROUTES} from "@/router/AppRouter.jsx";
 import {useAuth} from "@/context/AuthContext.jsx";
 import ImageCache from "@/context/ImageCache.js";
 import {formatPhone, validateProfile} from "@/services/mask.js";
+import Description from "@/components/Markdown/Description.jsx";
 
-const language = "ru";
 const PAGE_SIZE = 100;
 
 export function Profile() {
     const navigate = useNavigate();
     const {user, loading: authLoading, refresh, logout} = useAuth();
 
-    const t = (key) => getTranslation(`profile.profile.${key}`, language);
+    const t = useTranslation("profile.profile");
+    const tError = useTranslation("error.error");
 
     const [avatar, setAvatar] = useState(null);
     const [courses, setCourses] = useState([]);
@@ -51,19 +52,6 @@ export function Profile() {
         refreshRef.current = refresh;
     }, [refresh]);
 
-    const handleRefresh = useCallback(async () => {
-        setError(false);
-        setRefreshing(true);
-
-        try {
-            await refreshRef.current();
-        } catch {
-            setError(true);
-        } finally {
-            setRefreshing(false);
-        }
-    }, []);
-
     const fetchCourses = useCallback(async () => {
         setError(false);
         setCoursesLoading(true);
@@ -73,6 +61,7 @@ export function Profile() {
                 params: {
                     page,
                     page_size: PAGE_SIZE,
+                    enrolled_only: true,
                 },
             });
 
@@ -84,6 +73,20 @@ export function Profile() {
             setCoursesLoading(false);
         }
     }, [page]);
+
+    const handleRefresh = useCallback(async () => {
+        setError(false);
+        setRefreshing(true);
+
+        try {
+            await refreshRef.current();
+            await fetchCourses();
+        } catch {
+            setError(true);
+        } finally {
+            setRefreshing(false);
+        }
+    }, [fetchCourses]);
 
     useEffect(() => {
         const {has_image: hasImage, avatar_key: avatarKey} = user ?? {};
@@ -117,12 +120,7 @@ export function Profile() {
         fetchCourses();
     }, [fetchCourses]);
 
-    const enrolledCourses = useMemo(
-        () => courses.filter((course) => course.is_enrolled),
-        [courses]
-    );
-
-    const tError = (key) => getTranslation(`error.error.${key}`, language);
+    const enrolledCourses = courses;
 
     const handleNameChange = (event) => {
         setName(event.target.value);
@@ -438,10 +436,19 @@ export function Profile() {
                                             </span>
                                         </div>
 
-                                        <p>{course.description}</p>
+                                        {course.description && <Description content={course.description} className={styles.courseDescription}/>}
 
-                                        <div className={styles.cardFooter}>
-                                            <span>{t("coursesContinue")}</span>
+                                        <div className={styles.courseCompletion}>
+                                            {!course.is_course_completed && (
+                                                <span data-complete="false">{t("courseInProgress")}</span>
+                                            )}
+                                            <small>
+                                                {t("courseProgress")}: {course.lessons_completed}/{course.lessons_total}
+                                            </small>
+                                        </div>
+
+                                        <div className={styles.cardFooter} data-complete={course.is_course_completed}>
+                                            <span>{course.is_course_completed ? t("courseCompleted") : t("coursesContinue")}</span>
                                             <span className={styles.cardLine}/>
                                         </div>
                                     </div>

@@ -1,4 +1,5 @@
 from app.core.markdown import CustomBlock, CustomBlockHandler, CustomBlockRegistry, MarkdownParser
+from app.core.markdown.custom_blocks import split_exercise_header
 
 
 def make_parser() -> MarkdownParser:
@@ -98,6 +99,41 @@ def test_autolink_is_kept():
     parsed = make_parser().parse(source)
 
     assert parsed.content == source
+
+
+def test_test_block_exposes_exercise_id():
+    source = ":::test\nid: python-variables\nЧто вернёт `type(1.0)`?\n:::\n"
+
+    parsed = make_parser().parse(source)
+
+    assert len(parsed.custom_blocks) == 1
+    assert parsed.custom_blocks[0].type == "test"
+    assert parsed.custom_blocks[0].data["exercise_id"] == "python-variables"
+    assert parsed.custom_blocks[0].data["body"] == "Что вернёт `type(1.0)`?"
+
+
+def test_test_block_without_exercise_id():
+    source = ":::test\nТекст задания\n:::\n"
+
+    parsed = make_parser().parse(source)
+
+    assert parsed.custom_blocks[0].data["exercise_id"] is None
+    assert parsed.custom_blocks[0].data["body"] == "Текст задания"
+
+
+def test_other_blocks_have_no_data():
+    source = ":::video\nhttps://example.com/video.mp4\n:::\n"
+
+    parsed = make_parser().parse(source)
+
+    assert parsed.custom_blocks[0].data is None
+
+
+def test_split_exercise_header():
+    assert split_exercise_header("id: one\nbody") == ("one", "body")
+    assert split_exercise_header("ID: one\nbody") == ("one", "body")
+    assert split_exercise_header("no id here") == (None, "no id here")
+    assert split_exercise_header("") == (None, "")
 
 
 def test_custom_block_handler_can_be_registered():

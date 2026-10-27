@@ -6,6 +6,7 @@ Markdown — в MinIO. Сервис проверяет доступ пользо
 """
 
 from fastapi import Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.courses import (
@@ -18,8 +19,13 @@ from app.api.v1.services.courses import BaseCoursesService
 from app.core.config import settings
 from app.core.markdown import MarkdownParser
 from app.core.minio_url import minio_storage
-from app.core.storage_paths import LESSON_CONTENT_BUCKET, lesson_content_path
+from app.core.storage_paths import COURSE_CONTENT_BUCKET, lesson_content_path
 from app.models.courses import Lesson
+from app.models.enrollments_progress import (
+    COMPLETED_CORRECTNESS,
+    LessonAttempt,
+    PASSED_EXERCISES_KEY,
+)
 
 
 class LessonContentService(BaseCoursesService):
@@ -98,8 +104,9 @@ class LessonContentService(BaseCoursesService):
         return await self._read_content(
             request=request,
             lesson=lesson,
-            course_slug=course.slug,
+            course_id=course.course_id,
             error=error,
+            user_id=user_id,
         )
 
     async def get_lesson_content_admin(
@@ -159,7 +166,7 @@ class LessonContentService(BaseCoursesService):
         return await self._read_content(
             request=request,
             lesson=lesson,
-            course_slug=course.slug,
+            course_id=course.course_id,
             error=error,
         )
 
@@ -167,8 +174,9 @@ class LessonContentService(BaseCoursesService):
             self,
             request: Request,
             lesson: Lesson,
-            course_slug: str,
+            course_id: int,
             error: dict,
+            user_id: int | None = None,
     ) -> LessonContentResponse:
         """ЧИТАЕТ И ОЧИЩАЕТ MARKDOWN УРОКА
 
@@ -177,13 +185,13 @@ class LessonContentService(BaseCoursesService):
         """
 
         file_path = lesson_content_path(
-            course_slug=course_slug,
+            course_id=course_id,
             module_id=lesson.module_id,
             lesson_id=lesson.lesson_id,
         )
 
         if file_path is None:
-            # slug курса нельзя использовать как часть пути
+            # id нельзя использовать как часть пути
             await self._raise(
                 request=request,
                 code="LESSON_CONTENT_NOT_FOUND",
@@ -192,7 +200,7 @@ class LessonContentService(BaseCoursesService):
 
         raw_content = await minio_storage.get_text(
             file_path=file_path,
-            bucket=LESSON_CONTENT_BUCKET,
+            bucket=COURSE_CONTENT_BUCKET,
             max_bytes=settings.max_text_file_size,
         )
 
@@ -205,9 +213,27 @@ class LessonContentService(BaseCoursesService):
 
         parsed = self._parser.parse(raw_content)
 
+        completed_exercises: dict[str, str] = {}
+        lesson_is_completed = False
+        if user_id is not None:
+            attempts_result = await self.db.execute(
+                select(LessonAttempt.answers, LessonAttempt.correctness)
+                .where(
+                    LessonAttempt.user_id == user_id,
+                    LessonAttempt.lesson_id == lesson.lesson_id,
+                )
+                .order_by(LessonAttempt.created_at, LessonAttempt.attempt_id)
+            )
+            attempt_rows = attempts_result.all()
+            completed_exercises = self._merge_completed_exercises(attempt_rows)
+            lesson_is_completed = any(
+                attempt.correctness == COMPLETED_CORRECTNESS
+                for attempt in attempt_rows
+            )
+
         content_url = await minio_storage.get_url(
             file_path=file_path,
-            bucket=LESSON_CONTENT_BUCKET,
+            bucket=COURSE_CONTENT_BUCKET,
             expires=settings.content_url_ttl,
         )
 
@@ -218,6 +244,7 @@ class LessonContentService(BaseCoursesService):
                 description=lesson.description,
                 position=lesson.position,
                 content_url=content_url,
+                is_completed=lesson_is_completed,
             ),
             content=parsed.content,
             content_type="markdown",
@@ -226,6 +253,7 @@ class LessonContentService(BaseCoursesService):
                     type=block.type,
                     content=block.content,
                     implemented=block.implemented,
+                    data=block.data,
                 )
                 for block in parsed.custom_blocks
             ],
@@ -238,4 +266,40 @@ class LessonContentService(BaseCoursesService):
                 )
                 for asset in parsed.assets
             ],
+            completed_exercises=completed_exercises,
         )
+
+    @staticmethod
+    def _merge_completed_exercises(attempts) -> dict[str, str]:
+        """СОБИРАЕТ ТОЛЬКО УСПЕШНЫЕ ОТВЕТЫ ИЗ ПОПЫТОК ОДНОГО УЧЕНИКА."""
+
+        completed_exercises: dict[str, str] = {}
+        for attempt in attempts:
+            attempt_answers = attempt.answers
+            if not isinstance(attempt_answers, dict):
+                continue
+
+            passed_answers = attempt_answers.get(PASSED_EXERCISES_KEY)
+            if isinstance(passed_answers, dict):
+                completed_exercises.update(
+                    {
+                        exercise_id: answer
+                        for exercise_id, answer in passed_answers.items()
+                        if isinstance(exercise_id, str) and isinstance(answer, str)
+                    }
+                )
+
+            # Совместимость с ответами, сохранёнными до разделения
+            # прохождения задания и завершения всего урока.
+            if attempt.correctness == COMPLETED_CORRECTNESS:
+                completed_exercises.update(
+                    {
+                        exercise_id: answer
+                        for exercise_id, answer in attempt_answers.items()
+                        if exercise_id != PASSED_EXERCISES_KEY
+                        and isinstance(exercise_id, str)
+                        and isinstance(answer, str)
+                    }
+                )
+
+        return completed_exercises

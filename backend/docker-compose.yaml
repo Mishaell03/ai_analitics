@@ -1,14 +1,74 @@
 services:
-  #  TODO: в прод убрать робос портов в сеть
+  sandbox_runner:
+    profiles: [sandbox]
+    build:
+      context: .
+      dockerfile: infra/sandbox/runner.Dockerfile
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      SANDBOX_RUNNER_TOKEN: ${SANDBOX_RUNNER_TOKEN:-}
+      SANDBOX_IMAGE: ${SANDBOX_IMAGE:-analytics-sandbox:1.0}
+      SANDBOX_RUNTIME: ${SANDBOX_RUNTIME:-runc}
+      SANDBOX_CONCURRENCY: ${SANDBOX_CONCURRENCY:-3}
+      SANDBOX_HEAVY_CONCURRENCY: ${SANDBOX_HEAVY_CONCURRENCY:-1}
+      SANDBOX_LOCK_FILE: /run/sandbox-runner/runner.lock
+    volumes:
+      - ${SANDBOX_DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
+      - sandbox_runner_state:/run/sandbox-runner
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    cpus: 0.5
+    mem_limit: 256m
+    pids_limit: 64
+    logging:
+      driver: local
+      options:
+        max-size: 5m
+        max-file: "2"
+    networks:
+      - sandbox_net
+
+  # Optional containerized API: no Docker socket, Docker CLI or host mounts.
+  sandbox_api:
+    profiles: [sandbox-api]
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+    restart: unless-stopped
+    init: true
+    user: "65534:65534"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    env_file: .env
+    environment:
+      DB_HOST: postgres
+      MINIO_ENDPOINT: minio:9000
+      MINIO_MIGRATE_ON_STARTUP: "false"
+      SANDBOX_RUNNER_ENDPOINT: http://sandbox_runner:8090
+      SANDBOX_RUNNER_TOKEN: ${SANDBOX_RUNNER_TOKEN:-}
+      SANDBOX_ASSIGNMENT_PROFILES: ${SANDBOX_ASSIGNMENT_PROFILES:-{}}
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    networks:
+      - data_net
+      - ai_backend_net
+      - sandbox_net
+
   postgres:
-    image: postgres:latest
+    image: postgres:18.6-trixie
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      SANDBOX_DB_PASSWORD: ${SANDBOX_DB_PASSWORD}
       POSTGRES_DB: postgres
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
       - ./infra/postgres/init:/docker-entrypoint-initdb.d
@@ -17,6 +77,8 @@ services:
       interval: 5s
       timeout: 20s
       retries: 5
+    networks:
+      - data_net
 
   pgadmin:
     image: dpage/pgadmin4
@@ -26,23 +88,20 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-    ports:
-      - "5050:80"
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - data_net
 
   minio:
-    image: minio/minio:latest
+    image: docker.io/pgsty/silo:RELEASE.2026-10-18T00-00-00Z
     restart: unless-stopped
 
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     command: server /data --console-address ":9001"
-    ports:
-      - "9000:9000"
-      - "9001:9001"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -50,9 +109,11 @@ services:
       interval: 5s
       timeout: 20s
       retries: 5
+    networks:
+      - data_net
 
   minio_init:
-    image: minio/mc
+    image: docker.io/pgsty/mc:RELEASE.2026-10-18T00-00-00Z
     depends_on:
       minio:
         condition: service_healthy
@@ -66,20 +127,43 @@ services:
       mc mb local/avatars --ignore-existing;
       
       mc mb local/course-content --ignore-existing;
-      mc mb local/module-content --ignore-existing;
-      mc mb local/lesson-content --ignore-existing;
-      mc mb local/lesson-videos --ignore-existing;
-      mc mb local/lesson-assets --ignore-existing;
-      mc mb local/datasets --ignore-existing;
 
-      # приватный бак с медиафайлами курсов и уроков
-      mc mb local/course-media --ignore-existing;
-      
       mc cp --recursive /seeds/default-avatars/ local/default-avatars;
       mc cp --recursive /seeds/course-content/ local/course-content;
-      mc cp --recursive /seeds/lesson-content/ local/lesson-content;
       "
+    networks:
+      - data_net
+
+  xray:
+    image: ghcr.io/xtls/xray-core:latest
+    container_name: xray-proxy
+    restart: unless-stopped
+    volumes:
+      - ./infra/xray/config.json:/etc/xray/config.json:ro,Z
+    command: [ "run", "-config", "/etc/xray/config.json" ]
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - ai_backend_net
+      - ai_egress_net
 
 volumes:
+  sandbox_runner_state:
   postgres_data:
   minio_data:
+
+networks:
+  sandbox_net:
+    driver: bridge
+    internal: true
+  data_net:
+    driver: bridge
+    internal: true
+  ai_backend_net:
+    driver: bridge
+    internal: true
+  ai_egress_net:
+    driver: bridge

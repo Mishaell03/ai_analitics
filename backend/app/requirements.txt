@@ -11,6 +11,10 @@ pillow
 pydantic
 pydantic-settings
 python-dotenv
+pydantic[email]
+python-multipart
+pytest
+httpx
 
 geoip2
 argon2-cffi

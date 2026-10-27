@@ -1,0 +1,187 @@
+{
+  "log": {
+    "loglevel": "warning"
+  },
+  "dns": {
+    "queryStrategy": "UseIP",
+    "servers": [
+      "8.8.8.8",
+      "8.8.4.4"
+    ]
+  },
+  "inbounds": [
+    {
+      "tag": "socks",
+      "listen": "0.0.0.0",
+      "port": 10808,
+      "protocol": "socks",
+      "settings": {
+        "auth": "noauth",
+        "udp": true
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": [
+          "http",
+          "tls",
+          "quic"
+        ],
+        "routeOnly": false
+      }
+    },
+    {
+      "tag": "http",
+      "listen": "0.0.0.0",
+      "port": 10809,
+      "protocol": "http",
+      "settings": {
+        "allowTransparent": false
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": [
+          "http",
+          "tls",
+          "quic"
+        ],
+        "routeOnly": false
+      }
+    },
+    {
+      "tag": "ai-http",
+      "listen": "0.0.0.0",
+      "port": 10810,
+      "protocol": "http",
+      "settings": {
+        "allowTransparent": false
+      }
+    }
+  ],
+  "observatory": {
+    "subjectSelector": [
+      "proxy-"
+    ],
+    "probeUrl": "https://www.google.com/generate_204",
+    "probeInterval": "15s",
+    "enableConcurrency": true
+  },
+  "routing": {
+    "domainStrategy": "AsIs",
+    "balancers": [
+      {
+        "tag": "ai-pool",
+        "selector": [
+          "proxy-"
+        ],
+        "fallbackTag": "block",
+        "strategy": {
+          "type": "leastPing"
+        }
+      }
+    ],
+    "rules": [
+      {
+        "type": "field",
+        "inboundTag": [
+          "socks",
+          "http",
+          "ai-http"
+        ],
+        "balancerTag": "ai-pool"
+      }
+    ]
+  },
+  "outbounds": [
+    {
+      "tag": "proxy-1",
+      "protocol": "vless",
+      "settings": {
+        "vnext": [
+          {
+            "address": "SERVER_1",
+            "port": 443,
+            "users": [
+              {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "encryption": "none",
+                "flow": "xtls-rprx-vision"
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "fingerprint": "firefox",
+          "serverName": "SNI_1",
+          "publicKey": "PUBLIC_KEY_1",
+          "shortId": "SHORT_ID_1"
+        }
+      }
+    },
+    {
+      "tag": "proxy-2",
+      "protocol": "vless",
+      "settings": {
+        "vnext": [
+          {
+            "address": "SERVER_2",
+            "port": 443,
+            "users": [
+              {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "encryption": "none",
+                "flow": "xtls-rprx-vision"
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "fingerprint": "firefox",
+          "serverName": "SNI_2",
+          "publicKey": "PUBLIC_KEY_2",
+          "shortId": "SHORT_ID_2"
+        }
+      }
+    },
+    {
+      "tag": "proxy-3",
+      "protocol": "vless",
+      "settings": {
+        "vnext": [
+          {
+            "address": "SERVER_3",
+            "port": 443,
+            "users": [
+              {
+                "id": "00000000-0000-0000-0000-000000000000",
+                "encryption": "none",
+                "flow": "xtls-rprx-vision"
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "fingerprint": "firefox",
+          "serverName": "SNI_3",
+          "publicKey": "PUBLIC_KEY_3",
+          "shortId": "SHORT_ID_3"
+        }
+      }
+    },
+    {
+      "tag": "block",
+      "protocol": "blackhole"
+    }
+  ]
+}

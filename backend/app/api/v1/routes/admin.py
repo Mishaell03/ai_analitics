@@ -50,8 +50,18 @@ router = APIRouter(prefix="/admin")
 @router.get("/dashboard", response_model=DashboardResponse)
 async def get_dashboard(
         request: Request,
-        users: int | None = Query(default=None, description="Количество последних пользователей"),
-        top_courses: int | None = Query(default=None, description="Количество курсов для аналитики"),
+        users: int | None = Query(
+            default=5,
+            ge=1,
+            le=100,
+            description="Количество последних пользователей",
+        ),
+        top_courses: int | None = Query(
+            default=5,
+            ge=1,
+            le=100,
+            description="Количество курсов для аналитики",
+        ),
         # period: int | None = Query(default=None, description="Количество дней периода"),
         # date_of: date | None = Query(default=None, description="Начало периода"),
         # date_to: date | None = Query(default=None, description="Конец периода"),

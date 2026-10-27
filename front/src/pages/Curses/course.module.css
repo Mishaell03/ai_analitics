@@ -240,6 +240,48 @@
     letter-spacing: -2px;
 }
 
+.courseProgressStatus {
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    gap: 11px;
+    margin-top: 20px;
+    padding: 11px 14px;
+    border: 1px solid rgb(182 95 253 / 0.15);
+    border-radius: 13px;
+    background: rgb(182 95 253 / 0.06);
+    color: var(--accent);
+}
+
+.courseProgressStatus[data-complete="true"] {
+    border-color: rgb(42 166 104 / 0.25);
+    background: rgb(42 166 104 / 0.09);
+    color: #21865b;
+}
+
+.courseProgressStatus > svg {
+    flex-shrink: 0;
+    width: 21px;
+    height: 21px;
+}
+
+.courseProgressStatus > span {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.courseProgressStatus strong {
+    color: currentColor;
+    font-size: 12px;
+    font-weight: 750;
+}
+
+.courseProgressStatus small {
+    color: var(--muted);
+    font-size: 11px;
+}
+
 .description {
     max-width: 570px;
 
@@ -249,6 +291,10 @@
 
     font-size: 15px;
     line-height: 1.7;
+}
+
+.description p {
+    margin: 0;
 }
 
 .courseActions {
@@ -494,6 +540,15 @@
     box-shadow: 0 10px 30px rgb(0 0 0 / 0.05);
 }
 
+.module[data-complete="true"] {
+    border-color: rgb(42 166 104 / 0.25);
+    background: linear-gradient(115deg, rgb(42 166 104 / 0.075), transparent 68%), var(--card);
+}
+
+.module[data-complete="true"] .moduleNumber {
+    color: #21865b;
+}
+
 
 /* ---------- module number ---------- */
 
@@ -546,6 +601,36 @@
     letter-spacing: 0.1em;
 }
 
+.completionStatus,
+.lessonCompletionStatus {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 650;
+}
+
+.completionStatus[data-complete="true"],
+.lessonCompletionStatus[data-complete="true"] {
+    color: #21865b;
+}
+
+.lessonCompletionStatus {
+    margin-top: 12px;
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: rgb(128 128 128 / 0.07);
+}
+
+.lessonCompletionStatus[data-complete="true"] {
+    background: rgb(42 166 104 / 0.1);
+}
+
+.completionStatus {
+    margin: 0 0 10px;
+}
+
 .module h3 {
     margin: 0;
 
@@ -556,7 +641,49 @@
     font-weight: 750;
 }
 
-.moduleContent > p {
+.moduleToggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.moduleToggle h3 {
+    transition: color 0.25s ease;
+}
+
+.moduleToggle > svg {
+    flex-shrink: 0;
+    width: 19px;
+    height: 19px;
+    color: var(--accent);
+    transition: transform 0.25s ease;
+}
+
+.moduleToggle[aria-expanded="true"] > svg {
+    transform: rotate(90deg);
+}
+
+.moduleToggle:hover h3,
+.moduleToggle:focus-visible h3 {
+    color: var(--accent);
+}
+
+.moduleToggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 5px;
+    border-radius: 4px;
+}
+
+.moduleContent > p,
+.moduleDescription {
     max-width: 800px;
 
     margin: 10px 0 0;
@@ -565,6 +692,11 @@
 
     font-size: 13px;
     line-height: 1.55;
+}
+
+.moduleDescription .markdown > p,
+.moduleDescription p {
+    margin: 0;
 }
 
 
@@ -633,6 +765,190 @@
     color: var(--primary);
 
     gap: 10px;
+}
+
+.moduleLessons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid rgb(128 128 128 / 0.1);
+}
+
+.lessonLink {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    min-width: 0;
+    padding: 12px 13px;
+    border: 1px solid transparent;
+    border-radius: 13px;
+    background: rgb(128 128 128 / 0.035);
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.lessonLink:hover,
+.lessonLink:focus-visible {
+    transform: translateX(3px);
+    border-color: rgb(182 95 253 / 0.18);
+    background: rgb(182 95 253 / 0.06);
+    outline: none;
+}
+
+.lessonLink[data-complete="true"] {
+    border-color: rgb(42 166 104 / 0.16);
+    background: rgb(42 166 104 / 0.055);
+}
+
+.lessonIndex {
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: rgb(182 95 253 / 0.1);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.lessonLink[data-complete="true"] .lessonIndex {
+    background: rgb(42 166 104 / 0.12);
+    color: #21865b;
+}
+
+.lessonText {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.lessonText strong {
+    overflow: hidden;
+    color: var(--ink);
+    font-size: 13px;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+}
+
+.lessonText small {
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+}
+
+.lessonDescription {
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+}
+
+.lessonDescription p {
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.lessonLink > svg {
+    flex-shrink: 0;
+    width: 17px;
+    height: 17px;
+    color: var(--accent);
+    transition: transform 0.2s ease;
+}
+
+.lessonLink:hover > svg {
+    transform: translateX(3px);
+}
+
+.lessonListLoading {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid rgb(128 128 128 / 0.1);
+}
+
+.lessonListLoading span {
+    height: 42px;
+    border-radius: 12px;
+    background: rgb(128 128 128 / 0.08);
+    animation: pulse 1.4s ease-in-out infinite;
+}
+
+.moduleLessonsError,
+.moduleLessonsEmpty {
+    margin: 18px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.moduleLessonsError {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+}
+
+.moduleLessonsError button {
+    padding: 8px 12px;
+    border: 0;
+    border-radius: 10px;
+    background: rgb(182 95 253 / 0.1);
+    color: var(--accent);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.lessonPagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 8px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.lessonPagination button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 9px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--accent);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.lessonPagination button:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.lessonPagination button svg {
+    width: 15px;
+    height: 15px;
 }
 
 
@@ -1160,5 +1476,256 @@
     .modalCancel,
     .modalConfirm {
         width: 100%;
+    }
+}
+.learningProgress {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 14px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.learningRetry {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 12px;
+    padding: 9px 12px;
+    border: 0;
+    border-radius: 10px;
+    background: rgb(182 95 253 / 0.1);
+    color: var(--accent);
+    cursor: pointer;
+}
+
+.learningRetry svg {
+    width: 16px;
+    height: 16px;
+}
+
+.lessonPage {
+    position: relative;
+    max-width: 900px;
+    min-height: 60vh;
+    margin: 0 auto;
+    padding: clamp(24px, 4vw, 48px);
+    overflow: hidden;
+    border: 1px solid rgb(182 95 253 / 0.12);
+    border-radius: 28px;
+    background:
+        radial-gradient(circle at 100% 0, rgb(182 95 253 / 0.1), transparent 28%),
+        var(--card);
+    box-shadow: 0 22px 70px rgb(0 0 0 / 0.07);
+}
+
+.lessonPage > * {
+    position: relative;
+    z-index: 1;
+}
+
+.lessonModule {
+    display: inline-flex;
+    align-items: center;
+    margin: 34px 0 12px;
+    padding: 7px 11px;
+    border: 1px solid rgb(182 95 253 / 0.12);
+    border-radius: 999px;
+    background: rgb(182 95 253 / 0.07);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.lessonTitle {
+    max-width: 760px;
+    margin: 0 0 28px;
+    color: var(--ink);
+    font-size: clamp(28px, 4vw, 42px);
+    line-height: 1.12;
+    letter-spacing: -1.2px;
+}
+
+.lessonCompletion {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-top: 42px;
+    padding: 25px 26px;
+    overflow: hidden;
+    border: 1px solid rgb(182 95 253 / 0.14);
+    border-radius: 20px;
+    background:
+        radial-gradient(circle at 90% 10%, rgb(182 95 253 / 0.14), transparent 36%),
+        rgb(182 95 253 / 0.045);
+}
+
+.lessonCompletion[data-complete="true"] {
+    border-color: rgb(55 200 113 / 0.3);
+    background: radial-gradient(circle at 90% 10%, rgb(55 200 113 / 0.12), transparent 36%),
+        rgb(55 200 113 / 0.045);
+}
+
+.completionCopy {
+    min-width: 0;
+    flex: 1 1 280px;
+}
+
+.completionEyebrow {
+    display: block;
+    margin-bottom: 7px;
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+}
+
+.lessonCompletion[data-complete="true"] .completionEyebrow {
+    color: #249653;
+}
+
+.completionCopy h2 {
+    margin: 0;
+    color: var(--ink);
+    font-size: 19px;
+    line-height: 1.25;
+    letter-spacing: -0.3px;
+}
+
+.completionCopy p {
+    max-width: 480px;
+    margin: 7px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.completionError,
+.completionHint {
+    flex-basis: 100%;
+    margin: 0;
+    color: var(--error) !important;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.completionHint {
+    color: var(--muted) !important;
+}
+
+.completeButton {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 12px 18px;
+    border: 0;
+    border-radius: 13px;
+    background: var(--accent);
+    color: #fff;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 750;
+    text-decoration: none;
+    cursor: pointer;
+    box-shadow: 0 9px 24px rgb(182 95 253 / 0.2);
+    transition: background 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.completeButton svg {
+    width: 17px;
+    height: 17px;
+}
+
+.completeButton:hover:not(:disabled) {
+    transform: translateY(-2px);
+    background: var(--primary);
+    box-shadow: 0 12px 28px rgb(182 95 253 / 0.26);
+}
+
+.completeButton:disabled {
+    opacity: 0.65;
+    cursor: wait;
+}
+
+.lessonNavigation {
+    flex-basis: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px solid rgb(128 128 128 / 0.12);
+}
+
+.lessonNavButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 8px 12px;
+    border: 1px solid rgb(182 95 253 / 0.13);
+    border-radius: 11px;
+    background: rgb(182 95 253 / 0.055);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+.lessonNavigationMessage {
+    width: 100%;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.lessonNavButton:hover,
+.lessonNavButton:focus-visible {
+    transform: translateY(-2px);
+    border-color: rgb(182 95 253 / 0.28);
+    background: rgb(182 95 253 / 0.1);
+    outline: none;
+}
+
+.lessonNavButton svg {
+    width: 16px;
+    height: 16px;
+}
+
+@media (max-width: 700px) {
+    .lessonPage {
+        padding: 24px 18px;
+        border-radius: 22px;
+    }
+
+    .lessonCompletion {
+        align-items: stretch;
+        flex-direction: column;
+        padding: 22px 18px;
+    }
+
+    .completeButton {
+        width: 100%;
+    }
+
+    .lessonNavigation {
+        align-items: stretch;
+    }
+
+    .lessonNavButton {
+        flex: 1;
+        justify-content: center;
+        padding: 8px;
+        text-align: center;
     }
 }

@@ -7,6 +7,9 @@ class CourseItem(BaseModel):
     description: str | None = None
     main_image_url: str | None = None
     is_enrolled: bool = False
+    is_course_completed: bool = False
+    lessons_completed: int = 0
+    lessons_total: int = 0
 
 # users list of courses
 class CoursesResponse(BaseModel):
@@ -40,6 +43,9 @@ class ModuleItem(BaseModel):
     description: str | None = None
     position: int
     content_url: str | None = None
+    is_completed: bool = False
+    lessons_completed: int = 0
+    lessons_total: int = 0
 
 # info about course id (at page 1 have CourseInfo, next it = None)
 class CourseDetailResponse(BaseModel):
@@ -55,6 +61,7 @@ class LessonItem(BaseModel):
     title: str
     description: str | None = None
     position: int
+    is_completed: bool = False
 
 # detailed information about selected module
 # returned only on page 1 of lessons
@@ -64,6 +71,9 @@ class ModuleInfo(BaseModel):
     description: str | None = None
     position: int
     content_url: str | None = None
+    is_completed: bool = False
+    lessons_completed: int = 0
+    lessons_total: int = 0
 
 # list of lessons of selected module
 # at page 1 have ModuleInfo, next it = None
@@ -91,11 +101,36 @@ class LessonInfo(BaseModel):
     description: str | None = None
     position: int
     content_url: str | None = None
+    is_completed: bool = False
 
 class LessonDetailResponse(BaseModel):
     course: CourseShortInfo
     module: ModuleShortInfo
     lesson: LessonInfo
+
+
+# урок вместе с модулем: нужен для перехода к продолжению обучения
+class LearningLessonInfo(BaseModel):
+    module_id: int
+    module_title: str
+    module_position: int
+    lesson_id: int
+    title: str
+    description: str | None = None
+    position: int
+
+
+# следующий урок курса для текущего пользователя
+class ContinueLearningResponse(BaseModel):
+    course: CourseShortInfo
+    # последний завершённый урок по порядку курса, а не по времени попытки
+    last_completed_lesson: LearningLessonInfo | None = None
+    # первый доступный незавершённый урок в порядке курса
+    next_lesson: LearningLessonInfo | None = None
+    is_course_completed: bool = False
+    # считаются только опубликованные модули и уроки, доступные ученику
+    lessons_total: int = 0
+    lessons_completed: int = 0
 
 
 # кастомный блок внутри Markdown урока (тест, видео, задание)
@@ -104,6 +139,8 @@ class CustomBlockResponse(BaseModel):
     content: str
     # логика блока пока не реализована, содержимое отдаётся как есть
     implemented: bool = False
+    # разобранные данные блока (например, exercise_id у задания)
+    data: dict | None = None
 
 
 # ссылка на медиафайл, упомянутый в уроке
@@ -122,6 +159,9 @@ class LessonContentResponse(BaseModel):
     content_type: str = "markdown"
     custom_blocks: list[CustomBlockResponse] = Field(default_factory=list)
     assets: list[LessonAssetResponse] = Field(default_factory=list)
+    # Успешные ответы текущего ученика по exercise_id. Значения остаются
+    # сериализованными строками и разбираются frontend через buildAnswerMap.
+    completed_exercises: dict[str, str] = Field(default_factory=dict)
 
 # result of the enrollment
 class EnrollmentResponse(BaseModel):
