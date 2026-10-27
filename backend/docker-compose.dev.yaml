@@ -25,5 +25,7 @@ services:
       - "127.0.0.1:10810:10810"
 
 networks:
+  sandbox_net:
+    internal: false
   data_net:
     internal: false
