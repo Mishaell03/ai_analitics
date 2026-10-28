@@ -128,9 +128,9 @@ def test_assignment_access_and_trusted_profile(monkeypatch, enrolled, exists, pr
         language="en", device_id="d", id=1, platform="web"))
 
     async def scenario():
-        if enrolled and exists and profile:
+        if enrolled:
             assert await service.execute(object(), request_data(), current) == "result"
-            execute.assert_awaited_once_with(code="print(42)", profile="light")
+            execute.assert_awaited_once_with(code="print(42)", profile=profile or "light", language="python")
         else:
             with pytest.raises(HTTPException):
                 await service.execute(object(), request_data(), current)

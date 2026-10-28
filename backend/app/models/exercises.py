@@ -37,6 +37,8 @@ class ExerciseAnswer(Base):
     # идентификатор задания из Markdown урока
     exercise_id: Mapped[str] = mapped_column(String(64), nullable=False)
 
+    # Кодовые блоки: JSON {type: code, language, value, execution}.
+    # Эталон и результат его выполнения доступны только админскому API.
     answer: Mapped[str] = mapped_column(Text, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

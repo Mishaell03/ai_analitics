@@ -4,7 +4,7 @@ FROM python:3.12-slim
 RUN apt-get update \
     && apt-get install -y --no-install-recommends docker-cli \
     && rm -rf /var/lib/apt/lists/* \
-    && pip install --no-cache-dir fastapi 'uvicorn[standard]' httpx
+    && pip install --no-cache-dir fastapi 'uvicorn[standard]' httpx python-dotenv asyncpg 'pglast>=7,<8'
 
 WORKDIR /srv
 COPY app/api/v1/schemas/exercises.py app/api/v1/schemas/exercises.py

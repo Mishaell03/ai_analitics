@@ -20,10 +20,6 @@ services:
       - "127.0.0.1:9000:9000"
       - "127.0.0.1:9001:9001"
 
-  xray:
-    ports:
-      - "127.0.0.1:10810:10810"
-
 networks:
   sandbox_net:
     internal: false

@@ -84,8 +84,10 @@ class SandboxRunner:
             try:
                 await self.recover()
             except Exception:
+                was_healthy = self.healthy
                 self.healthy = False
-                logger.exception("Sandbox cleanup watchdog failed")
+                if was_healthy:
+                    logger.exception("Sandbox cleanup watchdog failed")
 
     def create_args(self, name: str, profile: str) -> list[str]:
         limits = get_sandbox_limits(profile)
@@ -219,8 +221,11 @@ class SandboxRunner:
 
 
 def create_app(config: SandboxSettings | None = None) -> FastAPI:
+    from app.services.sandbox.sql_runner import SQLRunner
+
     config = config or SandboxSettings()
     runner = SandboxRunner(config)
+    sql_runner = SQLRunner(config)
 
     @asynccontextmanager
     async def lifespan(app):
@@ -229,17 +234,25 @@ def create_app(config: SandboxSettings | None = None) -> FastAPI:
         # Один владелец Docker на общий volume, даже при ошибочном --workers 2.
         with open(config.lock_file, "a") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            await runner.recover(startup=True)
+            try:
+                await runner.recover(startup=True)
+            except (SandboxUnavailable, OSError):
+                # SQL не зависит от Docker. Watchdog восстановит Python после
+                # запуска Docker/исправления доступа к сокету.
+                runner.healthy = False
+                logger.exception("Python sandbox unavailable at startup; SQL runner remains available")
             watchdog = asyncio.create_task(runner.watch())
             try:
                 yield
             finally:
                 watchdog.cancel()
                 await asyncio.gather(watchdog, return_exceptions=True)
-                await runner.recover(startup=True)
+                with suppress(SandboxUnavailable, OSError):
+                    await runner.recover(startup=True)
 
     app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     app.state.runner = runner
+    app.state.sql_runner = sql_runner
 
     async def authenticate(authorization: str = Header(default="")):
         if len(config.token) < 32 or not compare_digest(
@@ -250,6 +263,8 @@ def create_app(config: SandboxSettings | None = None) -> FastAPI:
     @app.post("/execute", response_model=ExecutionResult, dependencies=[Depends(authenticate)])
     async def execute(data: RunnerExecutionRequest):
         try:
+            if data.language == "sql":
+                return await sql_runner.execute(data.code)
             return await runner.execute(data.code, data.profile)
         except SandboxBusy:
             raise HTTPException(503, detail="Sandbox busy", headers={"Retry-After": "1"})

@@ -9,6 +9,7 @@ from app.api.v1.routes.users import router as users_router
 from app.api.v1.routes.admin import router as admin_router
 from app.api.v1.routes.sandbox import router as sandbox_router
 from app.api.v1.routes.student_exercises import router as student_exercises_router
+from app.api.v1.routes.ai import router as ai_router
 
 router_v1 = APIRouter(prefix="/api/v1")
 
@@ -22,3 +23,4 @@ router_v1.include_router(exercise_check_router, tags=["Exercises"])
 router_v1.include_router(lesson_completion_router, tags=["Courses"])
 router_v1.include_router(sandbox_router, tags=["Sandbox"])
 router_v1.include_router(student_exercises_router, tags=["Exercises"])
+router_v1.include_router(ai_router, tags=["AI"])

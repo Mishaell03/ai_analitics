@@ -1,4 +1,11 @@
 export default {
+    codeExerciseAdd: "Код {language}",
+    codeExerciseHint: ":::code sql / :::code python → id: идентификатор → :::. Эталон вводится только в отдельное поле ниже, не в Markdown.",
+    codeExerciseReference: "Эталон · {language} · {id}",
+    codeExerciseMissingId: "нужен id",
+    codeExerciseLanguageChanged: "Язык изменён. Обновите эталон перед сохранением.",
+    codeExerciseInvalid: "Проверьте кодовые блоки: уникальный id, язык sql/python и непустой эталон для каждого блока.",
+    codeExerciseConflict: "Урок изменён или идентификатор занят. Скопируйте свои правки и заново откройте редактор.",
     badge: "Админ-панель",
     title: "Аналитика",
     subtitle: "Ключевые метрики платформы",

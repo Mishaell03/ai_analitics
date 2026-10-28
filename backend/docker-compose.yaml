@@ -17,6 +17,9 @@ services:
       SANDBOX_CONCURRENCY: ${SANDBOX_CONCURRENCY:-3}
       SANDBOX_HEAVY_CONCURRENCY: ${SANDBOX_HEAVY_CONCURRENCY:-1}
       SANDBOX_LOCK_FILE: /run/sandbox-runner/runner.lock
+      SANDBOX_DB_HOST: postgres
+      SANDBOX_DB_PORT: 5432
+      SANDBOX_DB_PASSWORD: ${SANDBOX_DB_PASSWORD:-}
     volumes:
       - ${SANDBOX_DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
       - sandbox_runner_state:/run/sandbox-runner
@@ -32,6 +35,7 @@ services:
         max-file: "2"
     networks:
       - sandbox_net
+      - data_net
 
   # Optional containerized API: no Docker socket, Docker CLI or host mounts.
   sandbox_api:
@@ -54,11 +58,15 @@ services:
       SANDBOX_RUNNER_ENDPOINT: http://sandbox_runner:8090
       SANDBOX_RUNNER_TOKEN: ${SANDBOX_RUNNER_TOKEN:-}
       SANDBOX_ASSIGNMENT_PROFILES: ${SANDBOX_ASSIGNMENT_PROFILES:-{}}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      MODEL: ${MODEL:-deepseek-flash}
+      MAX_TOKENS: ${MAX_TOKENS:-1024}
+      THINKING: ${THINKING:-disabled}
     tmpfs:
       - /tmp:size=64m,noexec,nosuid,nodev
     networks:
       - data_net
-      - ai_backend_net
+      - api_egress_net
       - sandbox_net
 
   postgres:
@@ -134,22 +142,6 @@ services:
     networks:
       - data_net
 
-  xray:
-    image: ghcr.io/xtls/xray-core:latest
-    container_name: xray-proxy
-    restart: unless-stopped
-    volumes:
-      - ./infra/xray/config.json:/etc/xray/config.json:ro,Z
-    command: [ "run", "-config", "/etc/xray/config.json" ]
-    init: true
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    networks:
-      - ai_backend_net
-      - ai_egress_net
-
 volumes:
   sandbox_runner_state:
   postgres_data:
@@ -162,8 +154,5 @@ networks:
   data_net:
     driver: bridge
     internal: true
-  ai_backend_net:
-    driver: bridge
-    internal: true
-  ai_egress_net:
+  api_egress_net:
     driver: bridge

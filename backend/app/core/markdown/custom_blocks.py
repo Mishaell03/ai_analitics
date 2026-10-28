@@ -113,6 +113,21 @@ class TestBlockHandler(CustomBlockHandler):
         )
 
 
+class CodeBlockHandler(CustomBlockHandler):
+    """В Markdown допустим только язык и идентификатор, не решение."""
+
+    type = "code"
+
+    def parse(self, content: str) -> CustomBlock:
+        lines = content.splitlines()
+        language = lines[0].removeprefix("language: ") if lines else None
+        exercise_id, body = split_exercise_header("\n".join(lines[1:]))
+        if language not in {"sql", "python"} or not exercise_id or body or exercise_id == "reference":
+            raise ValueError("Invalid code directive: use :::code sql/python, id: identifier, :::")
+        return CustomBlock(type=self.type, content=f"id: {exercise_id}", implemented=True,
+                           data={"exercise_id": exercise_id, "language": language, "body": ""})
+
+
 class CustomBlockRegistry:
     """РЕЕСТР ОБРАБОТЧИКОВ КАСТОМНЫХ БЛОКОВ"""
 
@@ -144,4 +159,4 @@ class CustomBlockRegistry:
 def default_custom_block_registry() -> CustomBlockRegistry:
     """РЕЕСТР СОБСТВЕННЫМИ ОБРАБОТЧИКАМИ"""
 
-    return CustomBlockRegistry(handlers=[TestBlockHandler()])
+    return CustomBlockRegistry(handlers=[TestBlockHandler(), CodeBlockHandler()])

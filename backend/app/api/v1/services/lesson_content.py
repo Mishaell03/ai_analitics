@@ -5,7 +5,7 @@ Markdown — в MinIO. Сервис проверяет доступ пользо
 читает файл урока и отдаёт очищенное содержимое.
 """
 
-from fastapi import Request
+from fastapi import HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -211,7 +211,10 @@ class LessonContentService(BaseCoursesService):
                 error=error,
             )
 
-        parsed = self._parser.parse(raw_content)
+        try:
+            parsed = self._parser.parse(raw_content)
+        except ValueError:
+            raise HTTPException(409, detail="Invalid lesson exercise configuration") from None
 
         completed_exercises: dict[str, str] = {}
         lesson_is_completed = False
@@ -277,6 +280,10 @@ class LessonContentService(BaseCoursesService):
         for attempt in attempts:
             attempt_answers = attempt.answers
             if not isinstance(attempt_answers, dict):
+                continue
+
+            # Старый успешный запуск без проверки эталона не является прохождением.
+            if "execution" in attempt_answers and attempt_answers.get("is_correct") is not True:
                 continue
 
             passed_answers = attempt_answers.get(PASSED_EXERCISES_KEY)

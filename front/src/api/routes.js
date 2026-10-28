@@ -25,6 +25,7 @@ export const API_ROUTES = {
 
 // Lessons
     LESSONS: "/lessons",
+    SANDBOX_EXECUTE: "/sandbox/execute",
     LESSON_BY_ID: (id) => `/lessons/${id}`,
 
 // Admin
@@ -68,6 +69,7 @@ export const API_ROUTES = {
     ADMIN_MEDIA_URL: (mediaKey) => `/admin/media/${mediaKey}/url`,
 
 // Admin exercises: правильные ответы на задания урока
+    ADMIN_LESSON_CODE_CONTENT: (lessonId) => `/admin/lessons/${lessonId}/code-content`,
     ADMIN_LESSON_EXERCISES: (lessonId) => `/admin/lessons/${lessonId}/exercises`,
     ADMIN_LESSON_EXERCISE_ANSWER: (lessonId, exerciseId) =>
         `/admin/lessons/${lessonId}/exercises/${exerciseId}/answer`,

@@ -26,6 +26,10 @@ import LessonContentModal from "@/pages/Admin/Lessons/LessonContentModal.jsx";
 import LessonMediaModal from "@/pages/Admin/Lessons/LessonMediaModal.jsx";
 import LessonExercisesPanel from "@/pages/Admin/Lessons/LessonExercisesPanel.jsx";
 import UserModal from "@/pages/Admin/Users/UserModal.jsx";
+import LessonMentor from "@/components/LessonMentor/LessonMentor.jsx";
+import MentorTurn from "@/components/LessonMentor/MentorTurn.jsx";
+import MentorWelcome from "@/components/LessonMentor/MentorWelcome.jsx";
+import MentorText from "@/components/LessonMentor/MentorText.jsx";
 
 /**
  * Проверка отрисовки Markdown и админки.
@@ -36,9 +40,55 @@ import UserModal from "@/pages/Admin/Users/UserModal.jsx";
  * Запуск: npm run test:render
  */
 
+const mentorHtml = renderToStaticMarkup(<LessonMentor slug="sql" moduleId="1" lessonId="2"/>);
+assert.ok(mentorHtml.includes("AI-наставник"));
+assert.ok(mentorHtml.includes("DeepSeek API"));
+assert.ok(mentorHtml.startsWith("<aside"));
+assert.ok(mentorHtml.includes('maxLength="2000"'));
+assert.ok(!mentorHtml.includes("<script"));
+assert.ok(mentorHtml.includes('role="log"'));
+assert.ok(mentorHtml.includes("Ctrl / ⌘ + Enter"));
+assert.ok(mentorHtml.includes("<details"));
+assert.ok(mentorHtml.includes('placeholder="Что осталось непонятным в уроке?"'));
+
+let promptCalls = 0;
+const mentorWelcome = renderToStaticMarkup(<MentorWelcome onPrompt={() => { promptCalls += 1; }}/>);
+assert.ok(mentorWelcome.includes("Сложная тема? Разберёмся."));
+assert.equal((mentorWelcome.match(/<button/g) ?? []).length, 3);
+assert.equal(promptCalls, 0);
+
+const mentorAnswer = renderToStaticMarkup(<MentorTurn item={{
+    question: "<img src=x onerror=alert(1)>", status: "completed",
+    answer: "**Группировка** и `COUNT(*)`\n\n```sql\nSELECT COUNT(*) FROM orders;\n```",
+}}/>);
+assert.ok(mentorAnswer.includes("<strong>Группировка</strong>"));
+assert.ok(mentorAnswer.includes("<code>COUNT(*)</code>"));
+assert.ok(mentorAnswer.includes("<pre><code>SELECT COUNT(*) FROM orders;</code></pre>"));
+assert.ok(mentorAnswer.includes("Скопировать ответ"));
+assert.ok(!mentorAnswer.includes("<img"));
+assert.ok(mentorAnswer.includes("&lt;img"));
+
+const mentorUnsafeText = renderToStaticMarkup(<MentorText text={
+    '<script>alert(1)</script> [link](https://example.com) ![image](https://example.com/image.png)'
+}/>);
+assert.ok(!/<(?:script|a|img)\b/.test(mentorUnsafeText));
+assert.ok(mentorUnsafeText.includes("&lt;script&gt;"));
+
+const mentorPending = renderToStaticMarkup(<MentorTurn item={{question: "SQL?", status: "pending"}}/>);
+assert.ok(mentorPending.includes('role="status"'));
+assert.ok(mentorPending.includes("Разбираюсь в вашем вопросе…"));
+assert.ok(!mentorPending.includes("Скопировать ответ"));
+
 const descriptionHtml = renderToStaticMarkup(<Description content={
     "Освойте анализ данных с нуля!\n\nВас ждут понятные объяснения.\n\n**Подходит новичкам без опыта программирования.**"
 }/>);
+const codeExerciseHtml = renderToStaticMarkup(<Markdown
+    content={":::code python\nid: secret-test\n:::"}
+    answers={{"secret-test": {type: "code", value: "SECRET_TEACHER_SOLUTION"}}}
+/>);
+assert.ok(codeExerciseHtml.includes("textarea"));
+assert.ok(codeExerciseHtml.includes("Запустить"));
+assert.ok(!codeExerciseHtml.includes("SECRET_TEACHER_SOLUTION"));
 assert.equal((descriptionHtml.match(/<br\/>/g) ?? []).length, 2);
 assert.equal((descriptionHtml.match(/aria-hidden="true"/g) ?? []).length, 2);
 assert.ok(descriptionHtml.includes("<strong><span>Подходит новичкам без опыта программирования.</span></strong>"));

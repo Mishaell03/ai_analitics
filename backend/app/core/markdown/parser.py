@@ -26,7 +26,7 @@ from app.core.storage_paths import (
 )
 
 # разметка кастомного блока: :::тип ... :::
-_CUSTOM_BLOCK_OPEN_RE = re.compile(r"^:::\s*(?P<type>[a-zA-Z][a-zA-Z0-9_-]*)\s*$")
+_CUSTOM_BLOCK_OPEN_RE = re.compile(r"^:::\s*(?P<type>[a-zA-Z][a-zA-Z0-9_-]*)(?:[ \t]+(?P<language>\S+))?[ \t]*$")
 _CUSTOM_BLOCK_CLOSE_RE = re.compile(r"^:::\s*$")
 
 # типы блоков кода, содержимое которых нельзя чистить
@@ -74,6 +74,9 @@ class MarkdownParser:
             return ParsedMarkdown(content="")
 
         tokens = self._markdown.parse(source)
+        # Проверяем кодовые директивы до HTML-очистки: она не должна
+        # скрывать запрещённое содержимое внутри блока при сохранении.
+        self._extract_custom_blocks(source)
 
         protected_lines, removed_lines = self._collect_line_ranges(tokens)
 
@@ -121,8 +124,12 @@ class MarkdownParser:
         lines = content.splitlines()
 
         index = 0
+        protected, _ = self._collect_line_ranges(self._markdown.parse(content))
 
         while index < len(lines):
+            if index in protected:
+                index += 1
+                continue
             open_match = _CUSTOM_BLOCK_OPEN_RE.match(lines[index])
 
             if open_match is None:
@@ -130,6 +137,7 @@ class MarkdownParser:
                 continue
 
             block_type = open_match.group("type")
+            language = open_match.group("language")
             block_lines: list[str] = []
 
             index += 1
@@ -146,12 +154,15 @@ class MarkdownParser:
 
             # незакрытый блок — обычный текст, а не блок
             if not closed:
+                if block_type == "code":
+                    raise ValueError("Unclosed code directive")
                 continue
 
             blocks.append(
                 self._custom_blocks.parse(
                     block_type=block_type,
-                    content="\n".join(block_lines).strip(),
+                    content=(f"language: {language}\n" if block_type == "code" else "")
+                            + "\n".join(block_lines).strip(),
                 )
             )
 
