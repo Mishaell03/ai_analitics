@@ -50,7 +50,10 @@ class RequestBodyMiddleware:
         is_execution = path == "/api/v1/sandbox/execute" or (
             path.startswith("/api/v1/courses/") and "/exercises/" in path and path.endswith("/submit")
         )
-        if is_execution:
+        is_ai = path.startswith("/api/v1/courses/") and path.endswith("/ai/messages")
+        if is_ai:
+            max_allowed = 24 * 1024
+        elif is_execution:
             max_allowed = MAX_REQUEST_BYTES
         elif content_type.startswith("multipart/form-data"):
             max_allowed = settings.media_max_video_size + (15 * 1024 * 1024)
@@ -72,7 +75,7 @@ class RequestBodyMiddleware:
         # 2. Потоковый подсчёт байт и селективное кэширование малых тел для логов
         bytes_received = 0
         buffered_chunks = []
-        should_capture = not is_execution and any(
+        should_capture = not (is_execution or is_ai) and any(
             content_type.startswith(val) for val in CAPTURED_BODY_CONTENT_TYPES
         )
 
@@ -142,12 +145,18 @@ async def _log_backend_error(
 
 
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    logging.exception(f"unhandled exception: {exc}")
+    is_ai = request.url.path.rstrip("/").endswith("/ai/messages")
+    # Ошибка SQLAlchemy может включать параметры вопроса/ответа. Их аудит — в AI-таблицах.
+    error_message = type(exc).__name__ if is_ai else f"{type(exc).__name__}: {exc}"
+    if is_ai:
+        logging.error("unhandled AI exception: %s", type(exc).__name__)
+    else:
+        logging.exception(f"unhandled exception: {exc}")
 
     await _log_backend_error(
         request=request,
         status_code=500,
-        error_message=f"{type(exc).__name__}: {exc}",
+        error_message=error_message,
     )
 
     return JSONResponse(
@@ -183,12 +192,15 @@ async def server_error_handler(request: Request, exc: StarletteHTTPException) ->
 
 
 async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
-    logging.error(f"logged error: 422 {exc.errors()}")
+    errors = exc.errors()
+    if request.url.path.rstrip("/").endswith("/ai/messages"):
+        errors = [{key: value for key, value in item.items() if key in {"loc", "msg", "type"}} for item in errors]
+    logging.error(f"logged error: 422 {errors}")
 
     await _log_backend_error(
         request=request,
         status_code=422,
-        error_message=str(exc.errors()),
+        error_message=str(errors),
     )
 
     return await request_validation_exception_handler(request, exc)

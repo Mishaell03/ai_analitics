@@ -70,7 +70,7 @@ class LessonCompletionService(BaseCoursesService):
 
         exercise_ids = set()
         for block in custom_blocks:
-            if block.type != "test" or not isinstance(block.data, dict):
+            if block.type not in {"test", "code"} or not isinstance(block.data, dict):
                 continue
             exercise_id = block.data.get("exercise_id")
             if isinstance(exercise_id, str) and exercise_id:

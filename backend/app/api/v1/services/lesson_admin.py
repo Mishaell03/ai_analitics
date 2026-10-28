@@ -20,10 +20,12 @@ from app.api.v1.schemas.courses import (
     LessonUploadResponse,
 )
 from app.api.v1.services.courses import BaseCoursesService
+from app.api.v1.services.lesson_code_content import decode_solution
 from app.core.config import settings
 from app.core.minio_url import minio_storage
 from app.core.storage_paths import COURSE_CONTENT_BUCKET, lesson_content_path
 from app.models.courses import Lesson
+from app.models.exercises import ExerciseAnswer
 
 # урок — это Markdown, поэтому и тип файла такой же
 MARKDOWN_CONTENT_TYPE = "text/markdown"
@@ -197,6 +199,12 @@ class LessonAdminService(BaseCoursesService):
             lesson_id=lesson_id,
             error=error,
         )
+
+        answers = (await self.db.execute(select(ExerciseAnswer.answer).where(
+            ExerciseAnswer.lesson_id == lesson.lesson_id,
+        ))).scalars().all()
+        if any(decode_solution(answer) is not None for answer in answers):
+            raise HTTPException(409, detail="Save code blocks through code-content")
 
         return await self._build_upload(
             request=request,

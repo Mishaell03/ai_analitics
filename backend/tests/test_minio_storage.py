@@ -1,5 +1,6 @@
 import asyncio
 from types import SimpleNamespace
+import pytest
 
 from minio.error import S3Error
 
@@ -61,10 +62,10 @@ class FakeStatClient:
         return object()
 
 
-def make_s3_error() -> S3Error:
+def make_s3_error(code: str = "NoSuchKey") -> S3Error:
     return S3Error(
         response=None,
-        code="NoSuchKey",
+        code=code,
         message="The specified key does not exist.",
         resource="object",
         request_id="request-id",
@@ -116,6 +117,20 @@ def test_get_text_truncates_big_file(monkeypatch):
     )
 
     assert content == "a" * 10
+
+
+def test_strict_get_text_rejects_truncation(monkeypatch):
+    monkeypatch.setattr(settings, "minio_client", FakeMinioClient(data=b"a" * 100))
+    with pytest.raises(ValueError):
+        asyncio.run(MinioStorageService().get_text("lesson.md", "course-content", max_bytes=10, strict=True))
+
+
+@pytest.mark.parametrize("code", ["AccessDenied", "NoSuchBucket", "InternalError"])
+def test_strict_get_text_does_not_treat_storage_failure_as_empty_lesson(monkeypatch, code):
+    error = make_s3_error(code)
+    monkeypatch.setattr(settings, "minio_client", FakeMinioClient(error=error))
+    with pytest.raises(S3Error):
+        asyncio.run(MinioStorageService().get_text("lesson.md", "course-content", strict=True))
 
 
 def test_delete_file_removes_object(monkeypatch):

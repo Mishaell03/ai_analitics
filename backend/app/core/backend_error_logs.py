@@ -28,6 +28,11 @@ SENSITIVE_BODY_KEYS = frozenset({
     "authorization",
     "secret",
     "api_key",
+    "solutions",
+    "answer",
+    "code",
+    "question",
+    "user_context",
 })
 
 SENSITIVE_VALUE = "***"

@@ -44,7 +44,7 @@ class SandboxBodyLimitMiddleware:
         await self.app(scope, buffered_receive, send)
 
 
-async def execute_code(code: str, profile: str) -> ExecutionResult:
+async def execute_code(code: str, profile: str, language: str = "python") -> ExecutionResult:
     config = SandboxSettings()
     if len(config.token) < 32:
         raise HTTPException(503, detail={"code": "SANDBOX_UNAVAILABLE", "message": "Sandbox unavailable"})
@@ -54,7 +54,7 @@ async def execute_code(code: str, profile: str) -> ExecutionResult:
             async with client.stream(
                     "POST", f"{config.endpoint.rstrip('/')}/execute",
                     headers={"Authorization": f"Bearer {config.token}"},
-                    json={"code": code, "profile": profile},
+                    json={"code": code, "profile": profile, "language": language},
             ) as response:
                 if response.status_code == 503:
                     # Контракт runner: Retry-After есть только при перегрузке.

@@ -5,7 +5,6 @@ from fastapi import HTTPException, Request
 from app.api.v1.schemas.sandbox import StudentExerciseResponse
 from app.api.v1.services.lesson_content import LessonContentService
 from app.core.session import CurrentUserContext
-from app.services.sandbox.config import SandboxSettings
 
 
 class StudentExerciseService(LessonContentService):
@@ -23,11 +22,10 @@ class StudentExerciseService(LessonContentService):
             device_id=current.session.device_id, session_id=current.session.id,
             user_id=current.user.user_id, platform=current.session.platform,
         )
-        profiles = SandboxSettings().assignment_profiles
         exercises = []
         seen = set()
         for block in content.custom_blocks:
-            if block.type != "test" or not isinstance(block.data, dict):
+            if block.type not in {"test", "code"} or not isinstance(block.data, dict):
                 continue
             exercise_id = block.data.get("exercise_id")
             if not exercise_id:
@@ -41,7 +39,7 @@ class StudentExerciseService(LessonContentService):
             language = block.data.get("language")
             exercises.append(StudentExerciseResponse(
                 exercise_id=exercise_id, body=block.data["body"], language=language,
-                execution_enabled=(language == "python" and f"{lesson_id}:{exercise_id}" in profiles),
+                execution_enabled=language in {"python", "sql"},
                 is_completed=exercise_id in content.completed_exercises,
             ))
         return exercises

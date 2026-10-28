@@ -10,6 +10,7 @@ import pytest
 from fastapi import FastAPI, HTTPException
 
 from app.api.v1.routes.student_exercises import router
+from app.api.v1.routes.sandbox import router as sandbox_router
 from app.api.v1.schemas.sandbox import ExecutionResult, SandboxExecuteRequest
 from app.api.v1.services import sandbox as sandbox_module
 from app.api.v1.services.sandbox import SandboxService
@@ -58,7 +59,7 @@ def test_list_only_public_fields_and_own_progress(current, language):
     exercises = asyncio.run(service.list_exercises(object(), "python", 2, 3, current))
     assert exercises[0].model_dump() == {
         "exercise_id": "py-1", "body": "Print 42.", "language": language,
-        "execution_enabled": language == "python", "is_completed": True,
+        "execution_enabled": True, "is_completed": True,
     }
     assert service.get_lesson_content.call_args.kwargs["user_id"] == 7
     assert "is_admin" not in service.get_lesson_content.call_args.kwargs
@@ -96,10 +97,10 @@ def test_deleted_and_duplicate_exercises_fail_closed(current):
 
 @pytest.mark.parametrize("configured,requested,status", [
     ("python", "sql", 422), ("sql", "python", 422),
-    (None, "python", 422), ("sql", "sql", 503),
+    (None, "python", 422),
 ])
 @pytest.mark.parametrize("code", ["SELECT 1", "DROP TABLE users", "SELECT pg_read_file('/etc/passwd')"])
-def test_language_and_sql_never_reach_engine(monkeypatch, current, configured, requested, status, code):
+def test_language_mismatch_never_reaches_runner(monkeypatch, current, configured, requested, status, code):
     monkeypatch.setattr(StudentExerciseService, "get_exercise", AsyncMock(
         return_value=SimpleNamespace(language=configured)))
     execute = AsyncMock()
@@ -114,11 +115,11 @@ def test_language_and_sql_never_reach_engine(monkeypatch, current, configured, r
 
 
 @pytest.mark.parametrize("flags,expected,correct", [
-    ({}, "print(42)", True), ({}, "print(43)", False),
-    ({"exit_code": 1, "stderr": "SyntaxError"}, "print(42)", None),
-    ({"timed_out": True}, "print(42)", None),
-    ({"memory_limited": True}, "print(42)", None),
-    ({"output_limited": True}, "print(42)", None),
+    ({}, "42\n", True), ({}, "43\n", False),
+    ({"exit_code": 1, "stderr": "SyntaxError"}, "42\n", False),
+    ({"timed_out": True}, "42\n", False),
+    ({"memory_limited": True}, "42\n", False),
+    ({"output_limited": True}, "42\n", False),
 ])
 def test_submission_grades_only_success_and_records_own_attempt(monkeypatch, current, flags, expected, correct):
     monkeypatch.setattr(StudentExerciseService, "get_exercise", AsyncMock(
@@ -127,8 +128,10 @@ def test_submission_grades_only_success_and_records_own_attempt(monkeypatch, cur
         {"stdout": "42\n", "stderr": "", "exit_code": 0, "timed_out": False, "duration": 0.1}, **flags))
     execute = AsyncMock(return_value=execution)
     monkeypatch.setattr(sandbox_module, "execute_code", execute)
-    rows = [SimpleNamespace(scalar_one_or_none=lambda: 1),
-            SimpleNamespace(scalar_one_or_none=lambda: json.dumps({"type": "code", "value": expected}))]
+    reference = json.dumps({"type": "code", "language": "python", "value": "print(6 * 7)",
+                            "execution": {"stdout": expected, "stderr": "", "exit_code": 0,
+                                          "timed_out": False, "duration": 0.1}})
+    rows = [SimpleNamespace(scalar_one_or_none=lambda: reference)]
     db = SimpleNamespace(execute=AsyncMock(side_effect=rows), add=Mock(), commit=AsyncMock())
 
     async def commit():
@@ -137,14 +140,15 @@ def test_submission_grades_only_success_and_records_own_attempt(monkeypatch, cur
     db.commit.side_effect = commit
     response = asyncio.run(SandboxService(db).submit(object(), submission(), current))
     assert response.is_correct is correct
+    assert response.success == (not flags)
     assert response.execution_succeeded == (not flags)
     assert response.attempt_id == 123
     attempt = db.add.call_args.args[0]
     assert attempt.user_id == 7 and attempt.lesson_id == 3
     assert attempt.correctness == (2 if correct else 0)
     assert (PASSED_EXERCISES_KEY in attempt.answers) == bool(correct)
-    execute.assert_awaited_once_with(code="print(42)", profile="light")
-    assert expected not in response.model_dump_json() or expected == "print(42)"
+    execute.assert_awaited_once_with(code="print(42)", profile="light", language="python")
+    assert "print(6 * 7)" not in response.model_dump_json()
 
 
 def test_runner_failure_does_not_record_attempt(monkeypatch, current):
@@ -154,6 +158,47 @@ def test_runner_failure_does_not_record_attempt(monkeypatch, current):
         asyncio.run(service.submit(object(), submission(), current))
     service.db.add.assert_not_called()
     service.db.commit.assert_not_awaited()
+
+
+@pytest.mark.parametrize("language,code", [
+    ("python", 'print("hello world")'),
+    ("sql", "SELECT * FROM customers LIMIT 1"),
+])
+def test_execute_without_teacher_answer(monkeypatch, current, language, code):
+    app = FastAPI()
+    app.include_router(sandbox_router, prefix="/api/v1")
+    # Отсутствие эталона не запрещает запуск, но не засчитывает прохождение.
+    db = SimpleNamespace(execute=AsyncMock(return_value=SimpleNamespace(scalar_one_or_none=lambda: None)),
+                         add=Mock(), commit=AsyncMock())
+
+    async def commit():
+        db.add.call_args.args[0].attempt_id = 123
+
+    db.commit.side_effect = commit
+    app.dependency_overrides[get_db] = lambda: db
+    app.dependency_overrides[get_current_user] = lambda: current
+    parsed = MarkdownParser().parse(f":::code {language}\nid: py-1\n:::")
+    monkeypatch.setattr(StudentExerciseService, "get_lesson_content", AsyncMock(return_value=SimpleNamespace(
+        custom_blocks=parsed.custom_blocks, completed_exercises={},
+    )))
+    runner = AsyncMock(return_value=ExecutionResult(
+        stdout="result", stderr="", exit_code=0, timed_out=False, duration=0.1,
+    ))
+    monkeypatch.setattr(sandbox_module, "execute_code", runner)
+
+    async def scenario():
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post("/api/v1/sandbox/execute", json=submission(language, code).model_dump())
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+        assert response.json()["stdout"] == "result"
+        assert response.json()["is_correct"] is None
+        assert PASSED_EXERCISES_KEY not in db.add.call_args.args[0].answers
+        runner.assert_awaited_once_with(code=code, profile="light", language=language)
+        db.execute.assert_awaited_once()
+        db.commit.assert_awaited_once()
+
+    asyncio.run(scenario())
 
 
 def test_execution_rate_limit_is_user_scoped(monkeypatch, current):
@@ -220,13 +265,20 @@ def test_http_validation_body_limit_and_public_response(monkeypatch, current):
     asyncio.run(scenario())
 
 
-def test_http_submission_uses_path_and_session_identity(monkeypatch, current):
+@pytest.mark.parametrize("endpoint", ["submit", "execute"])
+@pytest.mark.parametrize("language", ["python", "sql"])
+def test_http_submission_uses_path_and_session_identity(monkeypatch, current, endpoint, language):
     app = FastAPI()
     app.include_router(router, prefix="/api/v1")
-    db = SimpleNamespace(execute=AsyncMock(side_effect=[
-        SimpleNamespace(scalar_one_or_none=lambda: 1),
-        SimpleNamespace(scalar_one_or_none=lambda: '{"type":"code","value":"print(42)"}'),
-    ]), add=Mock(), commit=AsyncMock())
+    app.include_router(sandbox_router, prefix="/api/v1")
+    monkeypatch.setenv("SANDBOX_ASSIGNMENT_PROFILES", "{}")
+    output = "42\n" if language == "python" else '{"columns":["count"],"rows":[[42]]}'
+    reference = json.dumps({"type": "code", "language": language, "value": "TEACHER_CODE",
+                            "execution": {"stdout": output, "stderr": "", "exit_code": 0,
+                                          "timed_out": False, "duration": 0.1}})
+    db = SimpleNamespace(execute=AsyncMock(return_value=SimpleNamespace(
+        scalar_one_or_none=lambda: reference,
+    )), add=Mock(), commit=AsyncMock())
 
     async def commit():
         db.add.call_args.args[0].attempt_id = 99
@@ -234,19 +286,28 @@ def test_http_submission_uses_path_and_session_identity(monkeypatch, current):
     db.commit.side_effect = commit
     app.dependency_overrides[get_db] = lambda: db
     app.dependency_overrides[get_current_user] = lambda: current
-    get_content = AsyncMock(return_value=content())
+    get_content = AsyncMock(return_value=content(language))
     monkeypatch.setattr(StudentExerciseService, "get_lesson_content", get_content)
     monkeypatch.setattr(sandbox_module, "execute_code", AsyncMock(return_value=ExecutionResult(
-        stdout="42\n", stderr="", exit_code=0, timed_out=False, duration=0.1,
+        stdout=output, stderr="", exit_code=0, timed_out=False, duration=0.1,
     )))
 
     async def scenario():
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-            response = await client.post(PATH + "/py-1/submit", json={"language": "python", "code": "print(42)"})
+            if endpoint == "submit":
+                response = await client.post(PATH + "/py-1/submit", json={"language": language, "code": "print(42)"})
+            else:
+                response = await client.post("/api/v1/sandbox/execute", json=submission(language).model_dump())
         assert response.status_code == 200
+        assert response.json()["success"] is True
         assert response.json()["is_correct"] is True
-        assert response.json()["execution_succeeded"] is True
-        assert response.json()["attempt_id"] == 99
+        assert "TEACHER_CODE" not in response.text
+        if endpoint == "submit":
+            assert response.json()["execution_succeeded"] is True
+            assert response.json()["attempt_id"] == 99
+        else:
+            assert response.json()["stdout"] == output
+        db.commit.assert_awaited_once()
         assert "answer" not in response.json()
         assert get_content.call_args.kwargs["user_id"] == 7
         assert get_content.call_args.kwargs["lesson_id"] == 3

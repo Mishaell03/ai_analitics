@@ -7,7 +7,7 @@
 Урок может не содержать заданий — тогда ответов у него просто нет.
 """
 
-from fastapi import Request
+from fastapi import HTTPException, Request
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 
@@ -20,6 +20,7 @@ from app.api.v1.schemas.courses import EnrollmentResponse
 from app.api.v1.services.courses import BaseCoursesService
 from app.models.courses import Lesson
 from app.models.exercises import ExerciseAnswer
+from app.api.v1.services.lesson_code_content import decode_solution
 
 
 class ExerciseAnswerService(BaseCoursesService):
@@ -62,6 +63,8 @@ class ExerciseAnswerService(BaseCoursesService):
             exercise_id=exercise_id,
             answer=data.answer,
         )
+
+        await self._guard_code_answer(lesson.lesson_id, exercise_id, data.answer)
 
         statement = statement.on_conflict_do_update(
             index_elements=[
@@ -124,6 +127,9 @@ class ExerciseAnswerService(BaseCoursesService):
                 code="EXERCISE_ANSWER_NOT_FOUND",
                 error=error,
             )
+
+        if decode_solution(answer.answer) is not None:
+            raise HTTPException(409, detail="Save code blocks through code-content")
 
         await self.db.delete(answer)
         await self.db.commit()
@@ -191,7 +197,7 @@ class ExerciseAnswerService(BaseCoursesService):
             )
 
         result = await self.db.execute(
-            select(Lesson).where(Lesson.lesson_id == int(lesson_id))
+            select(Lesson).where(Lesson.lesson_id == int(lesson_id)).with_for_update()
         )
 
         lesson = result.scalar_one_or_none()
@@ -204,6 +210,13 @@ class ExerciseAnswerService(BaseCoursesService):
             )
 
         return lesson
+
+    async def _guard_code_answer(self, lesson_id: int, exercise_id: str, value: str):
+        previous = (await self.db.execute(select(ExerciseAnswer.answer).where(
+            ExerciseAnswer.lesson_id == lesson_id, ExerciseAnswer.exercise_id == exercise_id,
+        ))).scalar_one_or_none()
+        if decode_solution(value) is not None or decode_solution(previous) is not None:
+            raise HTTPException(409, detail="Save code blocks through code-content")
 
     @staticmethod
     def _to_response(answer: ExerciseAnswer) -> ExerciseAnswerResponse:

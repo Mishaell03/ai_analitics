@@ -1,4 +1,26 @@
-# Python Sandbox
+# Python и SQL Sandbox
+
+## Быстрый запуск
+
+Из `backend/`: `make sandbox-up`. Команда собирает Python-образ и runner,
+запускает PostgreSQL и runner с портом `127.0.0.1:8090`.
+Нужен доступ текущего пользователя к Docker. Логи: `make sandbox-logs`.
+Токен `SANDBOX_RUNNER_TOKEN` (минимум 32 символа) и `SANDBOX_DB_PASSWORD`
+задаются в `backend/.env`. Host API теперь читает sandbox-настройки из этого
+файла автоматически; переменные окружения имеют приоритет.
+
+Для host runner: `venv/bin/pip install -r app/requirements.txt`, затем
+`venv/bin/python -m uvicorn app.services.sandbox.runner:create_app --factory --host 127.0.0.1 --port 8090`.
+Не запускайте host runner и Compose runner одновременно на одном порту.
+
+SQL подключается только к `analytics_training` как `sandbox_reader`.
+В Compose хост — `postgres`; на хосте `SANDBOX_DB_HOST=127.0.0.1`,
+`SANDBOX_DB_PORT=5432`. После пересоздания `public` примените
+`infra/sandbox/sql-access.sql` владельцем таблиц именно в `analytics_training`.
+Ученик указывает таблицу в SQL, например `SELECT * FROM customers LIMIT 10`.
+Результат: `stdout` с JSON `{ "columns": [...], "rows": [...] }` и `success`.
+SQL ограничен SELECT, 5 секундами, 1000 строками и 64 KiB вывода.
+При недоступном Docker SQL runner продолжает работать; Python возвращает 503.
 
 ## Устройство
 
@@ -18,8 +40,11 @@
 }
 ```
 
-Задание должно существовать в `exercise_answers`. Содержимое эталонного ответа
-runner не получает. Sandbox только выполняет код, не оценивает правильность решения.
+Задание должно существовать в Markdown доступного урока; эталон в БД для запуска
+не требуется. При запуске ученика runner
+получает только его код. Эталон выполняется отдельно при сохранении урока.
+Runner выполняет код; API сравнивает вывод с сохранённым результатом эталона
+и возвращает `is_correct`. Прохождение засчитывается только при `is_correct=true`.
 Сохраняется существующий формат ошибок `{"detail": {"code": "...", "message": "..."}}`.
 Для запросов из браузера действуют существующие cookie/CSRF/CORS-правила платформы.
 
@@ -33,7 +58,8 @@ runner не получает. Sandbox только выполняет код, н
   "timed_out": false,
   "duration": 0.254,
   "output_limited": false,
-  "memory_limited": false
+  "memory_limited": false,
+  "success": true
 }
 ```
 
@@ -101,11 +127,11 @@ Matplotlib работает с `MPLBACKEND=Agg`, временные файлы �
 | `SANDBOX_RUNNER_ENDPOINT` | `http://127.0.0.1:8090` | Адрес для API; Compose API использует `http://sandbox_runner:8090` |
 | `SANDBOX_CONCURRENCY` | `3` | Можно уменьшить до 1–2, увеличить выше 3 нельзя |
 | `SANDBOX_HEAVY_CONCURRENCY` | `1` | Увеличение запрещено |
-| `SANDBOX_ASSIGNMENT_PROFILES` | `{}` | JSON allowlist `"lesson_id:exercise_id": "profile"`, только в окружении API |
+| `SANDBOX_ASSIGNMENT_PROFILES` | `{}` | JSON переопределений `"lesson_id:exercise_id": "profile"`, по умолчанию `light`, только в окружении API |
 | `SANDBOX_LOCK_FILE` | `.sandbox-runner.lock` | При host-запуске; в Compose задан путь в общем runner-volume |
 | `SANDBOX_DOCKER_SOCKET` | `/var/run/docker.sock` | Исходный путь socket для Compose; можно указать Docker Desktop/rootless socket |
 
-Ненастроенное задание запускать нельзя (403 `SANDBOX_NOT_ENABLED`). Изменение
+Для доступного Python-задания без переопределения используется `light`. Изменение
 профиля — административное изменение конфигурации, не поле запроса ученика.
 Секреты не хранить в образе и не коммитить. Docker build context исключает `.env`.
 
@@ -114,7 +140,7 @@ Matplotlib работает с `MPLBACKEND=Agg`, временные файлы �
 Все команды из `backend/`. Нужны работающий Docker и уже собранный sandbox-образ.
 Устанавливать gVisor или пересобирать student-образ для запуска не требуется.
 
-1. В `backend/.env` задайте `SANDBOX_RUNNER_TOKEN` и allowlist реальных заданий,
+1. В `backend/.env` задайте `SANDBOX_RUNNER_TOKEN` и при необходимости профили заданий,
    например `SANDBOX_ASSIGNMENT_PROFILES={"123:python-1":"standard"}`.
    Секрет можно сгенерировать существующим Python:
 

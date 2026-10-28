@@ -4,7 +4,7 @@
 который не связан с содержимым урока в MinIO.
 """
 
-from fastapi import APIRouter, Depends, Path, Request
+from fastapi import APIRouter, Depends, Path, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.courses import EnrollmentResponse
@@ -13,13 +13,40 @@ from app.api.v1.schemas.exercises import (
     ExerciseAnswerRequest,
     ExerciseAnswerResponse,
     ExerciseAnswersResponse,
+    LessonCodeContentRequest,
+    LessonCodeContentResponse,
 )
 from app.api.v1.services.exercise_answers import ExerciseAnswerService
+from app.api.v1.services.lesson_code_content import LessonCodeContentService
 from app.core.database import get_db
 from app.core.session import CurrentUserContext, get_current_admin
 from app.core.users_events_logs import user_event_logs
 
-router = APIRouter(prefix="/admin/lessons")
+
+def prevent_answer_caching(response: Response):
+    response.headers["Cache-Control"] = "no-store, private"
+
+
+router = APIRouter(prefix="/admin/lessons", dependencies=[Depends(prevent_answer_caching)])
+
+
+@router.get("/{lesson_id}/code-content", response_model=LessonCodeContentResponse)
+async def get_code_content(
+        lesson_id: int,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    return await LessonCodeContentService(db).get(lesson_id)
+
+
+@router.put("/{lesson_id}/code-content", response_model=LessonCodeContentResponse)
+async def save_code_content(
+        lesson_id: int,
+        data: LessonCodeContentRequest,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_admin),
+):
+    return await LessonCodeContentService(db).save(lesson_id, data)
 
 # идентификатор задания: буквы, цифры, дефис и подчёркивание
 ExerciseId = Path(

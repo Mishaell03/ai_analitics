@@ -3,6 +3,7 @@ uvicorn[standard]
 
 sqlalchemy
 asyncpg
+pglast>=7,<8
 alembic
 minio
 markdown-it-py

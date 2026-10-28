@@ -182,6 +182,7 @@ class MinioStorageService:
         file_path: str,
         bucket: str,
         max_bytes: int | None = None,
+        strict: bool = False,
     ) -> str | None:
         """READ TEXT FILE FROM BUCKET
 
@@ -204,7 +205,9 @@ class MinioStorageService:
                 # что файл не помещается в ограничение
                 data = response.read(limit + 1)
 
-            except S3Error:
+            except S3Error as exc:
+                if strict and exc.code != "NoSuchKey":
+                    raise
                 return None
 
             finally:
@@ -213,6 +216,8 @@ class MinioStorageService:
                     response.release_conn()
 
             if len(data) > limit:
+                if strict:
+                    raise ValueError("Text file exceeds size limit")
                 logging.warning(
                     f"file is too large and was truncated: {bucket}/{file_path}"
                 )

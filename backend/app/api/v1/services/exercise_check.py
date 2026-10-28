@@ -3,7 +3,7 @@
 import json
 from collections.abc import Mapping
 
-from fastapi import Request
+from fastapi import HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -87,6 +87,14 @@ class ExerciseCheckService(BaseCoursesService):
                 code="EXERCISE_ANSWER_NOT_FOUND",
                 error=error,
             )
+
+        expected = self._parse_answer(correct_answer)
+        submitted = self._parse_answer(data.answer)
+        if any(value is not None and value[0] == "code" for value in (expected, submitted)):
+            raise HTTPException(422, detail={
+                "code": "CODE_EXECUTION_REQUIRED",
+                "message": "Use /api/v1/sandbox/execute for code exercises",
+            })
 
         is_correct = self.answers_match(data.answer, correct_answer)
 

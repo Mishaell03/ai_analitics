@@ -3,11 +3,24 @@ SHELL := /bin/bash
 include .env
 export
 
+SANDBOX_IMAGE ?= analytics-sandbox:1.0
+
 print-env:
 	echo $(POSTGRES_USER)
 	echo $(POSTGRES_USER)
 
 DB_URL=jdbc:postgresql://$(DB_HOST):$(DB_PORT)
+
+.PHONY: ai-migrate
+ai-migrate:
+	@set -e; set -a; source .env; set +a; \
+	export FLYWAY_USER="$$POSTGRES_USER" FLYWAY_PASSWORD="$$POSTGRES_PASSWORD"; \
+	export FLYWAY_URL="jdbc:postgresql://$${DB_HOST:-127.0.0.1}:$${DB_PORT:-5432}/core_db"; \
+	docker run --rm --network host \
+		-e FLYWAY_USER -e FLYWAY_PASSWORD -e FLYWAY_URL \
+		-v "$(CURDIR)/infra/postgres/core_db/migrations:/flyway/migrations:ro" \
+		-v "$(CURDIR)/infra/postgres/core_db/seeds:/flyway/seeds:ro" \
+		flyway/flyway -locations=filesystem:/flyway/migrations,filesystem:/flyway/seeds -target=9 migrate
 
 migrate:
 	@set -e; set -a && source .env && set +a && \
@@ -39,6 +52,14 @@ seed:
 
 storage-migrate:
 	python -m app.core.minio_migration
+
+.PHONY: sandbox-up sandbox-logs
+sandbox-up:
+	docker build -t $(SANDBOX_IMAGE) -f infra/sandbox/Dockerfile .
+	docker compose -f docker-compose.yaml -f docker-compose.dev.yaml --profile sandbox up -d --build postgres sandbox_runner
+
+sandbox-logs:
+	docker compose --profile sandbox logs --tail=100 sandbox_runner
 
 .PHONY: s3-refresh
 

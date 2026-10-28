@@ -17,6 +17,9 @@ services:
       SANDBOX_CONCURRENCY: ${SANDBOX_CONCURRENCY:-3}
       SANDBOX_HEAVY_CONCURRENCY: ${SANDBOX_HEAVY_CONCURRENCY:-1}
       SANDBOX_LOCK_FILE: /run/sandbox-runner/runner.lock
+      SANDBOX_DB_HOST: postgres
+      SANDBOX_DB_PORT: 5432
+      SANDBOX_DB_PASSWORD: ${SANDBOX_DB_PASSWORD:-}
     volumes:
       - ${SANDBOX_DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
       - sandbox_runner_state:/run/sandbox-runner
@@ -32,6 +35,7 @@ services:
         max-file: "2"
     networks:
       - sandbox_net
+      - data_net
 
   # Optional containerized API: no Docker socket, Docker CLI or host mounts.
   sandbox_api:
@@ -54,6 +58,9 @@ services:
       SANDBOX_RUNNER_ENDPOINT: http://sandbox_runner:8090
       SANDBOX_RUNNER_TOKEN: ${SANDBOX_RUNNER_TOKEN:-}
       SANDBOX_ASSIGNMENT_PROFILES: ${SANDBOX_ASSIGNMENT_PROFILES:-{}}
+      GEMINI_PROXY_URL: http://xray:10810
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODELS: ${GEMINI_MODELS:-${GEMINI_MODEL:-gemini-3.5-flash-lite}}
     tmpfs:
       - /tmp:size=64m,noexec,nosuid,nodev
     networks:

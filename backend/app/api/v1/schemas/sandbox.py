@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 from app.api.v1.schemas.exercises import EXERCISE_ID_PATTERN
 from app.services.sandbox.config import MAX_CODE_BYTES
@@ -31,6 +31,7 @@ class SandboxExecuteRequest(CodeRequest):
 
 class RunnerExecutionRequest(CodeRequest):
     profile: Literal["light", "standard", "heavy"]
+    language: Literal["python", "sql"] = "python"
 
 
 class ExecutionResult(BaseModel):
@@ -42,9 +43,19 @@ class ExecutionResult(BaseModel):
     output_limited: bool = False
     memory_limited: bool = False
 
+    @computed_field
+    @property
+    def success(self) -> bool:
+        return (self.exit_code == 0 and not self.timed_out
+                and not self.output_limited and not self.memory_limited)
+
 
 class ExerciseSubmitRequest(CodeRequest):
     language: Literal["sql", "python"]
+
+
+class SandboxExecuteResponse(ExecutionResult):
+    is_correct: bool | None
 
 
 class StudentExerciseResponse(BaseModel):
@@ -60,3 +71,8 @@ class ExerciseSubmissionResponse(BaseModel):
     execution_succeeded: bool
     is_correct: bool | None
     attempt_id: int
+
+    @computed_field
+    @property
+    def success(self) -> bool:
+        return self.execution.success
