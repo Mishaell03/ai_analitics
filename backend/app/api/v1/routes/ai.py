@@ -19,7 +19,7 @@ AI_PATH = "/{course_slug}/modules/{module_id}/lessons/{lesson_id}/ai/messages"
 @router.get(AI_PATH, response_model=AIHistoryResponse)
 async def ai_history(
     course_slug: CourseSlug, module_id: PositiveId, lesson_id: PositiveId, request: Request,
-    after_id: int = Query(default=0, ge=0), limit: int = Query(default=30, ge=1, le=50),
+    after_id: int = Query(default=0, ge=0), limit: int = Query(default=10, ge=1, le=10),
     db: AsyncSession = Depends(get_db), current: CurrentUserContext = Depends(get_current_user),
 ):
     return await LessonAIService(db).history(request, course_slug, module_id, lesson_id, current, after_id, limit)

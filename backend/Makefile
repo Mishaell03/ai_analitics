@@ -20,7 +20,7 @@ ai-migrate:
 		-e FLYWAY_USER -e FLYWAY_PASSWORD -e FLYWAY_URL \
 		-v "$(CURDIR)/infra/postgres/core_db/migrations:/flyway/migrations:ro" \
 		-v "$(CURDIR)/infra/postgres/core_db/seeds:/flyway/seeds:ro" \
-		flyway/flyway -locations=filesystem:/flyway/migrations,filesystem:/flyway/seeds -target=9 migrate
+		flyway/flyway -locations=filesystem:/flyway/migrations,filesystem:/flyway/seeds -target=10 migrate
 
 migrate:
 	@set -e; set -a && source .env && set +a && \

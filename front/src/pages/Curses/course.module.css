@@ -1506,6 +1506,36 @@
     height: 16px;
 }
 
+.lessonCourse {
+    overflow: visible;
+}
+
+.lessonLayout {
+    display: grid;
+    grid-template-columns: minmax(0, 900px) minmax(300px, 380px);
+    gap: 24px;
+    max-width: 1320px;
+    margin: 0 auto;
+    align-items: start;
+}
+
+.lessonLayout .lessonPage {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.lessonSidebar {
+    position: sticky;
+    top: 150px;
+    min-width: 0;
+}
+
+@media (max-width: 1050px) {
+    .lessonLayout { display: block; }
+    .lessonSidebar { position: static; }
+}
+
 .lessonPage {
     position: relative;
     max-width: 900px;

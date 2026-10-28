@@ -21,6 +21,7 @@ class AIMessageResponse(BaseModel):
     answer: str | None
     status: Literal["pending", "completed", "refused", "failed"]
     created_at: datetime
+    error_code: str | None = None
 
 
 class AIHistoryResponse(BaseModel):

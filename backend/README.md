@@ -3,7 +3,7 @@
 FastAPI приложение для платформы онлайн-обучения.
 
 Python Sandbox: [архитектура, запуск, настройки и тесты](infra/sandbox/README.md).
-AI-наставник: [Gemini через Xray, история уроков, миграция и API](docs/lesson-ai.md).
+AI-наставник: [DeepSeek API, отдельная память каждого урока и боковой чат](docs/lesson-ai.md).
 
 ---
 
@@ -516,8 +516,6 @@ docker-compose up -d          # запуск
 docker-compose down           # остановка
 docker-compose down -v        # остановка + удалить данные
 docker-compose logs -f        # логи
-
-docker run --rm --network ai_proxy_net curlimages/curl:latest -sS --max-time 30 -x http://xray:10810 https://api.ipify.org # проверка работоспособности xray контейнера
 
 # Миграции
 make migrate                  # применить миграции

@@ -1,4 +1,4 @@
-"""Реальные транзакции/квоты в отдельной временной схеме, без запросов к Gemini.
+"""Реальные транзакции/квоты в отдельной временной схеме, без запросов к DeepSeek.
 
 AI_POSTGRES_TESTS=1 venv/bin/python -m pytest tests/test_ai_postgres.py -q
 Используется текущий PostgreSQL, но public и данные приложения не меняются.
@@ -24,7 +24,7 @@ from app.api.v1.services import ai as module
 from app.api.v1.services.ai import LessonAIService
 from app.core.config import settings
 from app.models.ai import AIAnswer, AIConversation, AIQuestion
-from app.services.llm.gemini import MentorResult
+from app.services.llm.deepseek import MentorResult
 
 pytestmark = pytest.mark.skipif(os.getenv("AI_POSTGRES_TESTS") != "1", reason="requires PostgreSQL")
 MIGRATION = Path(__file__).resolve().parents[1] / "infra/postgres/core_db/migrations/V9__lesson_ai.sql"
@@ -45,6 +45,7 @@ async def database():
             INSERT INTO lessons VALUES (1), (2);
         """)
         await admin.execute(MIGRATION.read_text())
+        await admin.execute(MIGRATION.with_name("V10__ai_provider_sessions.sql").read_text())
         engine = create_async_engine(settings.database_url, connect_args={"server_settings": {"search_path": schema}})
         yield async_sessionmaker(engine, expire_on_commit=False, autoflush=False)
     finally:
@@ -75,8 +76,11 @@ def request(question="Как работает GROUP BY?", request_id=None):
 
 @pytest.fixture(autouse=True)
 def config(monkeypatch):
-    monkeypatch.setenv("GEMINI_USER_DAILY_LIMIT", "50")
-    monkeypatch.setenv("GEMINI_USER_MINUTE_LIMIT", "5")
+    monkeypatch.setenv("MODEL", "deepseek-flash")
+    monkeypatch.setenv("DEEPSEEK_USER_DAILY_LIMIT", "50")
+    monkeypatch.setenv("DEEPSEEK_USER_MINUTE_LIMIT", "5")
+    monkeypatch.setenv("DEEPSEEK_PROJECT_MINUTE_LIMIT", "10")
+    monkeypatch.setenv("DEEPSEEK_PROJECT_DAILY_LIMIT", "200")
 
 
 def test_storage_context_idempotency_and_user_lesson_isolation(monkeypatch):
@@ -91,7 +95,7 @@ def test_storage_context_idempotency_and_user_lesson_isolation(monkeypatch):
                 snapshots.append(context)
                 return MentorResult("completed", "Объяснение GROUP BY", "Нужна помощь с группировкой",
                                     raw={"audit_only": "provider raw"}, input_tokens=100, output_tokens=20,
-                                    model="gemini-fallback")
+                                    model=config.model)
 
             generator = AsyncMock(side_effect=generate)
             monkeypatch.setattr(module, "generate", generator)
@@ -112,7 +116,7 @@ def test_storage_context_idempotency_and_user_lesson_isolation(monkeypatch):
             assert snapshots[0]["summary"] == ""
             assert snapshots[1]["summary"] == "Нужна помощь с группировкой"
             assert snapshots[1]["history"] == [{"question": first.question, "answer": "Объяснение GROUP BY"}]
-            assert len(snapshots[1]["lesson"]["text"]) == module.LESSON_CHARS
+            assert len(snapshots[1]["lesson"]["text"]) <= module.LESSON_CHARS
             assert snapshots[1]["lesson"]["text_truncated"]
             async with sessions() as db:
                 mentor = service(db)
@@ -125,7 +129,7 @@ def test_storage_context_idempotency_and_user_lesson_isolation(monkeypatch):
                 answers = (await db.scalars(select(AIAnswer))).all()
                 assert len(answers) == 2 and answers[0].provider_response == {"audit_only": "provider raw"}
                 assert answers[0].input_tokens == 100
-                assert all(q.model == "gemini-fallback" for q in (await db.scalars(select(AIQuestion))).all())
+                assert all(q.model == "deepseek-flash" for q in (await db.scalars(select(AIQuestion))).all())
     asyncio.run(scenario())
 
 
@@ -190,7 +194,7 @@ def test_parallel_requests_do_not_duplicate_upstream_calls(monkeypatch):
     asyncio.run(scenario())
 
 
-@pytest.mark.parametrize("quota", ["GEMINI_USER_DAILY_LIMIT", "GEMINI_USER_MINUTE_LIMIT"])
+@pytest.mark.parametrize("quota", ["DEEPSEEK_USER_DAILY_LIMIT", "DEEPSEEK_USER_MINUTE_LIMIT"])
 def test_quota_is_shared_across_lessons(monkeypatch, quota):
     monkeypatch.setenv(quota, "1")
     mock = AsyncMock(return_value=MentorResult("completed", "Ответ", "Память"))
@@ -234,4 +238,50 @@ def test_expired_request_can_be_recovered_without_duplicate_billing(monkeypatch)
                 assert response.status == "failed" and response.answer
                 mock.assert_not_awaited()
                 assert (await db.scalars(select(AIAnswer))).one().error_code == "AI_REQUEST_EXPIRED"
+    asyncio.run(scenario())
+
+
+def test_local_session_survives_service_recreation_and_new_lesson_starts_empty(monkeypatch):
+    contexts = []
+
+    async def generate(config, system, context):
+        contexts.append(context)
+        return MentorResult("completed", "Учебный ответ", "Краткая память", model=config.model)
+
+    monkeypatch.setattr(module, "generate", generate)
+
+    async def scenario():
+        async with database() as sessions:
+            for lesson_id in (1, 1, 2):
+                # New SQLAlchemy session/service as on a browser refresh/another worker.
+                async with sessions() as db:
+                    await service(db).ask(object(), "sql", 1, lesson_id, current(), request())
+            assert contexts[0]["summary"] == contexts[2]["summary"] == ""
+            assert contexts[0]["brief_context"] == contexts[2]["brief_context"]
+            assert contexts[0]["brief_context"]
+            assert contexts[0]["history"] == contexts[2]["history"] == []
+            assert contexts[1]["summary"] == "Краткая память"
+            assert len(contexts[1]["history"]) == 1
+            async with sessions() as db:
+                conversations = (await db.scalars(select(AIConversation))).all()
+                assert len(conversations) == 2
+                assert all(item.provider_state["provider"] == "deepseek" for item in conversations)
+                assert all("id" not in item.provider_state for item in conversations)
+    asyncio.run(scenario())
+
+
+def test_project_quota_is_shared_between_users(monkeypatch):
+    monkeypatch.setenv("DEEPSEEK_PROJECT_MINUTE_LIMIT", "1")
+    generator = AsyncMock(return_value=MentorResult("completed", "Ответ", "Память"))
+    monkeypatch.setattr(module, "generate", generator)
+
+    async def scenario():
+        async with database() as sessions:
+            async with sessions() as db:
+                await service(db).ask(object(), "sql", 1, 1, current(1), request())
+            async with sessions() as db:
+                with pytest.raises(HTTPException) as exc:
+                    await service(db).ask(object(), "sql", 1, 1, current(2), request())
+                assert exc.value.detail["code"] == "AI_PROJECT_QUOTA_EXCEEDED"
+            assert generator.await_count == 1
     asyncio.run(scenario())

@@ -17,6 +17,8 @@ class AIConversation(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id", ondelete="CASCADE"))
     lesson_id: Mapped[int] = mapped_column(ForeignKey("lessons.lesson_id", ondelete="CASCADE"))
     summary: Mapped[str] = mapped_column(Text, server_default="")
+    # Legacy column name retained for existing databases; only local memory metadata is stored.
+    provider_state: Mapped[dict] = mapped_column(JSONB, server_default="{}")
     active_request: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
     busy_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

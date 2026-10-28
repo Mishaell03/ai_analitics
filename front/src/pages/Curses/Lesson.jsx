@@ -6,6 +6,7 @@ import {API_ROUTES} from "@/api/routes.js";
 import {ROUTES} from "@/router/AppRouter.jsx";
 import Markdown from "@/components/Markdown/Markdown.jsx";
 import Description from "@/components/Markdown/Description.jsx";
+import LessonMentor from "@/components/LessonMentor/LessonMentor.jsx";
 import {buildAnswerMap} from "@/services/exercises.js";
 import {useTranslation} from "@/hooks/useTranslation.js";
 import styles from "./course.module.css";
@@ -213,7 +214,8 @@ export function Lesson() {
         `${ROUTES.lesson}/${slug}/modules/${item.module_id}/lessons/${item.lesson_id}`;
 
     return (
-        <main className={styles.course}>
+        <main className={`${styles.course} ${styles.lessonCourse}`}>
+            <div className={styles.lessonLayout}>
             <section className={styles.lessonPage}>
                 <Link to={`${ROUTES.course}/${slug}`} className={styles.backLink}>
                     <ArrowLeft/><span>{t("backToCourse")}</span>
@@ -294,6 +296,10 @@ export function Lesson() {
                     )}
                 </>}
             </section>
+            {!loading && !error && <div className={styles.lessonSidebar}>
+                <LessonMentor key={`${slug}/${moduleId}/${lessonId}`} slug={slug} moduleId={moduleId} lessonId={lessonId}/>
+            </div>}
+            </div>
         </main>
     );
 }
