@@ -24,7 +24,7 @@ import {
     stripCheckedMarks,
     REFERENCE_ANSWER_ID,
 } from "@/services/exercises.js";
-import {uploadLessonMarkdown} from "@/services/upload.js";
+import {buildCodeSolutions, ensureCodeExerciseIds, parseCodeExercises} from "@/services/codeExercises.js";
 import Markdown from "@/components/Markdown/Markdown.jsx";
 import AdminModal from "@/pages/Admin/components/AdminModal.jsx";
 import LessonExercisesPanel from "./LessonExercisesPanel.jsx";
@@ -36,14 +36,23 @@ const TAB_EDITOR = "editor";
 const TAB_PREVIEW = "preview";
 const TAB_EXERCISES = "exercises";
 
+function isBlockSolution(answer) {
+    try {
+        const value = JSON.parse(answer);
+        return value?.type === "code" && "language" in value;
+    } catch {
+        return false;
+    }
+}
+
 /**
  * РЕДАКТОР УРОКА
  *
  * Урок состоит из двух частей: метаданные в БД и Markdown в MinIO.
  * Поэтому сохранение идёт в два шага:
  *
- *     1. создаём урок (или просим новую ссылку на загрузку);
- *     2. отправляем Markdown напрямую в хранилище.
+ *     1. создаём урок (или обновляем метаданные);
+ *     2. сохраняем Markdown и эталоны через проверяющий серверный API.
  *
  * Метаданные нового урока задаются в этой же форме, а у уже
  * существующего урока меняется только содержимое: отдельного
@@ -53,21 +62,22 @@ const TAB_EXERCISES = "exercises";
  * урока: в файл они не попадают, поэтому в разметке варианты
  * остаются без отметок.
  *
- * Код решения хранится как эталонный ответ урока, а не как ответ
- * задания: это пример идеального решения, он не привязан к
- * идентификатору задания и с кодом ученика автоматически не
- * сравнивается.
+ * Кодовые блоки имеют отдельные эталоны по id. Старый эталон урока
+ * сохранён для совместимости и не подставляется в новые блоки.
  */
 function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
     const t = useAdminTranslation();
 
-    const isNew = !lesson;
-    const lessonId = lesson?.lesson_id ?? null;
+    const [createdLesson, setCreatedLesson] = useState(null);
+    const isNew = !lesson && !createdLesson;
+    const lessonId = lesson?.lesson_id ?? createdLesson?.lesson_id ?? null;
 
     const [title, setTitle] = useState(lesson?.title ?? "");
     const [description, setDescription] = useState(lesson?.description ?? "");
     const [isPublished, setIsPublished] = useState(!!lesson?.is_published);
     const [content, setContent] = useState("");
+    const [codeSolutions, setCodeSolutions] = useState({});
+    const [contentVersion, setContentVersion] = useState(null);
 
     const [loading, setLoading] = useState(!isNew);
     const [loadError, setLoadError] = useState(false);
@@ -113,33 +123,27 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
             return {};
         }
 
-        try {
-            const data = await listExerciseAnswers(lessonId);
-            const answers = data.answers ?? [];
+        const data = await listExerciseAnswers(lessonId);
+        const answers = data.answers ?? [];
 
-            // эталонный ответ урока хранится в базе отдельной записью
-            const reference = getReferenceAnswer(answers);
+        // эталонный ответ урока хранится в базе отдельной записью
+        const reference = getReferenceAnswer(answers);
 
-            setSavedReference(reference.raw);
-            setReferenceAnswer(reference.value);
-            setReferenceOpen(Boolean(reference.value));
+        setSavedReference(reference.raw);
+        setReferenceAnswer(reference.value);
+        setReferenceOpen(Boolean(reference.value));
 
-            // ответы заданий: запись эталонного ответа к ним не относится
-            const raw = Object.fromEntries(
-                answers
-                    .filter((item) => item.exercise_id !== REFERENCE_ANSWER_ID)
-                    .map((item) => [item.exercise_id, item.answer])
-            );
+        // ответы заданий: отдельные эталоны сюда не относятся
+        const raw = Object.fromEntries(
+            answers
+                .filter((item) => item.exercise_id !== REFERENCE_ANSWER_ID
+                    && !isBlockSolution(item.answer))
+                .map((item) => [item.exercise_id, item.answer])
+        );
 
-            setSavedAnswers(raw);
+        setSavedAnswers(raw);
 
-            return raw;
-        } catch {
-            setSavedAnswers({});
-            setSavedReference("");
-
-            return {};
-        }
+        return raw;
     }, [lessonId, isNew]);
 
     // загружаем текущий Markdown урока, чтобы продолжить правку
@@ -157,25 +161,22 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
             const raw = await loadAnswerStrings();
 
             const {data} = await api.get(
-                API_ROUTES.ADMIN_LESSON_CONTENT(courseSlug, moduleId, lessonId)
+                API_ROUTES.ADMIN_LESSON_CODE_CONTENT(lessonId)
             );
 
-            setContent(ensureExerciseIds(applyAnswers(data.content ?? "", buildAnswerMap(raw))));
-        } catch (requestError) {
-            // урока без файла — обычный случай: открываем пустой редактор
-            if (requestError.response?.status === 404) {
-                setContent("");
-            } else {
-                setLoadError(true);
-            }
+            setContent(ensureCodeExerciseIds(ensureExerciseIds(applyAnswers(data.content ?? "", buildAnswerMap(raw)))));
+            setCodeSolutions(Object.fromEntries(data.solutions.map((item) => [item.exercise_id, item])));
+            setContentVersion(data.version);
+        } catch {
+            setLoadError(true);
         } finally {
             setLoading(false);
         }
-    }, [courseSlug, moduleId, lessonId, isNew, loadAnswerStrings]);
+    }, [lessonId, isNew, loadAnswerStrings]);
 
     useEffect(() => {
-        fetchContent();
-    }, [fetchContent]);
+        if (!createdLesson) fetchContent();
+    }, [fetchContent, createdLesson]);
 
     useEffect(() => {
         fetchMedia();
@@ -184,6 +185,7 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
     const size = useMemo(() => new Blob([content]).size, [content]);
 
     const exercises = useMemo(() => parseExercises(content), [content]);
+    const codeExercises = useMemo(() => parseCodeExercises(content), [content]);
 
     // ответы в том виде, в каком их увидит читатель урока
     const answerMap = useMemo(() => {
@@ -220,7 +222,7 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
     // сразу проставляем хеш всем блокам без `id:`
     const handleOpenExercises = useCallback(() => {
         setTab(TAB_EXERCISES);
-        setContent((current) => ensureExerciseIds(current));
+        setContent((current) => ensureCodeExerciseIds(ensureExerciseIds(current)));
     }, []);
 
     const handleAddReference = useCallback(() => {
@@ -321,13 +323,20 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
 
         // перед сохранением гарантируем, что у каждого задания есть id:
         // без него ответ не привяжется к заданию в базе
-        const preparedContent = ensureExerciseIds(content);
+        const preparedContent = ensureCodeExerciseIds(ensureExerciseIds(content));
 
         if (preparedContent !== content) {
             setContent(preparedContent);
         }
 
         try {
+            const solutions = buildCodeSolutions(preparedContent, codeSolutions);
+            const saveContent = async (id, version) => {
+                const {data} = await api.put(API_ROUTES.ADMIN_LESSON_CODE_CONTENT(id), {
+                    content: stripCheckedMarks(preparedContent), version, solutions,
+                });
+                setContentVersion(data.version);
+            };
             if (isNew) {
                 // 1. создаём урок и получаем ссылку на загрузку
                 const {data} = await api.post(
@@ -338,21 +347,22 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
                         is_active: isPublished,
                     }
                 );
+                setCreatedLesson(data);
 
-                // 2. отправляем Markdown в хранилище без отметок ответов
-                await uploadLessonMarkdown(data.upload, stripCheckedMarks(preparedContent));
+                // Сервер проверяет связи и сохраняет эталоны только в PostgreSQL.
+                await saveContent(data.lesson_id, null);
 
                 // 3. правильные ответы заданий и эталонный ответ урока
                 await syncAnswers(data.lesson_id, parseExercises(preparedContent), {});
                 await syncReferenceAnswer(data.lesson_id, referenceAnswer, "");
 
-                onSaved(data);
+                onSaved({...data, has_content: true});
                 return;
             }
 
             // урок уже существует: сначала метаданные, потом содержимое
             const {data: updated} = await api.patch(
-                API_ROUTES.ADMIN_LESSON(courseSlug, moduleId, lesson.lesson_id),
+                API_ROUTES.ADMIN_LESSON(courseSlug, moduleId, lessonId),
                 {
                     title: cleanTitle,
                     description: description.trim() || null,
@@ -360,26 +370,20 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
                 }
             );
 
-            const {data: upload} = await api.post(
-                API_ROUTES.ADMIN_LESSON_UPLOAD_URL(courseSlug, moduleId, lesson.lesson_id)
-            );
-
-            // отметки правильных вариантов в файл урока не попадают
-            await uploadLessonMarkdown(upload, stripCheckedMarks(preparedContent));
+            await saveContent(lessonId, contentVersion);
 
             await syncAnswers(
-                lesson.lesson_id,
+                lessonId,
                 parseExercises(preparedContent),
                 savedAnswers
             );
 
-            await syncReferenceAnswer(lesson.lesson_id, referenceAnswer, savedReference);
+            await syncReferenceAnswer(lessonId, referenceAnswer, savedReference);
 
             onSaved({...updated, has_content: true});
         } catch (saveError) {
-            // ошибка API (метаданные) и ошибка хранилища — разные ситуации:
-            // у axios-ошибки есть response, у запроса в MinIO — нет
-            setSaveError(saveError?.response ? "request" : "upload");
+            setSaveError(saveError?.response?.status === 409 ? "conflict"
+                : saveError?.response ? "request" : "code");
         } finally {
             setSaving(false);
         }
@@ -420,7 +424,7 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
                 <LessonMediaModal
                     courseSlug={courseSlug}
                     moduleId={moduleId}
-                    lesson={lesson}
+                    lesson={lesson ?? createdLesson}
                     onClose={() => setMediaOpen(false)}
                     onChanged={fetchMedia}
                 />
@@ -435,7 +439,7 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
                     <h2>
                         {isNew
                             ? t("adminLessonEditorNewTitle")
-                            : lesson.title}
+                            : lesson?.title ?? title}
                     </h2>
 
                     <p>{t("adminLessonEditorSubtitle")}</p>
@@ -540,7 +544,7 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
                                     className={styles.editor}
                                     value={content}
                                     onChange={(event) => setContent(event.target.value)}
-                                    onBlur={() => setContent((current) => ensureExerciseIds(current))}
+                                    onBlur={() => setContent((current) => ensureCodeExerciseIds(ensureExerciseIds(current)))}
                                     spellCheck={false}
                                     placeholder={t("adminLessonEditorPlaceholder")}
                                 />
@@ -570,6 +574,35 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
 
                             {tab === TAB_EXERCISES && (
                                 <div className={styles.exercises}>
+                                    <div className={styles.referenceAdd}>
+                                        {["sql", "python"].map((language) => (
+                                            <button key={language} type="button" className={styles.addReferenceButton}
+                                                    onClick={() => setContent((current) => ensureCodeExerciseIds(
+                                                        `${current}\n\n:::code ${language}\n:::\n`
+                                                    ))}>
+                                                <Plus/> {t("codeExerciseAdd", {language: language.toUpperCase()})}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className={styles.hint}>
+                                        {t("codeExerciseHint")}
+                                    </p>
+                                    {codeExercises.map((block) => (
+                                        <label className={styles.field} key={`${block.start}-${block.exercise_id}`}>
+                                            <span>{t("codeExerciseReference", {language: block.language,
+                                                id: block.exercise_id || t("codeExerciseMissingId")})}</span>
+                                            <textarea className={styles.reference} rows={6} maxLength={8000}
+                                                      spellCheck={false} value={codeSolutions[block.exercise_id]?.code ?? ""}
+                                                      onChange={(event) => setCodeSolutions((current) => ({
+                                                          ...current, [block.exercise_id]: {
+                                                              language: block.language, code: event.target.value,
+                                                          },
+                                                      }))}/>
+                                            {codeSolutions[block.exercise_id]?.language
+                                                && codeSolutions[block.exercise_id].language !== block.language
+                                                && <small role="alert">{t("codeExerciseLanguageChanged")}</small>}
+                                        </label>
+                                    ))}
                                     {referenceOpen ? (
                                         <>
                                             <div className={styles.referenceHeader}>
@@ -635,6 +668,12 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
                                 {t("adminLessonEditorTitleError")}
                             </p>
                         )}
+                        {saveError === "code" && <p className={styles.error} role="alert">
+                            {t("codeExerciseInvalid")}
+                        </p>}
+                        {saveError === "conflict" && <p className={styles.error} role="alert">
+                            {t("codeExerciseConflict")}
+                        </p>}
 
                         {saveError === "upload" && (
                             <p className={styles.error}>

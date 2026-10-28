@@ -39,6 +39,13 @@ import UserModal from "@/pages/Admin/Users/UserModal.jsx";
 const descriptionHtml = renderToStaticMarkup(<Description content={
     "Освойте анализ данных с нуля!\n\nВас ждут понятные объяснения.\n\n**Подходит новичкам без опыта программирования.**"
 }/>);
+const codeExerciseHtml = renderToStaticMarkup(<Markdown
+    content={":::code python\nid: secret-test\n:::"}
+    answers={{"secret-test": {type: "code", value: "SECRET_TEACHER_SOLUTION"}}}
+/>);
+assert.ok(codeExerciseHtml.includes("textarea"));
+assert.ok(codeExerciseHtml.includes("Запустить"));
+assert.ok(!codeExerciseHtml.includes("SECRET_TEACHER_SOLUTION"));
 assert.equal((descriptionHtml.match(/<br\/>/g) ?? []).length, 2);
 assert.equal((descriptionHtml.match(/aria-hidden="true"/g) ?? []).length, 2);
 assert.ok(descriptionHtml.includes("<strong><span>Подходит новичкам без опыта программирования.</span></strong>"));

@@ -147,7 +147,19 @@ export function Lesson() {
 
     useEffect(() => { fetchLesson(); }, [fetchLesson]);
 
-    const checkExercise = async (exerciseId, answer) => {
+    const checkExercise = async (exerciseId, answer, execution) => {
+        if (execution?.execute) {
+            const {data} = await api.post(API_ROUTES.SANDBOX_EXECUTE, {
+                course_slug: slug, module_id: Number(moduleId), lesson_id: Number(lessonId),
+                exercise_id: exerciseId, language: execution.language, code: execution.code,
+            });
+            if (data.is_correct === true) {
+                setCompletedExercises((current) => ({
+                    ...current, ...buildAnswerMap({[exerciseId]: answer}),
+                }));
+            }
+            return data;
+        }
         const {data: isCorrect} = await api.post(
             API_ROUTES.COURSE_EXERCISE_CHECK(slug, moduleId, lessonId, exerciseId),
             {answer}

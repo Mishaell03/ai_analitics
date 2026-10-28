@@ -128,6 +128,22 @@ export function splitExerciseHeader(content) {
     };
 }
 
+export class CodeBlockHandler extends CustomBlockHandler {
+    constructor() {
+        super("code");
+    }
+
+    parse(content) {
+        const [header, ...lines] = content.split("\n");
+        const language = header.replace(/^language: /, "");
+        const {exercise_id, body} = splitExerciseHeader(lines.join("\n"));
+        return {type: "code", content: "", implemented: true, data: {
+            exercise_id, language,
+            valid: ["sql", "python"].includes(language) && Boolean(exercise_id) && !body,
+        }};
+    }
+}
+
 export class CustomBlockRegistry {
     /**
      * @param {CustomBlockHandler[]} handlers обработчики типов блоков

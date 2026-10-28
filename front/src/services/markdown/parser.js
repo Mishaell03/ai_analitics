@@ -20,7 +20,7 @@ const LIST_ITEM_PATTERN = /^(\s*)([-*+]|\d{1,9}[.)])\s+(.*)$/;
 const QUOTE_PATTERN = /^\s{0,3}>\s?(.*)$/;
 const TABLE_DIVIDER_PATTERN = /^\s*\|?\s*:?-{1,}:?\s*(\|\s*:?-{1,}:?\s*)*\|?\s*$/;
 const SETEXT_PATTERN = /^\s{0,3}(=+|-+)\s*$/;
-const CUSTOM_BLOCK_OPEN_PATTERN = /^\s{0,3}:::\s*([a-zA-Z][a-zA-Z0-9_-]*)\s*$/;
+const CUSTOM_BLOCK_OPEN_PATTERN = /^\s{0,3}:::\s*([a-zA-Z][a-zA-Z0-9_-]*)(?:[ \t]+(\S+))?[ \t]*$/;
 const CUSTOM_BLOCK_CLOSE_PATTERN = /^\s{0,3}:::\s*$/;
 const INDENTED_CODE_PATTERN = /^\s{4,}\S/;
 
@@ -172,7 +172,8 @@ export class MarkdownParser {
         }
 
         const content = body.join("\n");
-        const parsed = this._customBlocks.parse(match[1], content);
+        const parsed = this._customBlocks.parse(match[1], match[1] === "code"
+            ? `language: ${match[2]}\n${content}` : content);
 
         return {
             block: {

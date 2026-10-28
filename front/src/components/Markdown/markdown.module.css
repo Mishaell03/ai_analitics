@@ -602,3 +602,28 @@
 
     overflow-wrap: anywhere;
 }
+
+.codeExerciseLabel {
+    display: grid;
+    gap: 0.75rem;
+    margin-block: 1rem;
+}
+
+.codeExerciseInput {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 1rem;
+    border: 1px solid currentColor;
+    border-radius: 0.75rem;
+    background: transparent;
+    color: inherit;
+    font-family: monospace;
+    resize: vertical;
+}
+
+.codeExerciseOutput {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-height: 20rem;
+    overflow: auto;
+}

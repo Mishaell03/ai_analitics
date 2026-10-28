@@ -2,6 +2,7 @@ import {useMemo} from "react";
 import {markdownService} from "@/services/markdown/MarkdownService.js";
 import MarkdownBlocks from "@/components/Markdown/MarkdownBlocks.jsx";
 import MarkdownTestBlock from "@/components/Markdown/MarkdownTestBlock.jsx";
+import MarkdownCodeExercise from "@/components/Markdown/MarkdownCodeExercise.jsx";
 import {registerCustomBlockRenderer} from "@/components/Markdown/customBlockRenderers.js";
 import styles from "./markdown.module.css";
 
@@ -13,6 +14,10 @@ registerCustomBlockRenderer("test", (block, context) => (
         labels={context.labels}
         onCheck={context.onExerciseCheck}
     />
+));
+registerCustomBlockRenderer("code", (block, context) => (
+    <MarkdownCodeExercise key={`${block.data?.exercise_id}-${block.data?.language}`}
+                          block={block} onCheck={context.onExerciseCheck}/>
 ));
 
 /**
