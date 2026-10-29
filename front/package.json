@@ -13,6 +13,7 @@
     "test:render:media": "vite build --ssr tests/lessonMedia.render.jsx --outDir tests/.ssr-media --logLevel warn && node tests/.ssr-media/lessonMedia.render.js",
     "test:render:browsing": "vite build --ssr tests/lessonBrowsing.render.jsx --outDir tests/.ssr-browsing --logLevel warn && node tests/.ssr-browsing/lessonBrowsing.render.js",
     "test:render:expert-solution": "vite build --ssr tests/expertSolution.render.jsx --outDir tests/.ssr-expert-solution --logLevel warn && node tests/.ssr-expert-solution/expertSolution.render.js",
+    "test:render:slides": "vite build --ssr tests/slides.render.jsx --outDir tests/.ssr-slides --logLevel warn && node tests/.ssr-slides/slides.render.js",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -26,6 +27,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",
+    "jsdom": "^27.4.0",
     "oxlint": "^1.79.0",
     "vite": "^8.2.2"
   }

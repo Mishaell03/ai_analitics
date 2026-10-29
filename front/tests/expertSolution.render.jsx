@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {renderToStaticMarkup} from "react-dom/server";
 import Markdown from "@/components/Markdown/Markdown.jsx";
 import {ExpertSolutionView} from "@/components/Markdown/MarkdownExpertSolution.jsx";
@@ -13,6 +14,28 @@ const completed = renderToStaticMarkup(<Markdown content={content}
 assert.ok(completed.includes("Решение от эксперта"));
 assert.ok(completed.includes("Загружаем решение эксперта"));
 assert.ok(completed.indexOf("Решение от эксперта") > completed.indexOf("</textarea>"));
+
+const reviewed = renderToStaticMarkup(<Markdown content={":::code sql\nid: sql-1\n:::"}
+    expertReviewExercises={["sql-1"]} onExpertSolution={async () => {}}/>);
+assert.ok(reviewed.includes("Решение от эксперта"));
+assert.ok(!reviewed.includes("<textarea") || !reviewed.includes("SELECT"));
+const other = renderToStaticMarkup(<Markdown content={":::code sql\nid: sql-2\n:::"}
+    expertReviewExercises={["sql-1"]} onExpertSolution={async () => {}}/>);
+assert.ok(!other.includes("Решение от эксперта"));
+const practice = renderToStaticMarkup(<Markdown content={":::code sql\nid: none\n:::"}
+    onExpertSolution={async () => {}}/>);
+assert.ok(practice.includes("Поле для свободной практики"));
+assert.ok(!practice.includes("Решение от эксперта"));
+
+// Проверяем все три редактора самого урока, а не только сокращённый пример.
+let slot = 0;
+const lesson12 = readFileSync("../backend/infra/minio/seeds/course-content/1/4/12.md", "utf8")
+    .replaceAll("id: none", () => `id: fixture_${++slot}`);
+const lessonHtml = renderToStaticMarkup(<Markdown content={lesson12} onExpertSolution={async () => {}}/>);
+const editors = [...lessonHtml.matchAll(/<textarea[^>]*>([\s\S]*?)<\/textarea>/g)];
+assert.equal(editors.length, 3);
+assert.ok(editors.every((match) => match[1] === ""));
+assert.ok(!lessonHtml.includes("Решение от эксперта"));
 
 for (const language of ["python", "sql"]) {
     const html = renderToStaticMarkup(<ExpertSolutionView solution={{

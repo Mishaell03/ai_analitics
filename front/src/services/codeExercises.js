@@ -51,6 +51,7 @@ export function buildCodeSolutions(content, drafts) {
             throw new Error("Invalid code block or missing reference solution");
         }
         ids.add(block.exercise_id);
-        return {exercise_id: block.exercise_id, language: block.language, code: draft.code};
+        return {exercise_id: block.exercise_id, language: block.language, code: draft.code,
+            ...(draft.check_mode === "self_review" ? {check_mode: "self_review"} : {})};
     });
 }

@@ -19,6 +19,8 @@
  * содержимое отдаётся как есть.
  */
 
+import {parseAssetReference} from "../media.js";
+
 // идентификатор задания задаётся первой строкой содержимого блока
 const EXERCISE_ID_LINE = /^id:\s*(?<exercise_id>[A-Za-z0-9_-]{1,64})\s*$/i;
 
@@ -34,6 +36,7 @@ export class CustomBlockHandler {
      * Разбирает содержимое блока.
      *
      * @param {string} content содержимое блока без разметки :::type
+     * @param {object} context готовые дочерние блоки Markdown (для специализированных обработчиков)
      * @returns {{type: string, content: string, implemented: boolean, data: object|null}}
      */
     parse(content) {
@@ -144,6 +147,27 @@ export class CodeBlockHandler extends CustomBlockHandler {
     }
 }
 
+export class SlidesBlockHandler extends CustomBlockHandler {
+    constructor() {
+        super("slides");
+    }
+
+    parse(content, {children = []} = {}) {
+        // Используем готовые узлы Markdown: код и обычные ссылки не становятся слайдами.
+        const slides = [];
+        const collect = (nodes) => nodes.forEach((node) => {
+            if (node.type === "image" && parseAssetReference(node.src)) {
+                slides.push(node);
+            } else if (node.children) {
+                collect(node.children);
+            }
+        });
+        children.filter((block) => block.type === "paragraph").forEach((block) => collect(block.children));
+
+        return {type: this.type, content, implemented: true, data: {slides}};
+    }
+}
+
 export class CustomBlockRegistry {
     /**
      * @param {CustomBlockHandler[]} handlers обработчики типов блоков
@@ -183,11 +207,12 @@ export class CustomBlockRegistry {
      *
      * @param {string} type тип блока
      * @param {string} content содержимое блока
+     * @param {object} context готовые дочерние блоки Markdown
      * @returns {{type: string, content: string, implemented: boolean, data: object|null}}
      */
-    parse(type, content) {
+    parse(type, content, context) {
         const handler = this._handlers.get(type) ?? new PlaceholderCustomBlockHandler(type);
 
-        return handler.parse(content);
+        return handler.parse(content, context);
     }
 }

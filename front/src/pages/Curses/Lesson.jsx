@@ -97,6 +97,7 @@ export function Lesson() {
     const [media, setMedia] = useState({});
     const mediaRetries = useRef(new Set());
     const [completedExercises, setCompletedExercises] = useState({});
+    const [expertReviewExercises, setExpertReviewExercises] = useState([]);
     const [exerciseBlocks, setExerciseBlocks] = useState([]);
     const [allowBrowsing, setAllowBrowsing] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -127,6 +128,7 @@ export function Lesson() {
             setContent(body.data.content ?? "");
             setMedia(lessonMedia);
             setCompletedExercises(buildAnswerMap(body.data.completed_exercises));
+            setExpertReviewExercises(body.data.expert_review_exercises ?? []);
             setExerciseBlocks(body.data.custom_blocks ?? []);
             const browsing = isLessonBrowsingAllowed(
                 import.meta.env.VITE_LESSON_ALLOW_BROWSING, body.data.allow_lesson_browsing
@@ -193,6 +195,9 @@ export function Lesson() {
                     ...current, ...buildAnswerMap({[exerciseId]: answer}),
                 }));
             }
+            if (data.check_mode === "self_review" && data.expert_solution_available === true) {
+                setExpertReviewExercises((current) => [...new Set([...current, exerciseId])]);
+            }
             return data;
         }
         const {data: isCorrect} = await api.post(
@@ -215,7 +220,7 @@ export function Lesson() {
 
     const completeLesson = async () => {
         if (completing || completionState === "complete") return;
-        if (!canCompleteLesson(exerciseBlocks, completedExercises)) {
+        if (!canCompleteLesson(exerciseBlocks, completedExercises, expertReviewExercises)) {
             setCompletionState("incomplete");
             return;
         }
@@ -285,6 +290,7 @@ export function Lesson() {
                               content={content} media={media} onMediaError={handleMediaError}
                               answers={completedExercises} onExerciseCheck={checkExercise}
                               onExpertSolution={loadExpertSolution}
+                              expertReviewExercises={expertReviewExercises}
                               labels={{
                                   check: t("exerciseCheck"),
                                   checking: t("exerciseChecking"),
