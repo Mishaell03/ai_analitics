@@ -9,5 +9,5 @@ export default {
     login: "Войти",
     registration: "Регистрация",
 
-    logo_alt: "Логотип Duck Docs",
+    logo_alt: "Логотип Duck Docs AI",
 }

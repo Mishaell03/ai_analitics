@@ -100,9 +100,10 @@ export function Login() {
                     <div className={styles.loginHeader}>
                         <div className={styles.company}>
                             <img src="/icon.png" alt="logo"/>
-                            <p>
-                                Duck doc <span>AI</span>
-                            </p>
+                            <div className={styles.companyText}>
+                                <p>Duck Docs <span>AI</span></p>
+                                <span className={styles.companySubtitle}>DataLab</span>
+                            </div>
                         </div>
 
                         <div>

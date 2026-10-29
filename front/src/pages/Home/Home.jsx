@@ -91,7 +91,7 @@ export function Home() {
                     </div>
 
                     <h1>
-                        DUCK DOCS
+                        DataLab
                         <span className={styles.heroSub}>
                             {t("hero.subtitle")}
                         </span>
