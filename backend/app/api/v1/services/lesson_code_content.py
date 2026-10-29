@@ -33,7 +33,7 @@ def validate_blocks(content: str, solutions: list[CodeSolution]):
     try:
         parsed = MarkdownParser().parse(content)
     except ValueError:
-        raise HTTPException(422, detail="Invalid code directive") from None
+        raise HTTPException(422, detail="Invalid lesson exercise configuration") from None
     ids = set()
     code_blocks = {}
     for block in parsed.custom_blocks:

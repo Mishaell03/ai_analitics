@@ -29,6 +29,10 @@ _EXERCISE_ID_LINE_RE = re.compile(
     re.IGNORECASE,
 )
 
+_OPTION_LINE_RE = re.compile(
+    r"^\s*[-*+]\s+(?:\[(?P<multiple>[ xXхХ])\]|\((?P<single>[ xXхХ])\))\s*.*$"
+)
+
 
 def split_exercise_header(content: str) -> tuple[str | None, str]:
     """ОТДЕЛЯЕТ ИДЕНТИФИКАТОР ЗАДАНИЯ ОТ ТЕКСТА
@@ -98,6 +102,17 @@ class TestBlockHandler(CustomBlockHandler):
 
     def parse(self, content: str) -> CustomBlock:
         exercise_id, body = split_exercise_header(content)
+        option_types = set()
+        for line in body.splitlines():
+            option = _OPTION_LINE_RE.match(line)
+            if option is None:
+                continue
+            single = option.group("single") is not None
+            option_types.add(single)
+            if (option.group("single") if single else option.group("multiple")).strip():
+                raise ValueError("Correct answers belong in the database, not Markdown")
+        if len(option_types) > 1:
+            raise ValueError("Do not mix single and multiple choice options")
         data = {"exercise_id": exercise_id, "body": body}
         # Язык задаёт автор урока, а не запрос ученика. Только явный заголовок.
         lines = body.splitlines()

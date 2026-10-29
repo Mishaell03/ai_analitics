@@ -3,6 +3,7 @@ import {test} from "node:test";
 
 import {
     ANSWER_TYPE_CHOICE,
+    ANSWER_TYPE_SINGLE_CHOICE,
     ANSWER_TYPE_CODE,
     ANSWER_TYPE_TEXT,
     REFERENCE_ANSWER_ID,
@@ -36,6 +37,53 @@ const LESSON = [
     "Напишите функцию",
     ":::",
 ].join("\n");
+
+const SINGLE_LESSON = ":::test\nid: single\nВыберите один ответ\n- ( ) Один\n- ( ) Два\n:::\n";
+
+test("круглые скобки разбираются как выбор одного ответа", () => {
+    const [exercise] = parseExercises(SINGLE_LESSON);
+    assert.equal(exercise.singleChoice, true);
+    assert.equal(exercise.question, "Выберите один ответ");
+    assert.equal(exercise.options.length, 2);
+    assert.ok(exercise.options.every((option) => !option.checked));
+    for (const mark of ["x", "X", "х", "Х"]) {
+        assert.equal(parseExercises(SINGLE_LESSON.replace("( )", `(${mark})`))[0].options[0].checked, true);
+    }
+});
+
+test("выбор нового единственного ответа снимает предыдущий только в этом задании", () => {
+    const source = SINGLE_LESSON + LESSON;
+    const first = setOptionChecked(source, 0, 0, true);
+    const second = setOptionChecked(first, 0, 1, true);
+    assert.deepEqual(parseExercises(second)[0].options.map((option) => option.checked), [false, true]);
+    assert.ok(second.endsWith(LESSON));
+    assert.equal(setOptionChecked(second, 0, 9, true), second);
+});
+
+test("единственный ответ хранится отдельно и восстанавливается только для админки", () => {
+    const marked = setOptionChecked(SINGLE_LESSON, 0, 1, true);
+    const answer = buildAnswer(parseExercises(marked)[0]);
+    assert.deepEqual(JSON.parse(answer), {type: ANSWER_TYPE_SINGLE_CHOICE, correct: ["Два"]});
+    const uploaded = stripCheckedMarks(marked);
+    assert.equal(uploaded, SINGLE_LESSON);
+    const map = buildAnswerMap([{exercise_id: "single", answer}]);
+    assert.equal(applyAnswers(uploaded, map), marked);
+    assert.match(marked, /- \(х\) Два/);
+});
+
+test("пустой, множественный и смешанный single choice не собираются", () => {
+    assert.equal(buildAnswer(parseExercises(SINGLE_LESSON)[0]), null);
+    const multiple = SINGLE_LESSON.replaceAll("( )", "(х)");
+    assert.equal(buildAnswer(parseExercises(multiple)[0]), null);
+    const mixed = SINGLE_LESSON.replace("( )", "[x]");
+    assert.equal(buildAnswer(parseExercises(mixed)[0]), null);
+});
+
+test("очистка удаляет латинские и русские отметки обоих видов", () => {
+    for (const mark of ["x", "X", "х", "Х"]) {
+        assert.equal(stripCheckedMarks(`- (${mark}) Один\n- [${mark}] Два`), "- ( ) Один\n- [ ] Два");
+    }
+});
 
 test("задания разбираются из markdown урока", () => {
     const exercises = parseExercises(LESSON);

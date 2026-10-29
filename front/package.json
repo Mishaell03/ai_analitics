@@ -9,6 +9,8 @@
     "lint": "oxlint",
     "test": "node --test",
     "test:render": "vite build --ssr tests/render.entry.jsx --outDir tests/.ssr --logLevel warn && node tests/.ssr/render.entry.js",
+    "test:render:single-choice": "vite build --ssr tests/singleChoice.render.jsx --outDir tests/.ssr-single-choice --logLevel warn && node tests/.ssr-single-choice/singleChoice.render.js",
+    "test:render:media": "vite build --ssr tests/lessonMedia.render.jsx --outDir tests/.ssr-media --logLevel warn && node tests/.ssr-media/lessonMedia.render.js",
     "preview": "vite preview"
   },
   "dependencies": {

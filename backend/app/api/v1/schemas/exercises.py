@@ -1,6 +1,7 @@
 """СХЕМЫ ПРАВИЛЬНЫХ ОТВЕТОВ НА ЗАДАНИЯ"""
 
 from datetime import datetime
+import json
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -12,8 +13,25 @@ EXERCISE_ID_PATTERN = r"^[A-Za-z0-9_-]{1,64}$"
 MAX_ANSWER_LENGTH = 10000
 
 
+def validate_single_choice_answer(value: str) -> str:
+    """В задании с одним ответом принимается ровно один непустой вариант."""
+
+    try:
+        parsed = json.loads(value)
+    except ValueError:
+        return value
+    if isinstance(parsed, dict) and parsed.get("type") == "single_choice":
+        correct = parsed.get("correct")
+        if not (isinstance(correct, list) and len(correct) == 1
+                and isinstance(correct[0], str) and correct[0].strip()):
+            raise ValueError("Single choice requires exactly one nonempty option")
+    return value
+
+
 # ЗАПРОС НА СОХРАНЕНИЕ ПРАВИЛЬНОГО ОТВЕТА
 class ExerciseAnswerRequest(BaseModel):
+    _validate_single_choice = field_validator("answer")(validate_single_choice_answer)
+
     answer: str = Field(
         ...,
         min_length=1,

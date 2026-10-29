@@ -19,14 +19,14 @@ def test_get_upload_url_returns_post_address_and_fields():
     upload = asyncio.run(
         storage.get_upload_url(
             bucket="course-content",
-            file_path="1/1/1.md",
+            file_path="1/1/2.md",
             max_size=512000,
             content_type="text/markdown",
         )
     )
 
     assert upload["url"].endswith("/course-content")
-    assert upload["fields"]["key"] == "1/1/1.md"
+    assert upload["fields"]["key"] == "1/1/2.md"
     assert upload["fields"]["Content-Type"] == "text/markdown"
     assert "x-amz-signature" in upload["fields"]
     assert "policy" in upload["fields"]
@@ -38,7 +38,7 @@ def test_get_upload_url_limits_file_size():
     upload = asyncio.run(
         storage.get_upload_url(
             bucket="course-content",
-            file_path="1/1/1.md",
+            file_path="1/1/2.md",
             max_size=512000,
             content_type="text/markdown",
         )
@@ -56,7 +56,7 @@ def test_get_upload_url_fixes_object_key():
     upload = asyncio.run(
         storage.get_upload_url(
             bucket="course-content",
-            file_path="1/1/1.md",
+            file_path="1/1/2.md",
             max_size=512000,
             content_type="text/markdown",
         )
@@ -64,5 +64,5 @@ def test_get_upload_url_fixes_object_key():
 
     conditions = get_policy_conditions(upload)
 
-    assert ["eq", "$key", "1/1/1.md"] in conditions
+    assert ["eq", "$key", "1/1/2.md"] in conditions
     assert ["eq", "$Content-Type", "text/markdown"] in conditions

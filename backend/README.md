@@ -522,7 +522,15 @@ make migrate                  # применить миграции
 make seed                     # загрузить сиды
 make fresh                    # сбросить БД + миграции + сиды
 make storage-migrate          # перенести старые файлы MinIO в course-content
-make storage-refresh          # обновить файлы MinIO
+make storage-refresh          # очистить бакеты MinIO и снова загрузить seeds
 ```
+
+`storage-refresh` требует уже запущенный сервис `minio`. Команда удаляет
+**все объекты и их версии** из `default-avatars`, `avatars` и `course-content`,
+затем загружает `infra/minio/seeds/default-avatars` и
+`infra/minio/seeds/course-content`. Бакет `avatars` остаётся пустым.
+Пользовательские загрузки в этих бакетах будут потеряны — при необходимости
+сначала сделайте резервную копию. Остальные бакеты и PostgreSQL не затрагиваются.
+Сети Compose не пересоздаются: временный `mc` использует сеть работающего MinIO.
 
 ---

@@ -86,6 +86,20 @@ export async function deleteCourseImage(courseSlug) {
 
 /* ---------- медиафайлы урока ---------- */
 
+// Пользовательские маршруты: не требуют доступа к админке.
+export async function listCourseLessonMedia(courseSlug, moduleId, lessonId, {page = 1, pageSize = 100} = {}) {
+    const {data} = await api.get(
+        API_ROUTES.COURSE_LESSON_MEDIA(courseSlug, moduleId, lessonId),
+        {params: {page, page_size: pageSize}}
+    );
+    return data;
+}
+
+export async function refreshCourseLessonMediaUrl(courseSlug, moduleId, lessonId, mediaKey) {
+    const {data} = await api.get(API_ROUTES.COURSE_LESSON_MEDIA_URL(courseSlug, moduleId, lessonId, mediaKey));
+    return data;
+}
+
 /**
  * Медиафайлы урока.
  *

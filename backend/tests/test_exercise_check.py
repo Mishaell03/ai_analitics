@@ -1,6 +1,7 @@
 """ТЕСТЫ ПРОВЕРКИ ОТВЕТА НА ОДНО ЗАДАНИЕ."""
 
 import asyncio
+import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
@@ -33,10 +34,34 @@ from app.core.session import get_current_user
         ("other", "legacy", False),
         ('{"type":"text","value":"legacy"}', "legacy", True),
         ('{"type":"choice","correct":["A"]}', "A", False),
+        ('{"type":"single_choice","correct":["A"]}', '{"type":"single_choice","correct":["A"]}', True),
+        ('{"type":"single_choice","correct":["B"]}', '{"type":"single_choice","correct":["A"]}', False),
+        ('{"type":"single_choice","correct":["A","B"]}', '{"type":"single_choice","correct":["A"]}', False),
+        ('{"type":"choice","correct":["A"]}', '{"type":"single_choice","correct":["A"]}', False),
+        ('{"type":"single_choice","correct":[]}', '{"type":"single_choice","correct":[]}', False),
     ],
 )
 def test_answers_match(submitted, expected, result):
     assert ExerciseCheckService.answers_match(submitted, expected) is result
+
+
+@pytest.mark.parametrize("correct", [[], ["A", "B"], ["A", "A"], [1], [" "], "A", None])
+def test_single_choice_validated_for_student_and_admin(correct):
+    from pydantic import ValidationError
+    from app.api.v1.schemas.exercises import ExerciseAnswerRequest
+
+    answer = json.dumps({"type": "single_choice", "correct": correct})
+    for schema in (ExerciseCheckRequest, ExerciseAnswerRequest):
+        with pytest.raises(ValidationError):
+            schema(answer=answer)
+
+
+def test_single_choice_accepted_for_student_and_admin():
+    from app.api.v1.schemas.exercises import ExerciseAnswerRequest
+
+    answer = json.dumps({"type": "single_choice", "correct": ["Один"]})
+    for schema in (ExerciseCheckRequest, ExerciseAnswerRequest):
+        assert schema(answer=answer).answer == answer
 
 
 def test_route_returns_boolean_json(monkeypatch):
@@ -99,20 +124,22 @@ def test_request_requires_a_single_nonempty_answer():
 
 
 @pytest.mark.parametrize(
-    ("submitted", "is_correct"),
+    ("submitted", "expected", "is_correct"),
     [
-        ('{"type":"text","value":"hello"}', True),
-        ('{"type":"text","value":"wrong"}', False),
+        ('{"type":"text","value":"hello"}', '{"type":"text","value":"hello"}', True),
+        ('{"type":"text","value":"wrong"}', '{"type":"text","value":"hello"}', False),
+        ('{"type":"single_choice","correct":["A"]}', '{"type":"single_choice","correct":["A"]}', True),
+        ('{"type":"single_choice","correct":["B"]}', '{"type":"single_choice","correct":["A"]}', False),
     ],
 )
-def test_check_persists_only_successful_answers(monkeypatch, submitted, is_correct):
+def test_check_persists_only_successful_answers(monkeypatch, submitted, expected, is_correct):
     db = SimpleNamespace(
         execute=AsyncMock(
             side_effect=[
                 SimpleNamespace(scalar_one_or_none=Mock(return_value=1)),
                 SimpleNamespace(
                     scalar_one_or_none=Mock(
-                        return_value='{"type":"text","value":"hello"}'
+                        return_value=expected
                     )
                 ),
             ]

@@ -1,4 +1,4 @@
-import {useCallback} from "react";
+import {useCallback, useId} from "react";
 import {ListChecks, TriangleAlert} from "lucide-react";
 import {useAdminTranslation} from "@/pages/Admin/hooks/useAdminTranslation.js";
 import styles from "./lessonExercises.module.css";
@@ -8,7 +8,7 @@ import styles from "./lessonExercises.module.css";
  *
  * Панель показывает задания, найденные в Markdown, и позволяет
  * автору отметить правильные варианты. Отметка попадает в текст
- * урока как `- [x]`, но в файл она не записывается: в базу
+ * редактора как `- [x]` или `- (х)`, но в файл она не записывается: в базу
  * отправляется отдельный ответ.
  *
  * Задания без вариантов — это задачи на код: их эталонный ответ
@@ -22,6 +22,7 @@ function LessonExercisesPanel({
     onChangeId,
 }) {
     const t = useAdminTranslation();
+    const groupId = useId();
 
     const handleIdChange = useCallback((index, event) => {
         onChangeId(index, event.target.value);
@@ -73,7 +74,9 @@ function LessonExercisesPanel({
                                 {exercise.options.map((option, optionIndex) => (
                                     <li className={styles.option} key={`${option.text}-${optionIndex}`}>
                                         <input
-                                            type="checkbox"
+                                            type={exercise.singleChoice ? "radio" : "checkbox"}
+                                            name={`${groupId}-${index}`}
+                                            aria-label={option.text}
                                             checked={option.checked}
                                             onChange={(event) => onToggleOption(
                                                 index,

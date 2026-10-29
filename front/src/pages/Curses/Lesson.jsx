@@ -1,13 +1,15 @@
-import {useCallback, useEffect, useState} from "react";
+import {useCallback, useEffect, useRef, useState} from "react";
 import {Link, useNavigate, useParams} from "react-router-dom";
 import {ArrowLeft, ArrowRight, ImageOff} from "lucide-react";
 import {api} from "@/api/axios.js";
 import {API_ROUTES} from "@/api/routes.js";
+import {listCourseLessonMedia, refreshCourseLessonMediaUrl} from "@/api/media.js";
 import {ROUTES} from "@/router/AppRouter.jsx";
 import Markdown from "@/components/Markdown/Markdown.jsx";
 import Description from "@/components/Markdown/Description.jsx";
 import LessonMentor from "@/components/LessonMentor/LessonMentor.jsx";
 import {buildAnswerMap} from "@/services/exercises.js";
+import {loadLessonMediaMap} from "@/services/media.js";
 import {useTranslation} from "@/hooks/useTranslation.js";
 import styles from "./course.module.css";
 
@@ -90,6 +92,8 @@ export function Lesson() {
     const t = useTranslation("courses.course");
     const [lesson, setLesson] = useState(null);
     const [content, setContent] = useState("");
+    const [media, setMedia] = useState({});
+    const mediaRetries = useRef(new Set());
     const [completedExercises, setCompletedExercises] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -107,13 +111,17 @@ export function Lesson() {
         setLessonNavigation({previous: null, next: null, loading: true});
         setCompletionState(null);
         setCourseFinished(false);
+        setMedia({});
+        mediaRetries.current = new Set();
         try {
-            const [detail, body] = await Promise.all([
+            const [detail, body, lessonMedia] = await Promise.all([
                 api.get(API_ROUTES.COURSE_LESSON(slug, moduleId, lessonId)),
                 api.get(API_ROUTES.COURSE_LESSON_CONTENT(slug, moduleId, lessonId)),
+                loadLessonMediaMap((page) => listCourseLessonMedia(slug, moduleId, lessonId, {page})),
             ]);
             setLesson(detail.data);
             setContent(body.data.content ?? "");
+            setMedia(lessonMedia);
             setCompletedExercises(buildAnswerMap(body.data.completed_exercises));
             let progress = null;
             try {
@@ -147,6 +155,23 @@ export function Lesson() {
     }, [slug, moduleId, lessonId]);
 
     useEffect(() => { fetchLesson(); }, [fetchLesson]);
+
+    const handleMediaError = async (mediaKey) => {
+        const retries = mediaRetries.current;
+        // Повреждённый или отсутствующий файл не должен вызывать бесконечные запросы.
+        if (retries.has(mediaKey)) return;
+        retries.add(mediaKey);
+        try {
+            const data = await refreshCourseLessonMediaUrl(slug, moduleId, lessonId, mediaKey);
+            if (mediaRetries.current !== retries) return;
+            setMedia((current) => ({
+                ...current,
+                [mediaKey]: {...current[mediaKey], url: data.url},
+            }));
+        } catch {
+            // Повторная загрузка урока позволит запросить файл заново.
+        }
+    };
 
     const checkExercise = async (exerciseId, answer, execution) => {
         if (execution?.execute) {
@@ -233,7 +258,8 @@ export function Lesson() {
                         {lesson?.lesson?.is_completed ? t("lessonCompleted") : t("lessonNotCompleted")}
                     </span>
                     {lesson?.lesson?.description && <Description content={lesson.lesson.description} className={styles.description}/>}
-                    <Markdown content={content} answers={completedExercises} onExerciseCheck={checkExercise}
+                    <Markdown content={content} media={media} onMediaError={handleMediaError}
+                              answers={completedExercises} onExerciseCheck={checkExercise}
                               labels={{
                                   check: t("exerciseCheck"),
                                   checking: t("exerciseChecking"),

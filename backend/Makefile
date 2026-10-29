@@ -4,6 +4,7 @@ include .env
 export
 
 SANDBOX_IMAGE ?= analytics-sandbox:1.0
+MINIO_MC_IMAGE ?= docker.io/pgsty/mc:RELEASE.2026-10-18T00-00-00Z
 
 print-env:
 	echo $(POSTGRES_USER)
@@ -61,11 +62,21 @@ sandbox-up:
 sandbox-logs:
 	docker compose --profile sandbox logs --tail=100 sandbox_runner
 
-.PHONY: s3-refresh
+.PHONY: storage-refresh
 
 storage-refresh:
-	@echo "Refreshing MinIO buckets and seeds..."
-	@docker compose run --rm --no-deps minio_init
+	@set -eu; \
+	container_id=$$(docker compose ps --status running -q minio); \
+	if [ -z "$$container_id" ]; then \
+		echo "MinIO is not running. Start the minio service before storage-refresh." >&2; \
+		exit 1; \
+	fi; \
+	echo "Resetting default-avatars, avatars and course-content from seeds..."; \
+	docker run --rm --network "container:$$container_id" \
+		--env MINIO_ROOT_USER --env MINIO_ROOT_PASSWORD \
+		--mount "type=bind,src=$(CURDIR)/infra/minio/seeds,dst=/seeds,readonly" \
+		--mount "type=bind,src=$(CURDIR)/infra/minio/refresh.sh,dst=/refresh.sh,readonly" \
+		--entrypoint /bin/sh "$(MINIO_MC_IMAGE)" /refresh.sh
 	@echo "MinIO refresh completed."
 
 fresh:
