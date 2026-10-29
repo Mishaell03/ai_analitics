@@ -28,6 +28,10 @@ MAX_OUTPUT_BYTES: Final = 64 * 1024
 # JSON может кодировать один символ как шесть байт (\uXXXX).
 MAX_REQUEST_BYTES: Final = MAX_CODE_BYTES * 6 + 4096
 MANAGED_LABEL: Final = "analytics.sandbox=1"
+DEFAULT_ASSIGNMENT_PROFILES: Final = {
+    f"{lesson}:lesson_{lesson}_python_{number:02d}": "standard"
+    for lesson in (13, 14) for number in range(1, 4)
+}
 
 
 class SandboxSettings:
@@ -58,6 +62,7 @@ class SandboxSettings:
                 for key, profile in self.assignment_profiles.items()
         ):
             raise ValueError("Invalid sandbox assignment profiles")
+        self.assignment_profiles = {**DEFAULT_ASSIGNMENT_PROFILES, **self.assignment_profiles}
 
 
 def get_sandbox_limits(profile: str) -> dict:

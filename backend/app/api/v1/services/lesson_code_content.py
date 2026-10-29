@@ -18,6 +18,7 @@ from app.models.courses import CourseModule, Lesson
 from app.models.exercises import ExerciseAnswer
 from app.services.sandbox.config import SandboxSettings
 from app.services.sandbox.transport import execute_code
+from app.services.sandbox.sql_runner import validate_query
 
 
 def decode_solution(answer: str | None) -> dict | None:
@@ -86,7 +87,8 @@ class LessonCodeContentService:
             value = decode_solution(row.answer)
             if value is not None:
                 solutions.append(CodeSolution(exercise_id=row.exercise_id,
-                                              language=value["language"], code=value["value"]))
+                                              language=value["language"], code=value["value"],
+                                              check_mode=value.get("check_mode", "graded")))
         try:
             content = MarkdownParser().parse(raw or "").content
         except ValueError:
@@ -111,6 +113,15 @@ class LessonCodeContentService:
                 raise HTTPException(409, detail="Identifier belongs to another exercise")
         # Исполняем до изменения строк и Markdown: отказ runner не сохраняет частичный результат.
         for item in data.solutions:
+            if item.check_mode == "self_review":
+                try:
+                    if item.language == "sql":
+                        validate_query(item.code)
+                    else:
+                        compile(item.code, "<reference>", "exec")
+                except (ValueError, SyntaxError):
+                    raise HTTPException(422, detail="Invalid reference code") from None
+                continue
             executions[item.exercise_id] = await execute_code(
                 code=item.code, profile=profiles.get(f"{lesson_id}:{item.exercise_id}", "light"),
                 language=item.language,
@@ -126,10 +137,12 @@ class LessonCodeContentService:
             if row is None:
                 row = ExerciseAnswer(lesson_id=lesson_id, exercise_id=item.exercise_id)
                 self.db.add(row)
-            solution = {"type": "code", "language": item.language,
-                        "value": item.code,
-                        "execution": executions[item.exercise_id].model_dump()}
-            if item.language == "sql":
+            solution = {"type": "code", "language": item.language, "value": item.code}
+            if item.check_mode == "self_review":
+                solution["check_mode"] = "self_review"
+            else:
+                solution["execution"] = executions[item.exercise_id].model_dump(exclude={"plots"})
+            if item.language == "sql" and item.check_mode != "self_review":
                 solution["ordered"] = bool(parse_sql(item.code)[0].stmt.sortClause)
             row.answer = json.dumps(solution, ensure_ascii=False)
         await self.db.flush()

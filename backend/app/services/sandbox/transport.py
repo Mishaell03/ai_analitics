@@ -8,6 +8,7 @@ from fastapi import HTTPException
 
 from app.api.v1.schemas.sandbox import ExecutionResult
 from app.services.sandbox.config import MAX_OUTPUT_BYTES, MAX_REQUEST_BYTES, SandboxSettings, get_sandbox_limits
+from app.services.sandbox.plots import MAX_PLOT_WIRE_BYTES
 
 
 class SandboxBodyLimitMiddleware:
@@ -66,7 +67,7 @@ async def execute_code(code: str, profile: str, language: str = "python") -> Exe
                 body = bytearray()
                 async for chunk in response.aiter_bytes():
                     body.extend(chunk)
-                    if len(body) > MAX_OUTPUT_BYTES * 6 + 4096:
+                    if len(body) > MAX_OUTPUT_BYTES * 6 + MAX_PLOT_WIRE_BYTES + 4096:
                         raise ValueError("Runner response too large")
                 return ExecutionResult.model_validate(json.loads(body))
     except (httpx.HTTPError, ValueError, TimeoutError):

@@ -162,6 +162,7 @@ class LessonContentResponse(BaseModel):
     # Успешные ответы текущего ученика по exercise_id. Значения остаются
     # сериализованными строками и разбираются frontend через buildAnswerMap.
     completed_exercises: dict[str, str] = Field(default_factory=dict)
+    expert_review_exercises: list[str] = Field(default_factory=list)
     # Только навигация: просмотр не засчитывает урок или задания.
     allow_lesson_browsing: bool = False
 

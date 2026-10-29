@@ -22,6 +22,7 @@ from app.core.minio_url import minio_storage
 from app.core.storage_paths import COURSE_CONTENT_BUCKET, lesson_content_path
 from app.models.courses import Lesson
 from app.models.enrollments_progress import (
+    EXPERT_REVIEW_EXERCISES_KEY,
     COMPLETED_CORRECTNESS,
     LessonAttempt,
     PASSED_EXERCISES_KEY,
@@ -217,6 +218,7 @@ class LessonContentService(BaseCoursesService):
             raise HTTPException(409, detail="Invalid lesson exercise configuration") from None
 
         completed_exercises: dict[str, str] = {}
+        expert_review_exercises: list[str] = []
         lesson_is_completed = False
         if user_id is not None:
             attempts_result = await self.db.execute(
@@ -229,6 +231,13 @@ class LessonContentService(BaseCoursesService):
             )
             attempt_rows = attempts_result.all()
             completed_exercises = self._merge_completed_exercises(attempt_rows)
+            expert_review_exercises = self._merge_expert_reviews(attempt_rows)
+            # Old self_review attempts must not unlock newly graded chart tasks.
+            from app.services.sandbox.chart_grading import is_chart_exercise
+            expert_review_exercises = [
+                key for key in expert_review_exercises
+                if not is_chart_exercise(lesson.lesson_id, key)
+            ]
             lesson_is_completed = any(
                 attempt.correctness == COMPLETED_CORRECTNESS
                 for attempt in attempt_rows
@@ -270,8 +279,31 @@ class LessonContentService(BaseCoursesService):
                 for asset in parsed.assets
             ],
             completed_exercises=completed_exercises,
+            expert_review_exercises=expert_review_exercises,
             allow_lesson_browsing=settings.lesson_allow_browsing,
         )
+
+    @staticmethod
+    def _merge_expert_reviews(attempts) -> list[str]:
+        """Только серверные успешные запуски; это не оценка правильности SQL."""
+        from app.api.v1.schemas.sandbox import ExecutionResult
+        from pydantic import ValidationError
+
+        reviewed = set()
+        for attempt in attempts:
+            answers = attempt.answers
+            if not isinstance(answers, dict):
+                continue
+            ids = answers.get(EXPERT_REVIEW_EXERCISES_KEY)
+            if not isinstance(ids, list):
+                continue
+            try:
+                execution = ExecutionResult.model_validate(answers.get("execution"))
+            except ValidationError:
+                continue
+            if execution.success:
+                reviewed.update(exercise_id for exercise_id in ids if isinstance(exercise_id, str))
+        return sorted(reviewed)
 
     @staticmethod
     def _merge_completed_exercises(attempts) -> dict[str, str]:

@@ -19,4 +19,7 @@ async def execute_sandbox(
         current: CurrentUserContext = Depends(get_current_user),
 ):
     result = await SandboxService(db).submit(request=request, data=data, current=current)
-    return SandboxExecuteResponse(**result.execution.model_dump(), is_correct=result.is_correct)
+    return SandboxExecuteResponse(**result.execution.model_dump(), is_correct=result.is_correct,
+                                  feedback=result.feedback,
+                                  expert_solution_available=result.expert_solution_available,
+                                  check_mode=result.check_mode)

@@ -63,6 +63,7 @@ class CodeSolution(BaseModel):
     exercise_id: str = Field(pattern=EXERCISE_ID_PATTERN)
     language: Literal["sql", "python"]
     code: str = Field(min_length=1, max_length=8000)
+    check_mode: Literal["graded", "self_review"] = "graded"
 
     @field_validator("code")
     @classmethod

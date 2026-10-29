@@ -1,5 +1,6 @@
-"""ПОДТВЕРЖДЕНИЕ ПРОХОЖДЕНИЯ УРОКА ПО ВСЕМ ЕГО ТЕСТАМ"""
+"""ПОДТВЕРЖДЕНИЕ ПРОХОЖДЕНИЯ ТЕСТОВ И ОБЯЗАТЕЛЬНЫХ ЗАПУСКОВ УРОКА"""
 
+from collections.abc import Collection
 from fastapi import Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,7 +11,7 @@ from app.models.enrollments_progress import COMPLETED_CORRECTNESS, LessonAttempt
 
 
 class LessonCompletionService(BaseCoursesService):
-    """ЗАВЕРШАЕТ УРОК ТОЛЬКО ПОСЛЕ УСПЕШНОЙ ПРОВЕРКИ ВСЕХ ЕГО ТЕСТОВ."""
+    """ЗАВЕРШАЕТ УРОК ПОСЛЕ ТЕСТОВ И ОБЯЗАТЕЛЬНЫХ ВЫПОЛНЕНИЙ КОДА."""
 
     async def complete_lesson(
             self,
@@ -38,7 +39,8 @@ class LessonCompletionService(BaseCoursesService):
 
         required_exercises = self.get_exercise_ids(lesson_content.custom_blocks)
         passed_exercises = lesson_content.completed_exercises
-        if not self.all_exercises_passed(required_exercises, passed_exercises):
+        reviewed = getattr(lesson_content, "expert_review_exercises", [])
+        if not self.all_exercises_passed(required_exercises, set(passed_exercises) | set(reviewed)):
             return False
 
         already_completed = await self.db.execute(
@@ -72,13 +74,15 @@ class LessonCompletionService(BaseCoursesService):
         for block in custom_blocks:
             if block.type not in {"test", "code"} or not isinstance(block.data, dict):
                 continue
+            if block.type == "code" and block.data.get("practice"):
+                continue
             exercise_id = block.data.get("exercise_id")
             if isinstance(exercise_id, str) and exercise_id:
                 exercise_ids.add(exercise_id)
         return exercise_ids
 
     @staticmethod
-    def all_exercises_passed(required_exercises: set[str], passed_exercises: dict) -> bool:
+    def all_exercises_passed(required_exercises: set[str], passed_exercises: Collection[str]) -> bool:
         """ПРОВЕРЯЕТ, ЧТО КАЖДОЕ ЗАДАНИЕ УРОКА ЕСТЬ В ПРОГРЕССЕ УЧЕНИКА."""
 
         return required_exercises.issubset(passed_exercises)

@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validat
 
 from app.api.v1.schemas.exercises import EXERCISE_ID_PATTERN
 from app.services.sandbox.config import MAX_CODE_BYTES
+from app.services.sandbox.plots import MAX_PLOTS, validate_png, validate_chart_data
 
 
 class CodeRequest(BaseModel):
@@ -35,6 +36,8 @@ class RunnerExecutionRequest(CodeRequest):
 
 
 class ExecutionResult(BaseModel):
+    chart_data: list[dict] = Field(default_factory=list, max_length=MAX_PLOTS)
+    plots: list[str] = Field(default_factory=list, max_length=MAX_PLOTS)
     stdout: str
     stderr: str
     exit_code: int
@@ -42,6 +45,16 @@ class ExecutionResult(BaseModel):
     duration: float
     output_limited: bool = False
     memory_limited: bool = False
+
+    @field_validator("plots")
+    @classmethod
+    def png_figures_only(cls, values):
+        return [validate_png(value) for value in values]
+
+    @field_validator("chart_data")
+    @classmethod
+    def bounded_chart_data(cls, values):
+        return [validate_chart_data(value) for value in values]
 
     @computed_field
     @property
@@ -55,7 +68,10 @@ class ExerciseSubmitRequest(CodeRequest):
 
 
 class SandboxExecuteResponse(ExecutionResult):
+    feedback: str | None = None
     is_correct: bool | None
+    expert_solution_available: bool = False
+    check_mode: Literal["graded", "self_review", "practice"] = "graded"
 
 
 class StudentExerciseResponse(BaseModel):
@@ -64,6 +80,7 @@ class StudentExerciseResponse(BaseModel):
     language: Literal["sql", "python"] | None = None
     execution_enabled: bool = False
     is_completed: bool = False
+    expert_solution_available: bool = False
 
 
 class ExpertSolutionResponse(BaseModel):
@@ -73,10 +90,13 @@ class ExpertSolutionResponse(BaseModel):
 
 
 class ExerciseSubmissionResponse(BaseModel):
+    feedback: str | None = None
     execution: ExecutionResult
     execution_succeeded: bool
     is_correct: bool | None
     attempt_id: int
+    expert_solution_available: bool = False
+    check_mode: Literal["graded", "self_review", "practice"] = "graded"
 
     @computed_field
     @property

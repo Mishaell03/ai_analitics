@@ -62,6 +62,16 @@ def test_syntax_error():
     assert "SyntaxError" in result.stderr
 
 
+def test_matplotlib_show_returns_png_to_api_client():
+    result = asyncio.run(execute_and_check_cleanup(
+        'import matplotlib.pyplot as plt; plt.plot([1, 2], [3, 4]); plt.show()', "standard",
+    ))
+    assert result.success, result
+    assert len(result.plots) == 1
+    assert result.plots[0].startswith("iVBORw0KGgo")
+    assert "ANALYTICS_PNG" not in result.stdout
+
+
 def test_infinite_loop_timeout():
     result = asyncio.run(execute_and_check_cleanup("while True: pass"))
     assert result.timed_out
