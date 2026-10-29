@@ -11,7 +11,7 @@ import styles from "./markdown.module.css";
  * Markdown. Здесь нет логики разбора: только соответствие типа
  * блока элементу интерфейса.
  */
-function MarkdownBlocks({blocks = [], media, answers, labels, onMediaError, onExerciseCheck}) {
+function MarkdownBlocks({blocks = [], media, answers, labels, onMediaError, onExerciseCheck, onExpertSolution}) {
     return (
         <>
             {blocks.map((block, index) => (
@@ -22,6 +22,7 @@ function MarkdownBlocks({blocks = [], media, answers, labels, onMediaError, onEx
                     labels={labels}
                     onMediaError={onMediaError}
                     onExerciseCheck={onExerciseCheck}
+                    onExpertSolution={onExpertSolution}
                     key={index}
                 />
             ))}
@@ -29,7 +30,7 @@ function MarkdownBlocks({blocks = [], media, answers, labels, onMediaError, onEx
     );
 }
 
-function MarkdownBlock({block, media, answers, labels, onMediaError, onExerciseCheck}) {
+function MarkdownBlock({block, media, answers, labels, onMediaError, onExerciseCheck, onExpertSolution}) {
     switch (block.type) {
         case "heading": {
             const Heading = `h${Math.min(Math.max(block.level, 1), 6)}`;
@@ -59,7 +60,7 @@ function MarkdownBlock({block, media, answers, labels, onMediaError, onExerciseC
             );
 
         case "list":
-            return renderList(block, media, labels, onMediaError, answers, onExerciseCheck);
+            return renderList(block, media, labels, onMediaError, answers, onExerciseCheck, onExpertSolution);
 
         case "table":
             return (
@@ -82,6 +83,7 @@ function MarkdownBlock({block, media, answers, labels, onMediaError, onExerciseC
                         labels={labels}
                         onMediaError={onMediaError}
                         onExerciseCheck={onExerciseCheck}
+                        onExpertSolution={onExpertSolution}
                     />
                 </blockquote>
             );
@@ -105,6 +107,7 @@ function MarkdownBlock({block, media, answers, labels, onMediaError, onExerciseC
                     answers={answers}
                     labels={labels}
                     onExerciseCheck={onExerciseCheck}
+                    onExpertSolution={onExpertSolution}
                 >
                     <MarkdownBlocks
                         blocks={block.children}
@@ -113,6 +116,7 @@ function MarkdownBlock({block, media, answers, labels, onMediaError, onExerciseC
                         labels={labels}
                         onMediaError={onMediaError}
                         onExerciseCheck={onExerciseCheck}
+                        onExpertSolution={onExpertSolution}
                     />
                 </MarkdownCustomBlock>
             );
@@ -122,7 +126,7 @@ function MarkdownBlock({block, media, answers, labels, onMediaError, onExerciseC
     }
 }
 
-function renderList(block, media, labels, onMediaError, answers, onExerciseCheck) {
+function renderList(block, media, labels, onMediaError, answers, onExerciseCheck, onExpertSolution) {
     const ListTag = block.ordered ? "ol" : "ul";
     const start = block.ordered && block.start !== 1 ? {start: block.start} : undefined;
 
@@ -146,6 +150,7 @@ function renderList(block, media, labels, onMediaError, answers, onExerciseCheck
                             onMediaError={onMediaError}
                             answers={answers}
                             onExerciseCheck={onExerciseCheck}
+                            onExpertSolution={onExpertSolution}
                         />
                     )}
                 </li>

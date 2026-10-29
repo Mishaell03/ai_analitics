@@ -1,6 +1,7 @@
 """ДОСТУП К ЗАДАНИЮ И ДОВЕРЕННЫЙ ВЫБОР РЕСУРСОВ"""
 
 import json
+from collections import Counter
 
 from fastapi import HTTPException, Request
 from pydantic import ValidationError
@@ -60,11 +61,17 @@ class SandboxService(BaseCoursesService):
     ) -> ExerciseSubmissionResponse:
         execution = await self.execute(request=request, data=data, current=current)
         succeeded = execution.success
-        expected = (await self.db.execute(select(ExerciseAnswer.answer).where(
-            ExerciseAnswer.lesson_id == data.lesson_id,
-            ExerciseAnswer.exercise_id == data.exercise_id,
-        ))).scalar_one_or_none()
-        is_correct = self.grade(execution, expected, data.language)
+        # The Markdown parser assigns practice_* IDs to id: none fields.
+        # They never load an expert reference or contribute to passed exercises,
+        # including when execution fails (the error is in execution.stderr).
+        if data.exercise_id == "none" or data.exercise_id.startswith("practice_"):
+            is_correct = None
+        else:
+            expected = (await self.db.execute(select(ExerciseAnswer.answer).where(
+                ExerciseAnswer.lesson_id == data.lesson_id,
+                ExerciseAnswer.exercise_id == data.exercise_id,
+            ))).scalar_one_or_none()
+            is_correct = self.grade(execution, expected, data.language)
         answer = json.dumps({"type": "code", "value": data.code}, ensure_ascii=False)
         attempt = LessonAttempt(
             user_id=current.user.user_id, lesson_id=data.lesson_id, code=data.code,
@@ -104,7 +111,13 @@ class SandboxService(BaseCoursesService):
             if not all(isinstance(value, dict) and isinstance(value.get("columns"), list)
                        and isinstance(value.get("rows"), list) for value in (actual, target)):
                 return None
-            return actual["columns"] == target["columns"] and actual["rows"] == target["rows"]
+            if actual["columns"] != target["columns"]:
+                return False
+            if solution.get("ordered") is False:
+                return Counter(json.dumps(row, sort_keys=True) for row in actual["rows"]) == Counter(
+                    json.dumps(row, sort_keys=True) for row in target["rows"]
+                )
+            return actual["rows"] == target["rows"]
         # Разница CRLF/LF и завершающий перевод строки не меняют ответ.
         return (execution.stdout.replace("\r\n", "\n").rstrip("\n")
                 == reference.stdout.replace("\r\n", "\n").rstrip("\n"))

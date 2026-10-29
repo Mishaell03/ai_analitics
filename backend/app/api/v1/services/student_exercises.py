@@ -1,13 +1,50 @@
 """Задания ученика: опубликованный контент и персональный прогресс."""
 
 from fastapi import HTTPException, Request
+from sqlalchemy import select
 
-from app.api.v1.schemas.sandbox import StudentExerciseResponse
+from app.api.v1.schemas.sandbox import ExpertSolutionResponse, StudentExerciseResponse
 from app.api.v1.services.lesson_content import LessonContentService
+from app.api.v1.services.lesson_code_content import decode_solution
 from app.core.session import CurrentUserContext
+from app.models.exercises import ExerciseAnswer
 
 
 class StudentExerciseService(LessonContentService):
+    async def get_expert_solution(
+            self,
+            request: Request,
+            course_slug: str,
+            module_id: int,
+            lesson_id: int,
+            exercise_id: str,
+            current: CurrentUserContext,
+    ) -> ExpertSolutionResponse:
+        """Эталон доступен только после успешной проверки задания этого ученика."""
+
+        exercise = await self.get_exercise(
+            request=request, course_slug=course_slug, module_id=module_id,
+            lesson_id=lesson_id, exercise_id=exercise_id, current=current,
+        )
+        if not exercise.execution_enabled:
+            raise HTTPException(404, detail={"code": "EXPERT_SOLUTION_NOT_FOUND"})
+        if exercise_id == "none" or exercise_id.startswith("practice_"):
+            raise HTTPException(404, detail={"code": "EXPERT_SOLUTION_NOT_FOUND"})
+        if not exercise.is_completed:
+            raise HTTPException(403, detail={"code": "EXERCISE_NOT_COMPLETED"})
+
+        raw = (await self.db.execute(select(ExerciseAnswer.answer).where(
+            ExerciseAnswer.lesson_id == lesson_id,
+            ExerciseAnswer.exercise_id == exercise_id,
+        ))).scalar_one_or_none()
+        solution = decode_solution(raw)
+        if (solution is None or solution.get("language") != exercise.language
+                or not isinstance(solution.get("value"), str) or not solution["value"].strip()):
+            raise HTTPException(404, detail={"code": "EXPERT_SOLUTION_NOT_FOUND"})
+        return ExpertSolutionResponse(
+            exercise_id=exercise_id, language=exercise.language, code=solution["value"],
+        )
+
     async def list_exercises(
             self,
             request: Request,

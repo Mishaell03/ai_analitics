@@ -2,12 +2,13 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, Request
+from fastapi import APIRouter, Depends, Path, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.exercises import EXERCISE_ID_PATTERN
 from app.api.v1.schemas.sandbox import (
     ExerciseSubmissionResponse,
+    ExpertSolutionResponse,
     ExerciseSubmitRequest,
     SandboxExecuteRequest,
     StudentExerciseResponse,
@@ -72,4 +73,22 @@ async def submit_exercise(
             course_slug=course_slug, module_id=module_id, lesson_id=lesson_id,
             exercise_id=exercise_id, **data.model_dump(),
         ),
+    )
+
+
+@router.get(EXERCISES_PATH + "/{exercise_id}/expert-solution", response_model=ExpertSolutionResponse)
+async def get_expert_solution(
+        course_slug: CourseSlug,
+        module_id: PositiveId,
+        lesson_id: PositiveId,
+        exercise_id: ExerciseId,
+        request: Request,
+        response: Response,
+        db: AsyncSession = Depends(get_db),
+        current: CurrentUserContext = Depends(get_current_user),
+):
+    response.headers["Cache-Control"] = "private, no-store"
+    return await StudentExerciseService(db).get_expert_solution(
+        request=request, course_slug=course_slug, module_id=module_id,
+        lesson_id=lesson_id, exercise_id=exercise_id, current=current,
     )

@@ -603,6 +603,27 @@
     overflow-wrap: anywhere;
 }
 
+.expertSolution {
+    margin: 16px 0 24px;
+    padding: 18px;
+    border: 1px solid rgb(182 95 253 / 0.2);
+    border-left: 3px solid var(--accent);
+    border-radius: 14px;
+    background: rgb(182 95 253 / 0.045);
+    overflow-wrap: anywhere;
+}
+
+.expertSolutionTitle {
+    margin: 0 0 14px;
+    color: var(--ink);
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.expertSolution > :last-child {
+    margin-bottom: 0;
+}
+
 .codeExerciseLabel {
     display: grid;
     gap: 0.75rem;

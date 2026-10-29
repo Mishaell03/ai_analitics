@@ -10,6 +10,8 @@ import Description from "@/components/Markdown/Description.jsx";
 import LessonMentor from "@/components/LessonMentor/LessonMentor.jsx";
 import {buildAnswerMap} from "@/services/exercises.js";
 import {loadLessonMediaMap} from "@/services/media.js";
+import {canCompleteLesson, isLessonBrowsingAllowed} from "@/services/lessonCompletion.js";
+import LessonNavigation from "./LessonNavigation.jsx";
 import {useTranslation} from "@/hooks/useTranslation.js";
 import styles from "./course.module.css";
 
@@ -95,6 +97,8 @@ export function Lesson() {
     const [media, setMedia] = useState({});
     const mediaRetries = useRef(new Set());
     const [completedExercises, setCompletedExercises] = useState({});
+    const [exerciseBlocks, setExerciseBlocks] = useState([]);
+    const [allowBrowsing, setAllowBrowsing] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [completing, setCompleting] = useState(false);
@@ -123,6 +127,11 @@ export function Lesson() {
             setContent(body.data.content ?? "");
             setMedia(lessonMedia);
             setCompletedExercises(buildAnswerMap(body.data.completed_exercises));
+            setExerciseBlocks(body.data.custom_blocks ?? []);
+            const browsing = isLessonBrowsingAllowed(
+                import.meta.env.VITE_LESSON_ALLOW_BROWSING, body.data.allow_lesson_browsing
+            );
+            setAllowBrowsing(browsing);
             let progress = null;
             try {
                 const response = await api.get(API_ROUTES.COURSE_NEXT_LESSON(slug));
@@ -136,7 +145,7 @@ export function Lesson() {
                 detail.data.lesson.is_completed
             );
 
-            if (isPreviouslyCompleted && !progress?.is_course_completed) {
+            if (browsing || (isPreviouslyCompleted && !progress?.is_course_completed)) {
                 setLessonNavigation({previous: null, next: null, loading: true});
                 try {
                     const navigation = await loadLessonNavigation(slug, moduleId, lessonId);
@@ -199,8 +208,17 @@ export function Lesson() {
         return isCorrect;
     };
 
+    const loadExpertSolution = useCallback(async (exerciseId) => {
+        const {data} = await api.get(API_ROUTES.COURSE_EXPERT_SOLUTION(slug, moduleId, lessonId, exerciseId));
+        return data;
+    }, [slug, moduleId, lessonId]);
+
     const completeLesson = async () => {
         if (completing || completionState === "complete") return;
+        if (!canCompleteLesson(exerciseBlocks, completedExercises)) {
+            setCompletionState("incomplete");
+            return;
+        }
         setCompleting(true);
         setCompletionState(null);
         setNextLessonError(false);
@@ -242,24 +260,31 @@ export function Lesson() {
         <main className={`${styles.course} ${styles.lessonCourse}`}>
             <div className={styles.lessonLayout}>
             <section className={styles.lessonPage}>
-                <Link to={`${ROUTES.course}/${slug}`} className={styles.backLink}>
-                    <ArrowLeft/><span>{t("backToCourse")}</span>
-                </Link>
+                <header className={styles.lessonHeader}>
+                    <Link to={`${ROUTES.course}/${slug}`} className={styles.backLink}>
+                        <ArrowLeft aria-hidden="true"/><span>{t("backToCourse")}</span>
+                    </Link>
+                    {!loading && !error && lesson?.course?.title && (
+                        <p className={styles.lessonCourseName}>{lesson.course.title}</p>
+                    )}
+                </header>
                 {loading && <div className={styles.loading} role="status"><div className={styles.loadingContent}><span/><span/><span/></div></div>}
                 {!loading && error && <div className={styles.state} role="alert">
                     <div className={styles.stateIcon}><ImageOff/></div><h1>{t("lessonErrorTitle")}</h1>
                     <p>{t("errorDescription")}</p><button type="button" className={styles.retryButton} onClick={fetchLesson}>{t("errorRetry")}</button>
                 </div>}
                 {!loading && !error && <>
-                    <p className={styles.lessonModule}>{lesson?.course?.title} · {lesson?.module?.title}</p>
+                    {lesson?.module?.title && <p className={styles.lessonModule}>{lesson.module.title}</p>}
                     <h1 className={styles.lessonTitle}>{lesson?.lesson?.title}</h1>
                     <span className={styles.lessonCompletionStatus}
                           data-complete={Boolean(lesson?.lesson?.is_completed)}>
                         {lesson?.lesson?.is_completed ? t("lessonCompleted") : t("lessonNotCompleted")}
                     </span>
                     {lesson?.lesson?.description && <Description content={lesson.lesson.description} className={styles.description}/>}
-                    <Markdown content={content} media={media} onMediaError={handleMediaError}
+                    <Markdown key={`${slug}/${moduleId}/${lessonId}`}
+                              content={content} media={media} onMediaError={handleMediaError}
                               answers={completedExercises} onExerciseCheck={checkExercise}
+                              onExpertSolution={loadExpertSolution}
                               labels={{
                                   check: t("exerciseCheck"),
                                   checking: t("exerciseChecking"),
@@ -278,24 +303,6 @@ export function Lesson() {
                                 <Link className={styles.completeButton} to={lessonPath(nextIncompleteLesson)}>
                                     <span>{t("returnToAssignments")}</span><ArrowRight aria-hidden="true"/>
                                 </Link>
-                            )}
-                            {!courseProgress?.is_course_completed && (
-                                <nav className={styles.lessonNavigation} aria-label={t("lessonNavigationLabel")}>
-                                    {lessonNavigation.loading && <span className={styles.lessonNavigationMessage} role="status">{t("lessonNavigationLoading")}</span>}
-                                    {lessonNavigation.error && <span className={styles.lessonNavigationMessage} role="alert">{t("lessonNavigationError")}</span>}
-                                    {lessonNavigation.previous ? (
-                                        <Link to={lessonPath({...lessonNavigation.previous, module_id: lessonNavigation.previous.module_id ?? moduleId})}
-                                              className={styles.lessonNavButton}>
-                                            <ArrowLeft aria-hidden="true"/><span>{t("previousLesson")}</span>
-                                        </Link>
-                                    ) : <span/>}
-                                    {lessonNavigation.next && (
-                                        <Link to={lessonPath({...lessonNavigation.next, module_id: lessonNavigation.next.module_id ?? moduleId})}
-                                              className={styles.lessonNavButton}>
-                                            <span>{t("nextLesson")}</span><ArrowRight aria-hidden="true"/>
-                                        </Link>
-                                    )}
-                                </nav>
                             )}
                         </div>
                     ) : (
@@ -319,6 +326,9 @@ export function Lesson() {
                             {completionState === "error" && <p className={styles.completionError} role="alert">{t("lessonCompleteError")}</p>}
                             {nextLessonError && <p className={styles.completionHint} role="status">{t("nextLessonError")}</p>}
                         </div>
+                    )}
+                    {(allowBrowsing || (isPreviouslyCompleted && !courseProgress?.is_course_completed)) && (
+                        <LessonNavigation navigation={lessonNavigation} slug={slug}/>
                     )}
                 </>}
             </section>

@@ -62,7 +62,7 @@ ON CONFLICT (order_id) DO NOTHING;
 -- order_date, customer_id и status одинаковы для всех позиций одного заказа.
 -- unit_price — цена на момент заказа; она может меняться между заказами.
 -- Заказы 1004, 1010 и 1017 отменены; позиция 28 — бесплатный товар.
-INSERT INTO order_items (
+INSERT INTO retail_order_items (
     line_item_id, order_id, order_date, customer_id,
     product, category, quantity, unit_price, status
 ) VALUES

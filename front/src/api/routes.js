@@ -21,6 +21,8 @@ export const API_ROUTES = {
         `/courses/${slug}/modules/${moduleId}/lessons/${lessonId}/media/${mediaKey}/url`,
     COURSE_EXERCISE_CHECK: (slug, moduleId, lessonId, exerciseId) =>
         `/courses/${slug}/modules/${moduleId}/lessons/${lessonId}/exercises/${exerciseId}/check`,
+    COURSE_EXPERT_SOLUTION: (slug, moduleId, lessonId, exerciseId) =>
+        `/courses/${slug}/modules/${moduleId}/lessons/${lessonId}/exercises/${exerciseId}/expert-solution`,
     COURSE_LESSON_COMPLETE: (slug, moduleId, lessonId) =>
         `/courses/${slug}/modules/${moduleId}/lessons/${lessonId}/complete`,
     ENROLL_COURSE_BY_ID: (slug) => `/courses/enroll/${slug}`,

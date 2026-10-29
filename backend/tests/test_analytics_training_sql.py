@@ -40,6 +40,11 @@ class AnalyticsTrainingSqlTests(unittest.TestCase):
                 "customer_id VARCHAR(20) NOT NULL", "product TEXT NOT NULL", "category TEXT NOT NULL",
                 "quantity INTEGER NOT NULL", "unit_price NUMERIC(12,2) NOT NULL", "status VARCHAR(20) NOT NULL",
             ],
+            "V5__severny_svet_order_items.sql": [
+                "ALTER TABLE public.order_items RENAME TO retail_order_items",
+                "CREATE TABLE public.order_items", "line_item_id INTEGER PRIMARY KEY",
+                "unit_price NUMERIC(12, 2) NOT NULL",
+            ],
         }
         self.assertEqual(sorted(path.name for path in (ROOT / "migrations").glob("*.sql")), sorted(expected))
         for name, columns in expected.items():
@@ -65,14 +70,14 @@ class AnalyticsTrainingSqlTests(unittest.TestCase):
     def test_seed_counts_primary_keys_and_foreign_keys(self):
         rows = seed_rows()
         self.assertEqual({table: len(values) for table, values in rows.items()}, {
-            "customers": 12, "products": 10, "orders": 20, "order_items": 36,
+            "customers": 12, "products": 10, "orders": 20, "retail_order_items": 36,
         })
         customers = {row["customer_id"] for row in rows["customers"]}
         products = {row["product"] for row in rows["products"]}
         orders = {row["order_id"]: row for row in rows["orders"]}
         for order in orders.values():
             self.assertIn(order["customer_id"], customers)
-        for item in rows["order_items"]:
+        for item in rows["retail_order_items"]:
             self.assertIn(item["order_id"], orders)
             self.assertIn(item["customer_id"], customers)
             self.assertIn(item["product"], products)
@@ -82,7 +87,7 @@ class AnalyticsTrainingSqlTests(unittest.TestCase):
         rows = seed_rows()
         registrations = {row["customer_id"]: row["registration_date"] for row in rows["customers"]}
         order_details = {}
-        for item in rows["order_items"]:
+        for item in rows["retail_order_items"]:
             self.assertTrue(all(value is not None for value in item.values()))
             self.assertGreater(item["quantity"], 0)
             self.assertIsInstance(item["quantity"], int)
@@ -97,20 +102,22 @@ class AnalyticsTrainingSqlTests(unittest.TestCase):
 
     def test_seed_supports_joins_nulls_and_sales_analysis(self):
         rows = seed_rows()
-        self.assertEqual({item["status"] for item in rows["order_items"]}, {"completed", "cancelled"})
+        self.assertEqual({item["status"] for item in rows["retail_order_items"]}, {"completed", "cancelled"})
         self.assertEqual({order["sales_channel"] for order in rows["orders"]}, {
             "website", "mobile_app", "marketplace", "store", None,
         })
         self.assertTrue({row["customer_id"] for row in rows["customers"]}
                         - {row["customer_id"] for row in rows["orders"]})
         self.assertTrue({row["product"] for row in rows["products"]}
-                        - {row["product"] for row in rows["order_items"]})
+                         - {row["product"] for row in rows["retail_order_items"]})
         self.assertLess(len({row["customer_id"] for row in rows["orders"]}), len(rows["orders"]))
-        self.assertEqual(len({item["order_date"][:7] for item in rows["order_items"]}), 3)
+        self.assertEqual(len({item["order_date"][:7] for item in rows["retail_order_items"]}), 3)
 
     def test_scripts_do_not_delete_or_overwrite_existing_data(self):
         for path in ROOT.rglob("*.sql"):
             source = re.sub(r"--[^\n]*", "", path.read_text())
+            if path.name == "V5__severny_svet_order_items.sql":
+                source = source.replace("ALTER TABLE public.order_items RENAME TO retail_order_items;", "")
             self.assertNotRegex(source, r"(?i)\b(DROP|TRUNCATE|DELETE|UPDATE|ALTER|GRANT|REVOKE)\b")
         seed = (ROOT / "seeds/R__retail_sales.sql").read_text()
         self.assertEqual(seed.count("DO NOTHING;"), 4)

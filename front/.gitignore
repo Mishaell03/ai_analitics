@@ -13,6 +13,8 @@ dist-ssr
 tests/.ssr
 tests/.ssr-single-choice
 tests/.ssr-media
+tests/.ssr-browsing
+tests/.ssr-expert-solution
 *.local
 
 # Editor directories and files

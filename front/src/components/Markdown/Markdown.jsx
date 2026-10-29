@@ -17,7 +17,9 @@ registerCustomBlockRenderer("test", (block, context) => (
 ));
 registerCustomBlockRenderer("code", (block, context) => (
     <MarkdownCodeExercise key={`${block.data?.exercise_id}-${block.data?.language}`}
-                          block={block} onCheck={context.onExerciseCheck}/>
+                          block={block} onCheck={context.onExerciseCheck}
+                          completed={context.answers?.[block.data?.exercise_id]?.type === "code"}
+                          onExpertSolution={context.onExpertSolution}/>
 ));
 
 /**
@@ -39,7 +41,7 @@ registerCustomBlockRenderer("code", (block, context) => (
  * answers — правильные ответы на задания по идентификатору задания.
  * labels — подписи интерфейса (например, «Правильный ответ»).
  */
-function Markdown({content, media, answers, labels, onMediaError, onExerciseCheck, className}) {
+function Markdown({content, media, answers, labels, onMediaError, onExerciseCheck, onExpertSolution, className}) {
     const blocks = useMemo(() => markdownService.parse(content), [content]);
 
     if (!blocks.length) {
@@ -55,6 +57,7 @@ function Markdown({content, media, answers, labels, onMediaError, onExerciseChec
                 labels={labels}
                 onMediaError={onMediaError}
                 onExerciseCheck={onExerciseCheck}
+                onExpertSolution={onExpertSolution}
             />
         </div>
     );

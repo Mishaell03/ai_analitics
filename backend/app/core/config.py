@@ -26,6 +26,11 @@ class Settings:
     api_reload: bool = os.getenv("API_RELOAD", "false").lower() == "true"
     is_product: bool = os.getenv("IS_PRODUCT", "false").lower() == "true"
 
+    # Свободная навигация по урокам, без изменения прогресса.
+    lesson_allow_browsing: bool = (
+        os.getenv("LESSON_ALLOW_BROWSING", "false").strip().lower() == "true"
+    )
+
     # MINIO
     minio_endpoint: str = os.getenv("MINIO_ENDPOINT")
     minio_access_key: str = os.getenv("MINIO_ACCESS_KEY")

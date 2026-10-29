@@ -5,6 +5,7 @@
 
 - `GET /` — задания опубликованного урока, язык, доступность выполнения и личный прогресс.
 - `GET /{exercise_id}` — одно задание.
+- `GET /{exercise_id}/expert-solution` — экспертный код после успешного решения задания.
 - `POST /{exercise_id}/submit` — выполнение кода и сохранение попытки.
 
 Все запросы требуют существующей сессии и записи на курс. Проверяется принадлежность
@@ -68,6 +69,22 @@ language: python
   и `is_correct` (результат проверки). Frontend засчитывает задание по `is_correct=true`.
 - `/check` проверяет обычные тесты; для кодовых ответов возвращает 422 `CODE_EXECUTION_REQUIRED`.
 
+## Решение от эксперта
+
+`GET /{exercise_id}/expert-solution` возвращает только `exercise_id`,
+`language` (`python` или `sql`) и `code` — эталон задания из БД.
+Он не включается в Markdown, список заданий или ответ запуска кода.
+
+Доступ разрешён после `is_correct=true` для этого задания у текущего ученика.
+Простой запуск без успешной проверки и свободный просмотр уроков не открывают
+эталон. При повторном открытии пройденного задания запрос доступен без нового
+запуска. Проверяются сессия, запись на курс, публикация и принадлежность урока.
+
+- `403 EXERCISE_NOT_COMPLETED` — задание ещё не пройдено.
+- `404 EXPERT_SOLUTION_NOT_FOUND` — подходящий эталон отсутствует или задание
+  не поддерживает выполнение кода.
+- Ответ отдаётся с `Cache-Control: private, no-store`; прогресс не изменяется.
+
 ## Ограничения выполнения
 
 Python запускается через существующий отдельный HTTP runner, в новом контейнере
@@ -105,7 +122,7 @@ rate limit, не распределённая квота. Глобальный �
 Из `backend/`:
 
 ```bash
-venv/bin/python -m pytest tests/test_student_exercises.py tests/test_sandbox.py tests/test_exercise_check.py tests/test_lesson_completion.py tests/test_markdown_parser.py tests/test_request_body_middleware.py tests/test_csrf.py -q
+venv/bin/python -m pytest tests/test_expert_solution.py tests/test_student_exercises.py tests/test_sandbox.py tests/test_exercise_check.py tests/test_lesson_completion.py tests/test_markdown_parser.py tests/test_request_body_middleware.py tests/test_csrf.py -q
 ```
 
 Реальные Docker-тесты запускаются отдельно при остановленном runner и отсутствии

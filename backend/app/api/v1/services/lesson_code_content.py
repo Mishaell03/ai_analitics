@@ -3,6 +3,7 @@
 import hashlib
 import io
 import json
+from pglast import parse_sql
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -44,7 +45,8 @@ def validate_blocks(content: str, solutions: list[CodeSolution]):
             raise HTTPException(422, detail="Duplicate exercise identifier")
         ids.add(exercise_id)
         if block.type == "code":
-            code_blocks[exercise_id] = block.data["language"]
+            if not block.data.get("practice"):
+                code_blocks[exercise_id] = block.data["language"]
     submitted = {item.exercise_id: item.language for item in solutions}
     if len(submitted) != len(solutions) or submitted != code_blocks:
         raise HTTPException(422, detail="Code blocks and reference solutions must match")
@@ -124,9 +126,12 @@ class LessonCodeContentService:
             if row is None:
                 row = ExerciseAnswer(lesson_id=lesson_id, exercise_id=item.exercise_id)
                 self.db.add(row)
-            row.answer = json.dumps({"type": "code", "language": item.language,
-                                     "value": item.code,
-                                     "execution": executions[item.exercise_id].model_dump()}, ensure_ascii=False)
+            solution = {"type": "code", "language": item.language,
+                        "value": item.code,
+                        "execution": executions[item.exercise_id].model_dump()}
+            if item.language == "sql":
+                solution["ordered"] = bool(parse_sql(item.code)[0].stmt.sortClause)
+            row.answer = json.dumps(solution, ensure_ascii=False)
         await self.db.flush()
         # MinIO и PostgreSQL не поддерживают общую транзакцию. При ошибке
         # записи БД восстанавливаем прежний Markdown, не записывая туда эталоны.

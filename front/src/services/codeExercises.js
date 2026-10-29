@@ -13,7 +13,7 @@ export function parseCodeExercises(source) {
             continue;
         }
         if (fence) continue;
-        const match = /^:::code[ \t]+(\S+)[ \t]*$/.exec(lines[index]);
+        const match = /^:::\s*code[ \t]+(\S+)[ \t]*$/.exec(lines[index]);
         if (!match) continue;
         const start = index;
         while (index + 1 < lines.length && !/^:::\s*$/.test(lines[index + 1])) index += 1;
@@ -30,13 +30,18 @@ export function parseCodeExercises(source) {
 export function ensureCodeExerciseIds(source) {
     const lines = (source ?? "").replace(/\r\n?/g, "\n").split("\n");
     for (const block of parseCodeExercises(source).reverse()) {
-        if (!block.exercise_id && block.valid) lines.splice(block.start + 1, 0, `id: ${generateExerciseId()}`);
+        if (!block.exercise_id && block.valid && !/^:::[ \t]+code/.test(lines[block.start])) {
+            lines.splice(block.start + 1, 0, `id: ${generateExerciseId()}`);
+        }
     }
     return lines.join("\n");
 }
 
 export function buildCodeSolutions(content, drafts) {
-    const blocks = parseCodeExercises(content);
+    const lines = (content ?? "").replace(/\r\n?/g, "\n").split("\n");
+    const blocks = parseCodeExercises(content).filter((block) =>
+        !(block.valid && block.exercise_id === "none") && (block.exercise_id || !block.valid
+            || !/^:::[ \t]+code/.test(lines[block.start])));
     const ids = new Set();
     return blocks.map((block) => {
         const draft = drafts[block.exercise_id];

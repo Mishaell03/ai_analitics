@@ -66,6 +66,12 @@ class StudentExerciseResponse(BaseModel):
     is_completed: bool = False
 
 
+class ExpertSolutionResponse(BaseModel):
+    exercise_id: str
+    language: Literal["sql", "python"]
+    code: str
+
+
 class ExerciseSubmissionResponse(BaseModel):
     execution: ExecutionResult
     execution_succeeded: bool

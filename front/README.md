@@ -159,6 +159,15 @@ id: single-answer
 <Markdown content={lesson.content} answers={answersByExerciseId} labels={{answer: "Правильный ответ"}}/>
 ```
 
+### Решение от эксперта
+
+В кодовых заданиях `:::code python` / `:::code sql` после успешной проверки
+под редактором появляется блок «Решение от эксперта» с подсветкой кода.
+Компонент получает эталон через отдельный пользовательский endpoint
+`GET /courses/{slug}/modules/{moduleId}/lessons/{lessonId}/exercises/{exerciseId}/expert-solution`.
+В Markdown эталона нет. Решение доступно и при повторном открытии пройденного
+задания; ошибка загрузки не скрывает результат ученика и допускает повторный запрос.
+
 ### Команды
 
 ```bash
@@ -168,4 +177,5 @@ npm run lint         # линтер
 npm test             # тесты сервисов Markdown, Media и Exercises
 npm run test:render  # проверка отрисовки Markdown и админки
 npm run test:render:single-choice # проверка выбора одного ответа
+npm run test:render:expert-solution # проверка отображения решения эксперта
 ```

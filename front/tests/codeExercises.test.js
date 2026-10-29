@@ -39,3 +39,16 @@ test("renderer parser recognizes both languages without reference code", () => {
         assert.deepEqual(block.data, {exercise_id: "stable", language, valid: true});
     }
 });
+
+test("id none supports ungraded Python and SQL without expert drafts", () => {
+    for (const language of ["python", "sql"]) {
+        const source = `:::code ${language}\nid: none\n:::\n\n::: code ${language}\nid: none\n:::`;
+        assert.equal(ensureCodeExerciseIds(source), source);
+        assert.deepEqual(buildCodeSolutions(source, {}), []);
+        const blocks = new MarkdownService().parse(source);
+        assert.equal(blocks.length, 2);
+        assert.ok(blocks.every((block) => block.data.valid && block.data.practice));
+        assert.ok(blocks.every((block) => block.data.language === language));
+        assert.notEqual(blocks[0].data.exercise_id, blocks[1].data.exercise_id);
+    }
+});

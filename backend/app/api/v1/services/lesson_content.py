@@ -270,6 +270,7 @@ class LessonContentService(BaseCoursesService):
                 for asset in parsed.assets
             ],
             completed_exercises=completed_exercises,
+            allow_lesson_browsing=settings.lesson_allow_browsing,
         )
 
     @staticmethod
