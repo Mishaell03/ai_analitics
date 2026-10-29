@@ -69,7 +69,6 @@ backend/infra/xray/config.json
 
 # Uploaded/generated files
 uploads/
-media/
 static/generated/
 
 # =========================
