@@ -8,6 +8,7 @@ export const ROUTES = {
     profile: '/profile',
     admin: '/admin',
     admin_users: '/admin/users',
+    admin_logs: '/admin/logs',
     admin_courses: '/admin/courses',
 
     // TODO: adding routes

@@ -4,6 +4,7 @@ FastAPI приложение для платформы онлайн-обучен
 
 Python Sandbox: [архитектура, запуск, настройки и тесты](infra/sandbox/README.md).
 AI-наставник: [DeepSeek API, отдельная память каждого урока и боковой чат](docs/lesson-ai.md).
+Логи админки: [API, фильтры и миграция](docs/admin-logs.md).
 
 ---
 

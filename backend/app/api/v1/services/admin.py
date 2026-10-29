@@ -76,7 +76,7 @@ class AdminService:
             self,
             users: int | None = DEFAULT_DASHBOARD_ITEMS,
             top_courses: int | None = DEFAULT_DASHBOARD_ITEMS,
-            # period: int | None = 14,
+            # period: int | None = 14.md,
             # date_of: date | None = None,
             # date_to: date | None = None,
     ) -> DashboardResponse:

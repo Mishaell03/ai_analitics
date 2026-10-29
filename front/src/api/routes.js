@@ -36,6 +36,8 @@ export const API_ROUTES = {
 // Admin
     ADMIN_DASHBOARD: "/admin/dashboard",
     ADMIN_USERS: "/admin/users",
+    ADMIN_LOGS: "/admin/logs",
+    ADMIN_AI_LOGS: "/admin/logs/ai",
     ADMIN_USER_DETAIL: (id) => `/admin/users/${id}`,
     ADMIN_USER_BLOCK: (id) => `/admin/users/${id}/block`,
 

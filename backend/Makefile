@@ -12,7 +12,7 @@ print-env:
 
 DB_URL=jdbc:postgresql://$(DB_HOST):$(DB_PORT)
 
-.PHONY: ai-migrate
+.PHONY: ai-migrate logs-migrate
 ai-migrate:
 	@set -e; set -a; source .env; set +a; \
 	export FLYWAY_USER="$$POSTGRES_USER" FLYWAY_PASSWORD="$$POSTGRES_PASSWORD"; \
@@ -21,7 +21,17 @@ ai-migrate:
 		-e FLYWAY_USER -e FLYWAY_PASSWORD -e FLYWAY_URL \
 		-v "$(CURDIR)/infra/postgres/core_db/migrations:/flyway/migrations:ro" \
 		-v "$(CURDIR)/infra/postgres/core_db/seeds:/flyway/seeds:ro" \
-		flyway/flyway -locations=filesystem:/flyway/migrations,filesystem:/flyway/seeds -target=10 migrate
+		flyway/flyway -placeholderReplacement=false -locations=filesystem:/flyway/migrations,filesystem:/flyway/seeds -target=10 migrate
+
+logs-migrate:
+	@set -e; set -a; source .env; set +a; \
+		export FLYWAY_USER="$$POSTGRES_USER" FLYWAY_PASSWORD="$$POSTGRES_PASSWORD"; \
+		export FLYWAY_URL="jdbc:postgresql://$${DB_HOST:-127.0.0.1}:$${DB_PORT:-5432}/core_db"; \
+		docker run --rm --network host \
+			-e FLYWAY_USER -e FLYWAY_PASSWORD -e FLYWAY_URL \
+			-v "$(CURDIR)/infra/postgres/core_db/migrations:/flyway/migrations:ro" \
+			-v "$(CURDIR)/infra/postgres/core_db/seeds:/flyway/seeds:ro" \
+			flyway/flyway -placeholderReplacement=false -locations=filesystem:/flyway/migrations,filesystem:/flyway/seeds -target=11 migrate
 
 migrate:
 	@set -e; set -a && source .env && set +a && \
@@ -45,6 +55,7 @@ seed:
 			--network host \
 			-v $(PWD)/infra/postgres/$$db/seeds:/flyway/sql \
 			flyway/flyway \
+			-placeholderReplacement=false \
 			-url=jdbc:postgresql://localhost:5432/$$db \
 			-user=$$POSTGRES_USER \
 			-password=$$POSTGRES_PASSWORD \
