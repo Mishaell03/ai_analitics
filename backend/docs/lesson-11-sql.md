@@ -41,11 +41,11 @@ FROM public.order_items WHERE status = 'completed'; -- 9, 7, 18, 10650.00
 
 ## Изображение
 
-В Markdown подготовлена ссылка `asset:m_72e62512f7eb67e3`.
-Файл пока не предоставлен. После добавления файла в
-`infra/minio/seeds/course-content/1/media/` нужно проверить его реальный формат,
-размер и разрешение, добавить метаданные в `media_files` и связь с уроком 11
-в `lesson_media`. До этого изображение не будет отображаться.
+В Markdown используется ссылка `asset:m_72e62512f7eb67e3`.
+Файл находится в `infra/minio/seeds/course-content/1/media/`.
+Метаданные и связи изображений уроков 11–12 зарегистрированы в
+`infra/postgres/core_db/seeds/R__lesson_sql_media.sql`. Для отображения нужны
+и применённый SQL-сид, и загрузка файлов в MinIO через `make storage-refresh`.
 
 ## Автопроверки без сервисов
 

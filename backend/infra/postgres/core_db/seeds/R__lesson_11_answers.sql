@@ -47,5 +47,4 @@ LIMIT 3;$sql$, true,
 ON CONFLICT (lesson_id, exercise_id) DO UPDATE SET
     answer = EXCLUDED.answer, updated_at = NOW();
 
--- Media m_72e62512f7eb67e3 is referenced in the Markdown but its file has
--- not yet been supplied. Register metadata only after inspecting the real file.
+-- Lesson illustrations are registered in R__lesson_sql_media.sql.

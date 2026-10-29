@@ -21,7 +21,7 @@ BEGIN
         FROM course_modules m
         JOIN (VALUES
             (1, 1, 1), (2, 1, 2), (3, 1, 3), (8, 2, 1),
-            (4, 1, 4), (9, 2, 2), (5, 3, 1), (6, 3, 2)
+            (4, 1, 4), (5, 1, 5), (9, 2, 2), (10, 3, 1), (6, 3, 2)
         ) AS seed(module_id, course_id, position)
             ON m.module_id = seed.module_id
             OR (m.course_id = seed.course_id AND m.position = seed.position)
@@ -35,8 +35,9 @@ BEGIN
             (4, 2, 1), (5, 2, 2), (6, 2, 3),
             (7, 3, 1), (8, 3, 2), (9, 3, 3), (10, 3, 4),
             (18, 8, 1), (19, 8, 2),
-            (17, 5, 1), (20, 5, 2), (21, 6, 1), (12, 6, 2),
-            (14, 9, 1), (15, 9, 2), (11, 4, 1)
+            (17, 10, 1), (20, 10, 2), (21, 6, 1), (22, 6, 2),
+            (23, 9, 1), (15, 9, 2), (11, 4, 1), (12, 4, 2),
+            (13, 5, 1), (14, 5, 2)
         ) AS seed(lesson_id, module_id, position)
             ON l.lesson_id = seed.lesson_id
             OR (l.module_id = seed.module_id AND l.position = seed.position)
@@ -180,7 +181,7 @@ INSERT INTO lessons (
         )
         AND position = 1
     ),
-    'Добро пожаловать на курс «Аналитика данных с нуля»',
+    'Урок 1. Добро пожаловать на курс «Аналитика данных с нуля»',
     'Вводное видео и знакомство с курсом: данные, Python, pandas, SQL и учебный кейс магазина «Северный свет».',
     1,
     TRUE
@@ -197,7 +198,7 @@ INSERT INTO lessons (
         )
         AND position = 1
     ),
-    'Первые шаги в аналитике данных',
+    'Урок 2. Первые шаги в аналитике данных',
     'Разберитесь, что такое данные и аналитические вопросы, научитесь выбирать метрики и проверять простые расчёты.',
     2,
     TRUE
@@ -213,7 +214,7 @@ ON CONFLICT (lesson_id) DO UPDATE SET
 INSERT INTO lessons (lesson_id, module_id, title, description, position, is_published)
 VALUES (
     3, 1,
-    'Табличные данные: строки, столбцы, типы данных и CSV',
+    'Урок 3. Табличные данные: строки, столбцы, типы данных и CSV',
     'Изучите структуру таблиц и CSV, типы значений, идентификаторы и базовые проверки качества данных.',
     3, TRUE
 )
@@ -246,7 +247,7 @@ INSERT INTO lessons (
         )
         AND position = 2
     ),
-    'Python с нуля: первые команды, переменные и вычисления',
+    'Урок 4. Python с нуля: первые команды, переменные и вычисления',
     'Познакомьтесь с print(), переменными, типами данных и арифметическими вычислениями на Python.',
     1,
     TRUE
@@ -263,7 +264,7 @@ INSERT INTO lessons (
         )
         AND position = 2
     ),
-    'Условия в Python: if, elif, else и логические проверки',
+    'Урок 5. Условия в Python: if, elif, else и логические проверки',
     'Научитесь проверять значения и статусы с помощью условий и логических операторов.',
     2,
     TRUE
@@ -275,7 +276,7 @@ INSERT INTO lessons (
         WHERE course_id = (SELECT course_id FROM courses WHERE slug = 'ai-development-beginner')
             AND position = 2
     ),
-    'Списки и циклы в Python: обработка нескольких записей',
+    'Урок 6. Списки и циклы в Python: обработка нескольких записей',
     'Освойте списки, циклы for, накопители и обработку нескольких записей с учётом статусов.',
     3,
     TRUE
@@ -356,10 +357,6 @@ ON CONFLICT (lesson_id) DO UPDATE SET
     is_published = TRUE,
     updated_at = NOW();
 
--- =========================================================
--- INTERMEDIATE
--- =========================================================
-
 -- Course 1: module 4 and lesson 11, matching course-content/1/4/11.md.
 INSERT INTO course_modules (module_id, course_id, title, description, position, is_published)
 VALUES (4, 1, 'Модуль 4. Основы SQL для аналитики',
@@ -369,10 +366,42 @@ ON CONFLICT (module_id) DO UPDATE SET
     is_published = TRUE, updated_at = NOW();
 
 INSERT INTO lessons (lesson_id, module_id, title, description, position, is_published)
-VALUES (11, 4, 'Основы SQL: первые запросы к базе данных',
+VALUES (11, 4, 'Урок 11. Основы SQL: первые запросы к базе данных',
     'Освойте SELECT, WHERE, ORDER BY, LIMIT, COUNT и SUM на данных магазина «Северный свет».', 1, TRUE)
 ON CONFLICT (lesson_id) DO UPDATE SET
     title = EXCLUDED.title, description = EXCLUDED.description,
+    is_published = TRUE, updated_at = NOW();
+
+INSERT INTO lessons (lesson_id, module_id, title, description, position, is_published)
+VALUES (12, 4, 'Урок 12. Группировка и объединение таблиц в SQL',
+    'Научитесь строить сводные показатели с GROUP BY, объединять таблицы через INNER JOIN и проверять итоги на наборе розничных продаж.', 2, TRUE)
+ON CONFLICT (lesson_id) DO UPDATE SET
+    module_id = EXCLUDED.module_id, position = EXCLUDED.position,
+    title = EXCLUDED.title, description = EXCLUDED.description,
+    is_published = TRUE, updated_at = NOW();
+
+INSERT INTO course_modules (module_id, course_id, title, description, position, is_published)
+VALUES (5, 1, 'Модуль 5. Визуализация и итоговый проект',
+    'Постройте наглядные графики и подготовьте итоговый аналитический отчёт по данным розничных продаж.', 5, TRUE)
+ON CONFLICT (module_id) DO UPDATE SET
+    title = EXCLUDED.title, description = EXCLUDED.description,
+    course_id = EXCLUDED.course_id, position = EXCLUDED.position,
+    is_published = TRUE, updated_at = NOW();
+
+INSERT INTO lessons (lesson_id, module_id, title, description, position, is_published)
+VALUES (13, 5, 'Урок 13. Визуализация данных с помощью matplotlib',
+    'Постройте графики категорий и месяцев на настоящих данных RETAIL SALES, проверьте расчёты и сформулируйте выводы без недоказанных причин.', 1, TRUE)
+ON CONFLICT (lesson_id) DO UPDATE SET
+    title = EXCLUDED.title, description = EXCLUDED.description,
+    module_id = EXCLUDED.module_id, position = EXCLUDED.position,
+    is_published = TRUE, updated_at = NOW();
+
+INSERT INTO lessons (lesson_id, module_id, title, description, position, is_published)
+VALUES (14, 5, 'Урок 14. Итоговый аналитический проект: исследование продаж интернет-магазина',
+    'Проверьте данные RETAIL SALES, рассчитайте показатели, сравните категории и месяцы и подготовьте обоснованный аналитический вывод.', 2, TRUE)
+ON CONFLICT (lesson_id) DO UPDATE SET
+    title = EXCLUDED.title, description = EXCLUDED.description,
+    module_id = EXCLUDED.module_id, position = EXCLUDED.position,
     is_published = TRUE, updated_at = NOW();
 
 -- INTERMEDIATE
@@ -490,7 +519,7 @@ INSERT INTO lessons (
     position
 ) VALUES
 (
-    14,
+    23,
     (
         SELECT module_id
         FROM course_modules
@@ -540,7 +569,7 @@ INSERT INTO course_modules (
     position,
     is_published
 ) VALUES (
-    5,
+    10,
     (
         SELECT course_id
         FROM courses
@@ -655,7 +684,7 @@ INSERT INTO lessons (
     1
 ),
 (
-    12,
+    22,
     (
         SELECT module_id
         FROM course_modules

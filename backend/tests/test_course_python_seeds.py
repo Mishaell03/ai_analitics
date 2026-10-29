@@ -173,7 +173,7 @@ def test_course_1_seed_matches_all_markdown_paths():
     }
 
     content_root = ROOT / "infra/minio/seeds/course-content/1"
-    expected_modules = {1: [1, 2, 3], 2: [4, 5, 6], 3: [7, 8, 9, 10], 4: [11]}
+    expected_modules = {1: [1, 2, 3], 2: [4, 5, 6], 3: [7, 8, 9, 10], 4: [11, 12], 5: [13, 14]}
     actual_modules = {}
     for module_dir in (content_root / str(module_id) for module_id in expected_modules):
         actual_modules[int(module_dir.name)] = sorted(int(path.stem) for path in module_dir.glob("*.md"))

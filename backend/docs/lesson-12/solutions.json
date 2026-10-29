@@ -1,0 +1,51 @@
+{
+  "status": "draft_unlinked",
+  "lesson_id": null,
+  "course_slug": "ai-development-beginner",
+  "module_position": 4,
+  "lesson_position": 2,
+  "media_key": "m_45e57512f7eb46e0",
+  "assignments": [
+    {
+      "number": 1,
+      "exercise_id": null,
+      "answer_id": null,
+      "language": "sql",
+      "check_mode": "self_review",
+      "title": "Сколько позиций и единиц в категориях?",
+      "code": "SELECT\n    category,\n    COUNT(*) AS completed_lines,\n    SUM(quantity) AS units_sold\nFROM retail_order_items\nWHERE status = 'completed'\nGROUP BY category\nORDER BY units_sold DESC, category ASC;",
+      "expected_columns": ["category", "completed_lines", "units_sold"],
+      "expected_rows": [["Канцелярия", 5, 24], ["Аксессуары", 10, 13], ["Товары для дома", 6, 13], ["Бытовая техника", 6, 7], ["Электроника", 5, 5]]
+    },
+    {
+      "number": 2,
+      "exercise_id": null,
+      "answer_id": null,
+      "language": "sql",
+      "check_mode": "self_review",
+      "title": "Сравниваем выручку категорий",
+      "code": "SELECT\n    category,\n    SUM(quantity * unit_price) AS revenue\nFROM retail_order_items\nWHERE status = 'completed'\nGROUP BY category\nORDER BY revenue DESC;",
+      "expected_columns": ["category", "revenue"],
+      "expected_rows": [["Электроника", 220000], ["Аксессуары", 37500], ["Бытовая техника", 34700], ["Канцелярия", 5540], ["Товары для дома", 5040]]
+    },
+    {
+      "number": 3,
+      "exercise_id": null,
+      "answer_id": null,
+      "language": "sql",
+      "check_mode": "self_review",
+      "title": "Выручка по городам покупателей",
+      "code": "SELECT\n    c.city,\n    SUM(roi.quantity * roi.unit_price) AS revenue\nFROM retail_order_items AS roi\nINNER JOIN customers AS c\n    ON roi.customer_id = c.customer_id\nWHERE roi.status = 'completed'\nGROUP BY c.city\nORDER BY revenue DESC;",
+      "expected_columns": ["city", "revenue"],
+      "expected_rows": [["Москва", 123030], ["Санкт-Петербург", 116300], ["Казань", 46390], ["Екатеринбург", 12400], ["Новосибирск", 4200], [null, 460]]
+    }
+  ],
+  "tests": [
+    {"exercise_id": "lesson_12_test_01", "option": 2, "type": "single_choice", "correct": ["По одной строке для каждого статуса с количеством позиций этого статуса."]},
+    {"exercise_id": "lesson_12_test_02", "option": 3, "type": "single_choice", "correct": ["2 и 6."]},
+    {"exercise_id": "lesson_12_test_03", "option": 1, "type": "single_choice", "correct": ["600 рублей."]},
+    {"exercise_id": "lesson_12_test_04", "option": 4, "type": "single_choice", "correct": ["`INNER JOIN customers AS c ON roi.customer_id = c.customer_id`"]},
+    {"exercise_id": "lesson_12_test_05", "option": 1, "type": "single_choice", "correct": ["Один покупатель может иметь несколько товарных позиций, но несколько строк одного покупателя в справочнике способны размножить совпадения."]},
+    {"exercise_id": "lesson_12_test_06", "option": 3, "type": "single_choice", "correct": ["Есть завершённая позиция покупателя с неизвестным городом; её выручку нужно учитывать в общей сумме."]}
+  ]
+}

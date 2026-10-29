@@ -1,6 +1,7 @@
 """Course Markdown practice fields and media links work without external services."""
 
 import re
+import struct
 from pathlib import Path
 
 import pytest
@@ -70,3 +71,29 @@ def test_lesson_10_reuses_existing_media():
     assert "SELECT 10, media_id FROM media_files" in source
     assert "media_key = 'm_72e62512f7eb46e3'" in source
     assert "(asset:m_72e62512f7eb46e3)" in (CONTENT / "3/10.md").read_text(encoding="utf-8")
+
+
+def test_course_lesson_titles_match_markdown_and_use_numbered_format():
+    seed = (SEEDS / "R__courses.sql").read_text(encoding="utf-8")
+    paths = list(CONTENT.glob("[0-9]*/*.md"))
+    assert len(paths) == 14
+    for path in paths:
+        heading = path.read_text(encoding="utf-8").splitlines()[0].removeprefix("# ")
+        assert re.match(r"Урок \d+\. \S", heading), path
+        assert f"'{heading}'" in seed, path
+
+
+@pytest.mark.parametrize("lesson,key", [
+    (11, "m_72e62512f7eb67e3"),
+    (12, "m_45e57512f7eb46e0"),
+])
+def test_sql_lesson_media_metadata_matches_real_files(lesson, key):
+    seed = (SEEDS / "R__lesson_sql_media.sql").read_text(encoding="utf-8")
+    path = CONTENT / "media" / f"{key}.png"
+    data = path.read_bytes()
+    assert data[:8] == b"\x89PNG\r\n\x1a\n"
+    width, height = struct.unpack(">II", data[16:24])
+    assert f"'image', 'image/png', {len(data)}, {width}, {height}" in seed
+    assert f"'1/media/{key}.png'" in seed
+    assert f"({lesson}, '{key}')" in seed
+    assert f"(asset:{key})" in (CONTENT / "4" / f"{lesson}.md").read_text(encoding="utf-8")
