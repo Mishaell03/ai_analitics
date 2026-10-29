@@ -1,0 +1,27 @@
+import assert from "node:assert/strict";
+import {renderToStaticMarkup} from "react-dom/server";
+import {MemoryRouter} from "react-router-dom";
+import {JSDOM} from "jsdom";
+import {Home} from "@/pages/Home/Home.jsx";
+import {ROUTES} from "@/router/AppRouter.jsx";
+
+const html = renderToStaticMarkup(<MemoryRouter><Home/></MemoryRouter>);
+const dom = new JSDOM(html);
+const document = dom.window.document;
+const course = `${ROUTES.course}/ai-development-beginner`;
+const demo = `${ROUTES.course}/platform-demo`;
+const links = [...document.querySelectorAll("a")].map((link) => link.getAttribute("href"));
+const allowed = new Set([course, demo, ROUTES.teachers, ROUTES.about_us]);
+assert.equal(links.length, 6);
+assert.ok(links.every((link) => allowed.has(link)), `Unexpected destination: ${links.join(", ")}`);
+assert.equal(links.filter((link) => link === course).length, 1);
+assert.equal(links.filter((link) => link === demo).length, 2);
+assert.equal(document.querySelector('a[aria-labelledby="program-analytics"]').getAttribute("href"), course);
+assert.equal(document.querySelector('a[aria-labelledby="program-welcome"]').getAttribute("href"), demo);
+assert.match(html, /id="program-ai"/);
+assert.match(html, /id="program-teachers"/);
+assert.ok(!/<button\b/.test(html), "Navigation must use real links, not inert buttons");
+assert.ok(!/href="\/(analytics|ai|careers|curator)"/.test(html));
+assert.match(html, /для школьников, студентов колледжей и вузов/);
+dom.window.close();
+console.log("Home: valid route destinations, welcome and analytics courses, and student audience copy verified");

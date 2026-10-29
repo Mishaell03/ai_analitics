@@ -17,6 +17,9 @@ tests/.ssr-browsing
 tests/.ssr-expert-solution
 tests/.ssr-plots
 tests/.ssr-slides
+tests/.ssr-home
+tests/.ssr-scroll
+tests/.ssr-scroll-lock
 *.local
 
 # Editor directories and files

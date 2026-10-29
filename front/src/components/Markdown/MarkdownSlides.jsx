@@ -2,6 +2,7 @@ import {useEffect, useRef, useState} from "react";
 import {ChevronLeft, ChevronRight, Maximize, Minimize, Presentation} from "lucide-react";
 import {parseAssetReference} from "@/services/media.js";
 import {useTranslation} from "@/hooks/useTranslation.js";
+import {useBodyScrollLock} from "@/hooks/useBodyScrollLock.js";
 import styles from "./markdown.module.css";
 
 function MarkdownSlides({slides = [], media, onMediaError}) {
@@ -15,6 +16,7 @@ function MarkdownSlides({slides = [], media, onMediaError}) {
     const slide = slides[current];
     const file = media?.[parseAssetReference(slide?.src)];
     const imageUrl = file?.kind === "image" ? file.url : null;
+    useBodyScrollLock(expanded);
 
     useEffect(() => {
         const element = root.current;
@@ -30,8 +32,6 @@ function MarkdownSlides({slides = [], media, onMediaError}) {
 
     useEffect(() => {
         if (!expanded) return;
-        const previousOverflow = document.body.style.overflow;
-        document.body.style.overflow = "hidden";
         const escape = (event) => {
             if (event.key === "Escape" && document.fullscreenElement !== root.current) {
                 setExpanded(false);
@@ -39,7 +39,6 @@ function MarkdownSlides({slides = [], media, onMediaError}) {
         };
         document.addEventListener("keydown", escape);
         return () => {
-            document.body.style.overflow = previousOverflow;
             document.removeEventListener("keydown", escape);
         };
     }, [expanded]);

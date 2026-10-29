@@ -14,6 +14,9 @@
     "test:render:browsing": "vite build --ssr tests/lessonBrowsing.render.jsx --outDir tests/.ssr-browsing --logLevel warn && node tests/.ssr-browsing/lessonBrowsing.render.js",
     "test:render:expert-solution": "vite build --ssr tests/expertSolution.render.jsx --outDir tests/.ssr-expert-solution --logLevel warn && node tests/.ssr-expert-solution/expertSolution.render.js",
     "test:render:slides": "vite build --ssr tests/slides.render.jsx --outDir tests/.ssr-slides --logLevel warn && node tests/.ssr-slides/slides.render.js",
+    "test:render:home": "vite build --ssr tests/home.render.jsx --outDir tests/.ssr-home --logLevel warn && node tests/.ssr-home/home.render.js",
+    "test:render:scroll": "vite build --ssr tests/routeScroll.render.jsx --outDir tests/.ssr-scroll --logLevel warn && node tests/.ssr-scroll/routeScroll.render.js",
+    "test:render:scroll-lock": "vite build --ssr tests/scrollLock.render.jsx --outDir tests/.ssr-scroll-lock --logLevel warn && node tests/.ssr-scroll-lock/scrollLock.render.js",
     "preview": "vite preview"
   },
   "dependencies": {
