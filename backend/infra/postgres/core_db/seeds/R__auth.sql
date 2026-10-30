@@ -1,7 +1,8 @@
 INSERT INTO providers (code, name)
 VALUES
     ('ya', 'Yandex'),
-    ('pass', 'Password');
+    ('pass', 'Password')
+ON CONFLICT (code) DO NOTHING;
 
 
 -- USERS

@@ -110,16 +110,31 @@
     height: 35px;
 }
 
+.companyText {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    white-space: nowrap;
+}
+
 .company p {
     margin: 0;
-    padding-bottom: 3px;
     font-size: 25px;
     font-weight: 600;
     color: var(--ink);
+    line-height: 1.2;
 }
 
-.company span {
+.company p span {
     color: var(--primary);
+}
+
+.companySubtitle {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: 0.04em;
 }
 
 .login h1 {

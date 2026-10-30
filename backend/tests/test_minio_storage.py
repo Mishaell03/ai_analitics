@@ -81,7 +81,7 @@ def test_get_text_reads_file(monkeypatch):
     storage = MinioStorageService()
 
     content = asyncio.run(
-        storage.get_text(file_path="course/1/1.md", bucket="course-content")
+        storage.get_text(file_path="course/1/2.md", bucket="course-content")
     )
 
     assert content == "# Урок\n"
@@ -95,7 +95,7 @@ def test_get_text_returns_none_for_missing_file(monkeypatch):
     storage = MinioStorageService()
 
     content = asyncio.run(
-        storage.get_text(file_path="course/1/1.md", bucket="course-content")
+        storage.get_text(file_path="course/1/2.md", bucket="course-content")
     )
 
     assert content is None
@@ -110,7 +110,7 @@ def test_get_text_truncates_big_file(monkeypatch):
 
     content = asyncio.run(
         storage.get_text(
-            file_path="course/1/1.md",
+            file_path="course/1/2.md",
             bucket="course-content",
             max_bytes=10,
         )
@@ -141,11 +141,11 @@ def test_delete_file_removes_object(monkeypatch):
     storage = MinioStorageService()
 
     deleted = asyncio.run(
-        storage.delete_file(file_path="course/1/1.md", bucket="course-content")
+        storage.delete_file(file_path="course/1/2.md", bucket="course-content")
     )
 
     assert deleted is True
-    assert client.removed == ("course-content", "course/1/1.md")
+    assert client.removed == ("course-content", "course/1/2.md")
 
 
 def test_delete_file_survives_storage_error(monkeypatch):
@@ -156,7 +156,7 @@ def test_delete_file_survives_storage_error(monkeypatch):
     storage = MinioStorageService()
 
     deleted = asyncio.run(
-        storage.delete_file(file_path="course/1/1.md", bucket="course-content")
+        storage.delete_file(file_path="course/1/2.md", bucket="course-content")
     )
 
     assert deleted is False
@@ -170,11 +170,11 @@ def test_exists_returns_true_for_existing_file(monkeypatch):
     storage = MinioStorageService()
 
     exists = asyncio.run(
-        storage.exists(file_path="course/1/1.md", bucket="course-content")
+        storage.exists(file_path="course/1/2.md", bucket="course-content")
     )
 
     assert exists is True
-    assert client.calls == [("course-content", "course/1/1.md")]
+    assert client.calls == [("course-content", "course/1/2.md")]
 
 
 def test_exists_returns_false_for_missing_file(monkeypatch):
@@ -183,7 +183,7 @@ def test_exists_returns_false_for_missing_file(monkeypatch):
     storage = MinioStorageService()
 
     exists = asyncio.run(
-        storage.exists(file_path="course/1/1.md", bucket="course-content")
+        storage.exists(file_path="course/1/2.md", bucket="course-content")
     )
 
     assert exists is False
@@ -268,7 +268,7 @@ def test_copy_object_survives_storage_error(monkeypatch):
 
 def test_list_keys_returns_objects_under_prefix(monkeypatch):
     client = FakeListClient(
-        ["1/main.webp", "1/1/1.md", "2/main.webp"]
+        ["1/main.webp", "1/1/2.md", "2/main.webp"]
     )
 
     monkeypatch.setattr(settings, "minio_client", client)
@@ -277,11 +277,11 @@ def test_list_keys_returns_objects_under_prefix(monkeypatch):
 
     keys = asyncio.run(storage.list_keys(bucket="course-content", prefix="1/"))
 
-    assert keys == ["1/main.webp", "1/1/1.md"]
+    assert keys == ["1/main.webp", "1/1/2.md"]
 
 
 def test_delete_prefix_removes_every_object(monkeypatch):
-    client = FakeListClient(["1/main.webp", "1/1/1.md", "2/main.webp"])
+    client = FakeListClient(["1/main.webp", "1/1/2.md", "2/main.webp"])
 
     monkeypatch.setattr(settings, "minio_client", client)
 
@@ -294,5 +294,5 @@ def test_delete_prefix_removes_every_object(monkeypatch):
     assert deleted == 2
     assert client.removed == [
         ("course-content", "1/main.webp"),
-        ("course-content", "1/1/1.md"),
+        ("course-content", "1/1/2.md"),
     ]

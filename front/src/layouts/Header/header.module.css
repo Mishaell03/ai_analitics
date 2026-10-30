@@ -79,12 +79,28 @@
     border-radius: 14px;
 }
 
+.logoText {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    white-space: nowrap;
+}
+
 .logo h1 {
     margin: 0;
 
     font-size: 20px;
     font-weight: 700;
     letter-spacing: -0.03em;
+    line-height: 1.2;
+}
+
+.logoSubtitle {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: 0.04em;
 }
 
 

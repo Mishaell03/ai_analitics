@@ -52,8 +52,8 @@ def test_copy_verified_copies_and_verifies(monkeypatch):
 def test_copy_verified_keeps_existing_target(monkeypatch):
     storage = FakeStorage(
         {
-            ("course-content", "1/1/1.md"),
-            ("lesson-content", "old-course/1/1.md"),
+            ("course-content", "1/1/2.md"),
+            ("lesson-content", "old-course/1/2.md"),
         }
     )
 
@@ -62,8 +62,8 @@ def test_copy_verified_keeps_existing_target(monkeypatch):
     copied = asyncio.run(
         minio_migration._copy_verified(
             source_bucket="lesson-content",
-            source_key="old-course/1/1.md",
-            target_key="1/1/1.md",
+            source_key="old-course/1/2.md",
+            target_key="1/1/2.md",
             overwrite=False,
         )
     )

@@ -8,11 +8,11 @@ import styles from "./markdown.module.css";
  * он получает блок и контекст урока (правильные ответы, подписи),
  * иначе содержимое показывается как есть.
  */
-function MarkdownCustomBlock({block, children, answers, labels, onExerciseCheck}) {
+function MarkdownCustomBlock({block, children, media, onMediaError, answers, labels, onExerciseCheck, onExpertSolution, expertReviewExercises}) {
     const renderer = getCustomBlockRenderer(block.blockType);
 
     if (renderer) {
-        return renderer(block, {answers, labels, onExerciseCheck});
+        return renderer(block, {media, onMediaError, answers, labels, onExerciseCheck, onExpertSolution, expertReviewExercises});
     }
 
     return (

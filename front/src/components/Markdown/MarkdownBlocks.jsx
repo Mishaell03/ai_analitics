@@ -11,7 +11,7 @@ import styles from "./markdown.module.css";
  * Markdown. Здесь нет логики разбора: только соответствие типа
  * блока элементу интерфейса.
  */
-function MarkdownBlocks({blocks = [], media, answers, labels, onMediaError, onExerciseCheck}) {
+function MarkdownBlocks({blocks = [], media, answers, labels, onMediaError, onExerciseCheck, onExpertSolution, expertReviewExercises}) {
     return (
         <>
             {blocks.map((block, index) => (
@@ -22,6 +22,8 @@ function MarkdownBlocks({blocks = [], media, answers, labels, onMediaError, onEx
                     labels={labels}
                     onMediaError={onMediaError}
                     onExerciseCheck={onExerciseCheck}
+                    onExpertSolution={onExpertSolution}
+                    expertReviewExercises={expertReviewExercises}
                     key={index}
                 />
             ))}
@@ -29,7 +31,7 @@ function MarkdownBlocks({blocks = [], media, answers, labels, onMediaError, onEx
     );
 }
 
-function MarkdownBlock({block, media, answers, labels, onMediaError, onExerciseCheck}) {
+function MarkdownBlock({block, media, answers, labels, onMediaError, onExerciseCheck, onExpertSolution, expertReviewExercises}) {
     switch (block.type) {
         case "heading": {
             const Heading = `h${Math.min(Math.max(block.level, 1), 6)}`;
@@ -59,7 +61,7 @@ function MarkdownBlock({block, media, answers, labels, onMediaError, onExerciseC
             );
 
         case "list":
-            return renderList(block, media, labels, onMediaError, answers, onExerciseCheck);
+            return renderList(block, media, labels, onMediaError, answers, onExerciseCheck, onExpertSolution, expertReviewExercises);
 
         case "table":
             return (
@@ -82,6 +84,8 @@ function MarkdownBlock({block, media, answers, labels, onMediaError, onExerciseC
                         labels={labels}
                         onMediaError={onMediaError}
                         onExerciseCheck={onExerciseCheck}
+                        onExpertSolution={onExpertSolution}
+                        expertReviewExercises={expertReviewExercises}
                     />
                 </blockquote>
             );
@@ -102,9 +106,13 @@ function MarkdownBlock({block, media, answers, labels, onMediaError, onExerciseC
             return (
                 <MarkdownCustomBlock
                     block={block}
+                    media={media}
+                    onMediaError={onMediaError}
                     answers={answers}
                     labels={labels}
                     onExerciseCheck={onExerciseCheck}
+                    onExpertSolution={onExpertSolution}
+                    expertReviewExercises={expertReviewExercises}
                 >
                     <MarkdownBlocks
                         blocks={block.children}
@@ -113,6 +121,8 @@ function MarkdownBlock({block, media, answers, labels, onMediaError, onExerciseC
                         labels={labels}
                         onMediaError={onMediaError}
                         onExerciseCheck={onExerciseCheck}
+                        onExpertSolution={onExpertSolution}
+                        expertReviewExercises={expertReviewExercises}
                     />
                 </MarkdownCustomBlock>
             );
@@ -122,7 +132,7 @@ function MarkdownBlock({block, media, answers, labels, onMediaError, onExerciseC
     }
 }
 
-function renderList(block, media, labels, onMediaError, answers, onExerciseCheck) {
+function renderList(block, media, labels, onMediaError, answers, onExerciseCheck, onExpertSolution, expertReviewExercises) {
     const ListTag = block.ordered ? "ol" : "ul";
     const start = block.ordered && block.start !== 1 ? {start: block.start} : undefined;
 
@@ -146,6 +156,8 @@ function renderList(block, media, labels, onMediaError, answers, onExerciseCheck
                             onMediaError={onMediaError}
                             answers={answers}
                             onExerciseCheck={onExerciseCheck}
+                            onExpertSolution={onExpertSolution}
+                            expertReviewExercises={expertReviewExercises}
                         />
                     )}
                 </li>

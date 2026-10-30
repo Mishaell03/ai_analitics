@@ -138,6 +138,7 @@ class MarkdownParser:
 
             block_type = open_match.group("type")
             language = open_match.group("language")
+            start_line = index + 1
             block_lines: list[str] = []
 
             index += 1
@@ -158,6 +159,13 @@ class MarkdownParser:
                     raise ValueError("Unclosed code directive")
                 continue
 
+            # Empty two-line directives are ungraded practice fields.
+            practice = block_type == "code" and (
+                not "\n".join(block_lines).strip()
+                or "\n".join(block_lines).strip().lower() == "id: none"
+            )
+            if practice:
+                block_lines = [f"id: practice_{language}_{start_line}"]
             blocks.append(
                 self._custom_blocks.parse(
                     block_type=block_type,
@@ -165,6 +173,8 @@ class MarkdownParser:
                             + "\n".join(block_lines).strip(),
                 )
             )
+            if practice:
+                blocks[-1].data["practice"] = True
 
         return tuple(blocks)
 

@@ -27,6 +27,7 @@ import {
     PlaceholderCustomBlockHandler,
     TestBlockHandler,
     CodeBlockHandler,
+    SlidesBlockHandler,
 } from "./customBlocks.js";
 import {MarkdownParser} from "./parser.js";
 import {codeHighlighter} from "./highlight.js";
@@ -44,6 +45,7 @@ export class MarkdownService {
         // задание — собственный тип блока: у него есть идентификатор
         this.registerCustomBlock(new TestBlockHandler());
         this.registerCustomBlock(new CodeBlockHandler());
+        this.registerCustomBlock(new SlidesBlockHandler());
     }
 
     /**

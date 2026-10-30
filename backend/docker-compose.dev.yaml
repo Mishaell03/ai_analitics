@@ -3,10 +3,6 @@ services:
     ports:
       - "127.0.0.1:8090:8090"
 
-  sandbox_api:
-    ports:
-      - "127.0.0.1:8000:8000"
-
   postgres:
     ports:
       - "127.0.0.1:5432:5432"

@@ -171,9 +171,13 @@ export class MarkdownParser {
             return null;
         }
 
-        const content = body.join("\n");
+        const practice = match[1] === "code" && (!body.join("\n").trim()
+            || /^id:\s*none$/i.test(body.join("\n").trim()));
+        const content = practice ? `id: practice_${match[2]}_${start + 1}` : body.join("\n");
+        const children = this._parseBlocks(body);
         const parsed = this._customBlocks.parse(match[1], match[1] === "code"
-            ? `language: ${match[2]}\n${content}` : content);
+            ? `language: ${match[2]}\n${content}` : content, {children});
+        if (practice && parsed.data) parsed.data.practice = true;
 
         return {
             block: {
@@ -182,7 +186,7 @@ export class MarkdownParser {
                 content,
                 implemented: Boolean(parsed.implemented),
                 data: parsed.data ?? null,
-                children: this._parseBlocks(body),
+                children,
             },
             nextIndex: index,
         };

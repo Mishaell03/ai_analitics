@@ -23,6 +23,7 @@
  * Ответ задания — строка в JSON:
  *
  *     {"type": "choice", "correct": ["Вариант 1"]}   — выбор вариантов
+ *     {"type": "single_choice", "correct": ["Вариант 1"]} — один вариант
  *     {"type": "text", "value": "print(value)"}      — старый ответ заданий
  *     {"type": "code", "value": "def solve(): ..."}  — эталонный ответ урока
  *
@@ -33,6 +34,7 @@
  */
 
 export const ANSWER_TYPE_CHOICE = "choice";
+export const ANSWER_TYPE_SINGLE_CHOICE = "single_choice";
 export const ANSWER_TYPE_TEXT = "text";
 export const ANSWER_TYPE_CODE = "code";
 
@@ -101,8 +103,14 @@ export function generateExerciseId() {
     ).join("");
 }
 
-// вариант ответа: маркер списка и квадратные скобки
-const OPTION_LINE = /^(?<indent>\s*)[-*+]\s+\[(?<mark>[ xX])\]\s*(?<text>.*)$/;
+// квадратные скобки — несколько ответов, круглые — один
+const OPTION_LINE = /^(?<indent>\s*)[-*+]\s+(?:\[(?<mark>[ xX\u0445\u0425])\]|\((?<singleMark>[ xX\u0445\u0425])\))\s*(?<text>.*)$/;
+
+function formatOption(option, checked) {
+    const single = option.groups.singleMark !== undefined;
+    const mark = checked ? (single ? "\u0445" : "x") : " ";
+    return `${option.groups.indent}- ${single ? `(${mark})` : `[${mark}]`} ${option.groups.text}`;
+}
 
 // открывающая и закрывающая строки блока задания
 const BLOCK_OPEN = /^:::\s*test\s*$/;
@@ -129,7 +137,8 @@ export function parseExercises(markdown) {
             if (option) {
                 options.push({
                     text: option.groups.text.trim(),
-                    checked: option.groups.mark.toLowerCase() === "x",
+                    checked: (option.groups.mark ?? option.groups.singleMark).trim() !== "",
+                    single: option.groups.singleMark !== undefined,
                 });
 
                 continue;
@@ -142,6 +151,7 @@ export function parseExercises(markdown) {
             exercise_id: exerciseId,
             question: questionLines.join("\n").trim(),
             options,
+            singleChoice: options.some((option) => option.single),
             body: rest.join("\n"),
             start: block.start,
             end: block.end,
@@ -207,8 +217,8 @@ function findBlocks(markdown) {
  */
 export function stripCheckedMarks(markdown) {
     return (markdown ?? "").replace(
-        /^(\s*[-*+]\s+\[)[ xX](\])/gm,
-        "$1 $2"
+        /^(\s*[-*+]\s+)(?:\[[ xX\u0445\u0425]\]|\([ xX\u0445\u0425]\))/gm,
+        (match, prefix) => `${prefix}${match.trimEnd().endsWith(")") ? "( )" : "[ ]"}`
     );
 }
 
@@ -239,7 +249,7 @@ export function applyAnswers(markdown, answers) {
 
         const answer = answers[exercise.exercise_id];
 
-        if (!answer || answer.type !== ANSWER_TYPE_CHOICE) {
+        if (!answer || ![ANSWER_TYPE_CHOICE, ANSWER_TYPE_SINGLE_CHOICE].includes(answer.type)) {
             continue;
         }
 
@@ -259,9 +269,7 @@ export function applyAnswers(markdown, answers) {
                 continue;
             }
 
-            const mark = correct.includes(option.groups.text.trim()) ? "x" : " ";
-
-            lines[line] = `${option.groups.indent}- [${mark}] ${option.groups.text}`;
+            lines[line] = formatOption(option, correct.includes(option.groups.text.trim()));
         }
     }
 
@@ -281,7 +289,7 @@ export function setOptionChecked(markdown, exerciseIndex, optionIndex, checked) 
     const exercises = parseExercises(markdown);
     const exercise = exercises[exerciseIndex];
 
-    if (!exercise) {
+    if (!exercise || !exercise.options[optionIndex]) {
         return markdown ?? "";
     }
 
@@ -299,12 +307,8 @@ export function setOptionChecked(markdown, exerciseIndex, optionIndex, checked) 
             continue;
         }
 
-        if (optionSeen === optionIndex) {
-            const option = OPTION_LINE.exec(lines[index]);
-            const mark = checked ? "x" : " ";
-
-            lines[index] = `${option.groups.indent}- [${mark}] ${option.groups.text}`;
-            break;
+        if (optionSeen === optionIndex || (exercise.singleChoice && checked)) {
+            lines[index] = formatOption(OPTION_LINE.exec(lines[index]), optionSeen === optionIndex && checked);
         }
 
         optionSeen += 1;
@@ -411,11 +415,13 @@ export function buildAnswer(exercise, textAnswer) {
             .filter((option) => option.checked)
             .map((option) => option.text);
 
-        if (!correct.length) {
+        if (!correct.length || (exercise.singleChoice && (
+            correct.length !== 1 || exercise.options.some((option) => !option.single)
+        ))) {
             return null;
         }
 
-        return JSON.stringify({type: ANSWER_TYPE_CHOICE, correct});
+        return JSON.stringify({type: exercise.singleChoice ? ANSWER_TYPE_SINGLE_CHOICE : ANSWER_TYPE_CHOICE, correct});
     }
 
     const value = (textAnswer ?? "").trim();
@@ -464,6 +470,7 @@ export function parseAnswer(raw) {
 
         if (parsed && typeof parsed === "object"
             && (parsed.type === ANSWER_TYPE_CHOICE
+                || parsed.type === ANSWER_TYPE_SINGLE_CHOICE
                 || parsed.type === ANSWER_TYPE_TEXT
                 || parsed.type === ANSWER_TYPE_CODE)) {
             return parsed;

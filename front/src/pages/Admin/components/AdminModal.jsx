@@ -1,5 +1,6 @@
 import {useEffect, useRef} from "react";
 import {X} from "lucide-react";
+import {useBodyScrollLock} from "@/hooks/useBodyScrollLock.js";
 import styles from "./adminModal.module.css";
 
 /**
@@ -24,6 +25,7 @@ function AdminModal({
     // обработчик не пересоздаём на каждом рендере родителя:
     // ссылка всегда указывает на актуальный onClose
     const onCloseRef = useRef(onClose);
+    useBodyScrollLock();
 
     useEffect(() => {
         onCloseRef.current = onClose;
@@ -36,16 +38,10 @@ function AdminModal({
             }
         };
 
-        // предыдущее значение восстанавливаем: окно может открыться
-        // поверх другого модального окна
-        const previousOverflow = document.body.style.overflow;
-
         document.addEventListener("keydown", handleKeyDown);
-        document.body.style.overflow = "hidden";
 
         return () => {
             document.removeEventListener("keydown", handleKeyDown);
-            document.body.style.overflow = previousOverflow;
         };
     }, [closeOnEscape]);
 

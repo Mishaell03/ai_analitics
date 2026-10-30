@@ -143,9 +143,13 @@ class ExerciseCheckService(BaseCoursesService):
         if submitted_type != expected_type:
             return False
 
-        if expected_type == "choice":
+        if expected_type in {"choice", "single_choice"}:
             if not isinstance(submitted_content, list) or not isinstance(expected_content, list):
                 return False
+            if expected_type == "single_choice":
+                return (len(submitted_content) == len(expected_content) == 1
+                        and bool(expected_content[0].strip())
+                        and submitted_content == expected_content)
             return sorted(submitted_content) == sorted(expected_content)
 
         return submitted_content == expected_content
@@ -163,7 +167,7 @@ class ExerciseCheckService(BaseCoursesService):
             return None
 
         answer_type = parsed.get("type")
-        if answer_type == "choice":
+        if answer_type in {"choice", "single_choice"}:
             content = parsed.get("correct")
             if isinstance(content, list) and all(isinstance(item, str) for item in content):
                 return answer_type, content

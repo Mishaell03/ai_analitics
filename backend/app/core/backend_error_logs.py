@@ -119,6 +119,7 @@ async def backend_error_logs(
         request: HTTPConnection,
         status_code: int,
         error_message: str | None = None,
+        error_code: str | None = None,
         session_id: int | None = None,
         request_body: bytes | str | None = None,
 ) -> None:
@@ -149,6 +150,7 @@ async def backend_error_logs(
             log = BackendErrorLog(
                 session_id=session_id,
                 status_code=status_code,
+                error_code=error_code[:255] if error_code else None,
                 request_method=request_method,
                 request_path=request.url.path[:255],
                 request_body=sanitize_request_body(request_body),

@@ -1541,7 +1541,7 @@
     max-width: 900px;
     min-height: 60vh;
     margin: 0 auto;
-    padding: clamp(24px, 4vw, 48px);
+    padding: clamp(20px, 3vw, 32px);
     overflow: hidden;
     border: 1px solid rgb(182 95 253 / 0.12);
     border-radius: 28px;
@@ -1556,17 +1556,46 @@
     z-index: 1;
 }
 
+.lessonHeader {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgb(182 95 253 / 0.12);
+}
+
+.lessonHeader .backLink {
+    flex-shrink: 0;
+    margin: 0;
+}
+
+.lessonCourseName {
+    min-width: 0;
+    margin: 0;
+    padding-left: 16px;
+    border-left: 1px solid rgb(182 95 253 / 0.2);
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
 .lessonModule {
     display: inline-flex;
     align-items: center;
-    margin: 34px 0 12px;
-    padding: 7px 11px;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 0 0 12px;
+    padding: 5px 9px;
     border: 1px solid rgb(182 95 253 / 0.12);
     border-radius: 999px;
     background: rgb(182 95 253 / 0.07);
     color: var(--accent);
     font-size: 12px;
     font-weight: 700;
+    overflow-wrap: anywhere;
 }
 
 .lessonTitle {
@@ -1734,8 +1763,22 @@
 
 @media (max-width: 700px) {
     .lessonPage {
-        padding: 24px 18px;
+        padding: 20px 16px;
         border-radius: 22px;
+    }
+
+    .lessonHeader {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+    }
+
+    .lessonCourseName {
+        padding-left: 0;
+        border-left: 0;
+        font-size: 13px;
     }
 
     .lessonCompletion {

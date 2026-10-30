@@ -18,10 +18,9 @@ function Header() {
             title: t("home"),
             path: ROUTES.home,
         },
-        {
-            title: t("courses"),
-            path: ROUTES.courses,
-        },
+        ...(user
+            ? [{title: t("courses"), path: ROUTES.courses}]
+            : []),
         {
             title: t("teachers"),
             path: ROUTES.teachers,
@@ -97,9 +96,10 @@ function Header() {
                             alt={t("logo_alt")}
                         />
 
-                        <h1>
-                            Duck docs
-                        </h1>
+                        <div className={styles.logoText}>
+                            <h1>Duck Docs AI</h1>
+                            <span className={styles.logoSubtitle}>DataLab</span>
+                        </div>
                     </NavLink>
                 </div>
 

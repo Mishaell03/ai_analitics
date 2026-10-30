@@ -1,9 +1,7 @@
 import {
     BookOpen,
     ChartColumn,
-    ClipboardList,
-    Flag,
-    Settings,
+    ScrollText,
     Users,
 } from "lucide-react";
 import {ROUTES} from "@/router/AppRouter.jsx";
@@ -11,8 +9,7 @@ import {ROUTES} from "@/router/AppRouter.jsx";
 /**
  * Навигация админки.
  *
- * path задан только у готовых разделов — у остальных soon: true,
- * они рисуются, но не кликаются, чтобы не вести в 404.
+ * Показываем только готовые разделы с рабочими маршрутами.
  * Заголовок группы (title) подставляется через i18n по ключу title.
  */
 export const ADMIN_NAV = [
@@ -34,25 +31,10 @@ export const ADMIN_NAV = [
                 path: ROUTES.admin_courses,
                 icon: BookOpen,
             },
-        ],
-    },
-    {
-        title: "sidebarGroupManage",
-        items: [
             {
-                title: "sidebarAssignments",
-                icon: ClipboardList,
-                soon: true,
-            },
-            {
-                title: "sidebarReports",
-                icon: Flag,
-                soon: true,
-            },
-            {
-                title: "sidebarSettings",
-                icon: Settings,
-                soon: true,
+                title: "sidebarLogs",
+                path: ROUTES.admin_logs,
+                icon: ScrollText,
             },
         ],
     },

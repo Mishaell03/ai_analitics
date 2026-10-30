@@ -11,6 +11,8 @@ COMPLETED_CORRECTNESS = 3
 PASSED_EXERCISE_CORRECTNESS = 2
 # пространство имён в JSONB LessonAttempt.answers для успешных заданий
 PASSED_EXERCISES_KEY = "__passed_exercises__"
+# Успешный запуск для самопроверки не означает правильный ответ.
+EXPERT_REVIEW_EXERCISES_KEY = "__expert_review_exercises__"
 
 
 # V5__enrollments_attempts

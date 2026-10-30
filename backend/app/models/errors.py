@@ -83,6 +83,7 @@ class BackendErrorLog(Base):
     session_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("users_sessions.id", ondelete="SET NULL"),
                                                    nullable=True)
     status_code: Mapped[int] = mapped_column(Integer, nullable=False)
+    error_code: Mapped[str | None] = mapped_column(String(255), nullable=True)
     request_method: Mapped[str] = mapped_column(String(16), nullable=False)
     request_path: Mapped[str] = mapped_column(String(255), nullable=False)
     request_body: Mapped[str | None] = mapped_column(Text, nullable=True)

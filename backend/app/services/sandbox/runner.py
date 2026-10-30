@@ -13,6 +13,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 
 from app.api.v1.schemas.sandbox import ExecutionResult, RunnerExecutionRequest
 from app.services.sandbox.config import MANAGED_LABEL, MAX_OUTPUT_BYTES, SandboxSettings, get_sandbox_limits
+from app.services.sandbox.plots import MAX_PLOT_WIRE_BYTES, extract_plot_output, python_with_plots
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +135,7 @@ class SandboxRunner:
         async def read_output(stream, target):
             nonlocal output_limited
             while chunk := await stream.read(8192):
-                available = MAX_OUTPUT_BYTES - len(stdout) - len(stderr)
+                available = MAX_OUTPUT_BYTES + MAX_PLOT_WIRE_BYTES - len(stdout) - len(stderr)
                 target.extend(chunk[:available])
                 if len(chunk) > available:
                     output_limited = True
@@ -151,7 +152,7 @@ class SandboxRunner:
             )
             tasks = [asyncio.create_task(read_output(process.stdout, stdout)),
                      asyncio.create_task(read_output(process.stderr, stderr))]
-            process.stdin.write(code.encode("utf-8"))
+            process.stdin.write(python_with_plots(code).encode("utf-8"))
             with suppress(BrokenPipeError, ConnectionResetError):
                 await process.stdin.drain()
             process.stdin.close()
@@ -180,7 +181,9 @@ class SandboxRunner:
             )
             # Невалидный UTF-8 заменяется безопасно, но replacement-символ
             # занимает три байта: ограничиваем и окончательный ответ.
-            stdout_text = decode_output(stdout, MAX_OUTPUT_BYTES)
+            text_output, plots, plots_limited, chart_data = extract_plot_output(bytes(stdout))
+            output_limited = output_limited or plots_limited or len(text_output) + len(stderr) > MAX_OUTPUT_BYTES
+            stdout_text = decode_output(bytearray(text_output), MAX_OUTPUT_BYTES)
             remaining = MAX_OUTPUT_BYTES - len(stdout_text.encode("utf-8"))
             stderr_text = decode_output(stderr, remaining)
             return ExecutionResult(
@@ -188,6 +191,8 @@ class SandboxRunner:
                 exit_code=state["ExitCode"], timed_out=timed_out,
                 duration=round(elapsed, 3), output_limited=output_limited,
                 memory_limited=state.get("OOMKilled", False),
+                plots=plots,
+                chart_data=chart_data,
             )
         finally:
             async def cleanup():

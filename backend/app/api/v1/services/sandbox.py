@@ -1,6 +1,7 @@
 """ДОСТУП К ЗАДАНИЮ И ДОВЕРЕННЫЙ ВЫБОР РЕСУРСОВ"""
 
 import json
+from collections import Counter
 
 from fastapi import HTTPException, Request
 from pydantic import ValidationError
@@ -20,10 +21,13 @@ from app.models.enrollments_progress import (
     LessonAttempt,
     PASSED_EXERCISE_CORRECTNESS,
     PASSED_EXERCISES_KEY,
+    EXPERT_REVIEW_EXERCISES_KEY,
 )
 from app.services.sandbox.config import SandboxSettings
 from app.services.sandbox.transport import execute_code
 from app.models.exercises import ExerciseAnswer
+from app.services.sandbox.chart_grading import is_chart_exercise, grade_chart
+from app.services.sandbox.project_grading import grade_project
 
 execution_limiter = FixedWindowLimiter(limit=10, window_seconds=60)
 
@@ -60,17 +64,40 @@ class SandboxService(BaseCoursesService):
     ) -> ExerciseSubmissionResponse:
         execution = await self.execute(request=request, data=data, current=current)
         succeeded = execution.success
-        expected = (await self.db.execute(select(ExerciseAnswer.answer).where(
-            ExerciseAnswer.lesson_id == data.lesson_id,
-            ExerciseAnswer.exercise_id == data.exercise_id,
-        ))).scalar_one_or_none()
-        is_correct = self.grade(execution, expected, data.language)
+        check_mode = "graded"
+        review_available = False
+        feedback = None
+        # The Markdown parser assigns practice_* IDs to id: none fields.
+        # They never load an expert reference or contribute to passed exercises,
+        # including when execution fails (the error is in execution.stderr).
+        if data.exercise_id == "none" or data.exercise_id.startswith("practice_"):
+            is_correct = None
+            check_mode = "practice"
+        else:
+            expected = (await self.db.execute(select(ExerciseAnswer.answer).where(
+                ExerciseAnswer.lesson_id == data.lesson_id,
+                ExerciseAnswer.exercise_id == data.exercise_id,
+            ))).scalar_one_or_none()
+            solution = decode_solution(expected)
+            if is_chart_exercise(data.lesson_id, data.exercise_id):
+                # Also overrides the old self_review records already in dev DBs.
+                grader = grade_project if data.lesson_id == 14 else grade_chart
+                is_correct, feedback = grader(execution, data.exercise_id)
+            elif (solution is not None
+                    and solution.get("language") == data.language
+                    and solution.get("check_mode") == "self_review"):
+                check_mode = "self_review"
+                is_correct = None
+                review_available = succeeded
+            else:
+                is_correct = self.grade(execution, expected, data.language)
         answer = json.dumps({"type": "code", "value": data.code}, ensure_ascii=False)
         attempt = LessonAttempt(
             user_id=current.user.user_id, lesson_id=data.lesson_id, code=data.code,
             answers={
-                "execution": execution.model_dump(),
+                "execution": execution.model_dump(exclude={"plots"}),
                 "is_correct": is_correct,
+                **({EXPERT_REVIEW_EXERCISES_KEY: [data.exercise_id]} if review_available else {}),
                 **({PASSED_EXERCISES_KEY: {data.exercise_id: answer}} if is_correct else {}),
             },
             correctness=PASSED_EXERCISE_CORRECTNESS if is_correct else 0, speed=0,
@@ -80,6 +107,8 @@ class SandboxService(BaseCoursesService):
         return ExerciseSubmissionResponse(
             execution=execution, execution_succeeded=succeeded,
             is_correct=is_correct, attempt_id=attempt.attempt_id,
+            expert_solution_available=review_available or is_correct is True, check_mode=check_mode,
+            feedback=feedback,
         )
 
     @staticmethod
@@ -104,7 +133,13 @@ class SandboxService(BaseCoursesService):
             if not all(isinstance(value, dict) and isinstance(value.get("columns"), list)
                        and isinstance(value.get("rows"), list) for value in (actual, target)):
                 return None
-            return actual["columns"] == target["columns"] and actual["rows"] == target["rows"]
+            if actual["columns"] != target["columns"]:
+                return False
+            if solution.get("ordered") is False:
+                return Counter(json.dumps(row, sort_keys=True) for row in actual["rows"]) == Counter(
+                    json.dumps(row, sort_keys=True) for row in target["rows"]
+                )
+            return actual["rows"] == target["rows"]
         # Разница CRLF/LF и завершающий перевод строки не меняют ответ.
         return (execution.stdout.replace("\r\n", "\n").rstrip("\n")
                 == reference.stdout.replace("\r\n", "\n").rstrip("\n"))

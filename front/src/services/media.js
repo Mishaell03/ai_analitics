@@ -47,6 +47,18 @@ export const LESSON_CONTENT_MAX_SIZE = 512000;
 // префикс ссылки на медиафайл в Markdown
 export const ASSET_PREFIX = "asset:";
 
+/** Собирает все страницы медиа урока в карту для Markdown. */
+export async function loadLessonMediaMap(loadPage) {
+    const first = await loadPage(1);
+    const rest = await Promise.all(Array.from(
+        {length: Math.max(0, (first.total_pages ?? 1) - 1)},
+        (_, index) => loadPage(index + 2)
+    ));
+    return Object.fromEntries([first, ...rest].flatMap(
+        (page) => (page.media ?? []).map((file) => [file.media_key, file])
+    ));
+}
+
 /**
  * Определяет тип файла по расширению и MIME-типу.
  *

@@ -16,8 +16,13 @@ export const API_ROUTES = {
     COURSE_MODULE_LESSONS: (slug, moduleId) => `/courses/${slug}/modules/${moduleId}`,
     COURSE_LESSON: (slug, moduleId, lessonId) => `/courses/${slug}/modules/${moduleId}/lessons/${lessonId}`,
     COURSE_LESSON_CONTENT: (slug, moduleId, lessonId) => `/courses/${slug}/modules/${moduleId}/lessons/${lessonId}/content`,
+    COURSE_LESSON_MEDIA: (slug, moduleId, lessonId) => `/courses/${slug}/modules/${moduleId}/lessons/${lessonId}/media`,
+    COURSE_LESSON_MEDIA_URL: (slug, moduleId, lessonId, mediaKey) =>
+        `/courses/${slug}/modules/${moduleId}/lessons/${lessonId}/media/${mediaKey}/url`,
     COURSE_EXERCISE_CHECK: (slug, moduleId, lessonId, exerciseId) =>
         `/courses/${slug}/modules/${moduleId}/lessons/${lessonId}/exercises/${exerciseId}/check`,
+    COURSE_EXPERT_SOLUTION: (slug, moduleId, lessonId, exerciseId) =>
+        `/courses/${slug}/modules/${moduleId}/lessons/${lessonId}/exercises/${exerciseId}/expert-solution`,
     COURSE_LESSON_COMPLETE: (slug, moduleId, lessonId) =>
         `/courses/${slug}/modules/${moduleId}/lessons/${lessonId}/complete`,
     ENROLL_COURSE_BY_ID: (slug) => `/courses/enroll/${slug}`,
@@ -31,6 +36,8 @@ export const API_ROUTES = {
 // Admin
     ADMIN_DASHBOARD: "/admin/dashboard",
     ADMIN_USERS: "/admin/users",
+    ADMIN_LOGS: "/admin/logs",
+    ADMIN_AI_LOGS: "/admin/logs/ai",
     ADMIN_USER_DETAIL: (id) => `/admin/users/${id}`,
     ADMIN_USER_BLOCK: (id) => `/admin/users/${id}/block`,
 

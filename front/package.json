@@ -9,6 +9,14 @@
     "lint": "oxlint",
     "test": "node --test",
     "test:render": "vite build --ssr tests/render.entry.jsx --outDir tests/.ssr --logLevel warn && node tests/.ssr/render.entry.js",
+    "test:render:single-choice": "vite build --ssr tests/singleChoice.render.jsx --outDir tests/.ssr-single-choice --logLevel warn && node tests/.ssr-single-choice/singleChoice.render.js",
+    "test:render:media": "vite build --ssr tests/lessonMedia.render.jsx --outDir tests/.ssr-media --logLevel warn && node tests/.ssr-media/lessonMedia.render.js",
+    "test:render:browsing": "vite build --ssr tests/lessonBrowsing.render.jsx --outDir tests/.ssr-browsing --logLevel warn && node tests/.ssr-browsing/lessonBrowsing.render.js",
+    "test:render:expert-solution": "vite build --ssr tests/expertSolution.render.jsx --outDir tests/.ssr-expert-solution --logLevel warn && node tests/.ssr-expert-solution/expertSolution.render.js",
+    "test:render:slides": "vite build --ssr tests/slides.render.jsx --outDir tests/.ssr-slides --logLevel warn && node tests/.ssr-slides/slides.render.js",
+    "test:render:home": "vite build --ssr tests/home.render.jsx --outDir tests/.ssr-home --logLevel warn && node tests/.ssr-home/home.render.js",
+    "test:render:scroll": "vite build --ssr tests/routeScroll.render.jsx --outDir tests/.ssr-scroll --logLevel warn && node tests/.ssr-scroll/routeScroll.render.js",
+    "test:render:scroll-lock": "vite build --ssr tests/scrollLock.render.jsx --outDir tests/.ssr-scroll-lock --logLevel warn && node tests/.ssr-scroll-lock/scrollLock.render.js",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -22,6 +30,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",
+    "jsdom": "^27.4.0",
     "oxlint": "^1.79.0",
     "vite": "^8.2.2"
   }

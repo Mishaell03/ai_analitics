@@ -308,7 +308,8 @@ class BaseCoursesService:
 
         С enrolled_only=True возвращает только курсы, на которые записан
         пользователь. Сортировка в этом режиме — по дате записи, как в
-        карточке пользователя админки; иначе остаётся порядок по course_id.
+        карточке пользователя админки внутри приоритета каталога;
+        иначе используется sort_order с course_id для стабильного порядка.
         """
 
         pagination = get_pagination(
@@ -344,12 +345,13 @@ class BaseCoursesService:
             )
 
             order_by = (
+                Course.sort_order,
                 CourseEnrollment.created_at.desc(),
                 Course.course_id.desc(),
             )
 
         else:
-            order_by = (Course.course_id,)
+            order_by = (Course.sort_order, Course.course_id)
 
             if enrollment_filter == "not_enrolled" and user_id is not None:
                 has_enrollment = exists(
@@ -1114,7 +1116,7 @@ class BaseCoursesService:
 
         result = await self.db.execute(
             select(Course, modules_count, lessons_count)
-            .order_by(Course.course_id)
+            .order_by(Course.sort_order, Course.course_id)
             .offset(pagination.offset)
             .limit(pagination.page_size)
         )

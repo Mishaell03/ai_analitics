@@ -2,14 +2,16 @@ import orangeSpiral from "@/assets/artefacts/orange_spiral_3d.png";
 import violetSpiral from "@/assets/artefacts/violet_spiral_3d.png";
 import {useTranslation} from "@/hooks/useTranslation.js";
 import styles from "./home.module.css";
-import {ArrowRight, Award, Briefcase, GraduationCap, Layers, ShoppingBag, Tags, Users,} from "lucide-react";
-import {Link, useNavigate} from "react-router-dom";
+import {ArrowRight, Award, BookOpen, GraduationCap, Layers, Sparkles, Users} from "lucide-react";
+import {Link} from "react-router-dom";
 import duck from "@/assets/home/smart_duck.png";
 import bg from "@/assets/home/bg.webp";
 import {ROUTES} from "@/router/AppRouter.jsx";
 
+const BEGINNER_COURSE_PATH = `${ROUTES.course}/ai-development-beginner`;
+const DEMO_COURSE_PATH = `${ROUTES.course}/platform-demo`;
+
 export function Home() {
-    const navigate = useNavigate();
     const t = useTranslation("home.home");
 
     const stats = [
@@ -32,28 +34,41 @@ export function Home() {
 
     const programs = [
         {
+            id: "welcome",
+            icon: BookOpen,
+            title: t("programs.welcome.title"),
+            description: t("programs.welcome.description"),
+            label: t("programs.welcome.label"),
+            action: t("programs.welcome.action"),
+            link: DEMO_COURSE_PATH,
+            featured: true,
+        },
+        {
+            id: "analytics",
             icon: Layers,
             title: t("programs.analytics.title"),
             description: t("programs.analytics.description"),
-            link: ROUTES.analytics,
+            label: t("programs.analytics.label"),
+            action: t("programs.analytics.action"),
+            link: BEGINNER_COURSE_PATH,
         },
         {
-            icon: Tags,
+            id: "ai",
+            icon: Sparkles,
             title: t("programs.ai.title"),
             description: t("programs.ai.description"),
-            link: ROUTES.ai,
+            label: t("programs.ai.label"),
+            action: t("programs.ai.action"),
+            link: ROUTES.about_us,
         },
         {
-            icon: ShoppingBag,
+            id: "teachers",
+            icon: Users,
             title: t("programs.teachers.title"),
             description: t("programs.teachers.description"),
+            label: t("programs.teachers.label"),
+            action: t("programs.teachers.action"),
             link: ROUTES.teachers,
-        },
-        {
-            icon: Briefcase,
-            title: t("programs.career.title"),
-            description: t("programs.career.description"),
-            link: ROUTES.careers,
         },
     ];
 
@@ -91,7 +106,7 @@ export function Home() {
                     </div>
 
                     <h1>
-                        DUCK DOCS
+                        DataLab
                         <span className={styles.heroSub}>
                             {t("hero.subtitle")}
                         </span>
@@ -102,12 +117,13 @@ export function Home() {
                     </p>
 
                     <div className={styles.heroActions}>
-                        <button className={styles.primaryButton}>
+                        <Link to={DEMO_COURSE_PATH} className={styles.primaryButton}>
                             {t("hero.primaryAction")}
-                        </button>
+                        </Link>
 
                         <Link
-                            to="/curator"
+                            to={ROUTES.teachers}
+                            className={styles.secondaryLink}
                         >
                             {t("hero.secondaryAction")}
                         </Link>
@@ -171,11 +187,12 @@ export function Home() {
                 />
             </section>
 
-            <section className={styles.programs}>
-                <h2>
+            <section className={styles.programs} aria-labelledby="home-programs-title">
+                <h2 id="home-programs-title">
                     {t("programs.title")}{" "}
                     <span>{t("programs.highlight")}</span>
                 </h2>
+                <p className={styles.programsDescription}>{t("programs.description")}</p>
 
                 <div className={styles.programList}>
                     <img
@@ -185,25 +202,31 @@ export function Home() {
                         alt=""
                     />
                     {programs.map(
-                        ({icon: Icon, title, description, link}) => (
-                            <div
+                        ({id, icon: Icon, title, description, label, action, link, featured}) => (
+                            <Link
+                                to={link}
                                 className={styles.programCard}
-                                key={title}
+                                data-featured={featured || undefined}
+                                aria-labelledby={`program-${id}`}
+                                key={id}
                             >
-                                <div className={styles.programIcon}>
-                                    <Icon/>
+                                <div className={styles.programCardHeader}>
+                                    <span className={styles.programIcon}>
+                                        <Icon aria-hidden="true"/>
+                                    </span>
+                                    <span className={styles.programLabel}>{label}</span>
                                 </div>
 
                                 <div className={styles.programBody}>
-                                    <h3>{title}</h3>
+                                    <h3 id={`program-${id}`}>{title}</h3>
                                     <p>{description}</p>
                                 </div>
 
-                                <button className={styles.programButton} onClick={() => navigate(link)}>
-                                    {t("programs.action")}
-                                    <ArrowRight/>
-                                </button>
-                            </div>
+                                <span className={styles.programButton}>
+                                    {action}
+                                    <ArrowRight aria-hidden="true"/>
+                                </span>
+                            </Link>
                         )
                     )}
                 </div>

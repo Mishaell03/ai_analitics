@@ -130,12 +130,14 @@ async def _log_backend_error(
         request: Request,
         status_code: int,
         error_message: str,
+        error_code: str | None = None,
 ) -> None:
     try:
         await backend_error_logs(
             request=request,
             status_code=status_code,
             error_message=error_message,
+            error_code=error_code,
             request_body=getattr(request.state, "raw_body", None),
         )
 
@@ -157,6 +159,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
         request=request,
         status_code=500,
         error_message=error_message,
+        error_code="INTERNAL_SERVER_ERROR",
     )
 
     return JSONResponse(
@@ -177,11 +180,13 @@ def is_logged_status_code(status_code: int) -> bool:
 async def server_error_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     if is_logged_status_code(exc.status_code):
         logging.error(f"logged error: {exc.status_code} {exc.detail}")
+        error_code = exc.detail.get("code") if isinstance(exc.detail, dict) else None
 
         await _log_backend_error(
             request=request,
             status_code=exc.status_code,
             error_message=str(exc.detail),
+            error_code=str(error_code) if error_code else f"HTTP_{exc.status_code}",
         )
 
     return JSONResponse(
@@ -201,6 +206,7 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
         request=request,
         status_code=422,
         error_message=str(errors),
+        error_code="VALIDATION_ERROR",
     )
 
     return await request_validation_exception_handler(request, exc)

@@ -12,6 +12,7 @@ from app.api.v1.routes import lesson_completion as route_module
 from app.api.v1.services.lesson_content import LessonContentService
 from app.api.v1.services.lesson_completion import LessonCompletionService
 from app.core.database import get_db
+from app.core.config import settings
 from app.core.session import get_current_user
 from app.models.enrollments_progress import COMPLETED_CORRECTNESS, LessonAttempt
 from app.models.enrollments_progress import PASSED_EXERCISES_KEY
@@ -57,13 +58,18 @@ def test_all_exercises_passed(required, passed, expected):
 
 
 @pytest.mark.parametrize(
-    ("passed", "should_complete"),
+    ("allow_browsing", "passed", "should_complete"),
     [
-        ({"test-1": "answer"}, False),
-        ({"test-1": "answer", "test-2": "answer"}, True),
+        (True, {}, False),
+        (True, {"test-1": "answer"}, False),
+        (True, {"test-1": "answer", "test-2": "answer"}, True),
+        (False, {}, False),
+        (False, {"test-1": "answer"}, False),
+        (False, {"test-1": "answer", "test-2": "answer"}, True),
     ],
 )
-def test_completion_persists_only_after_every_test(monkeypatch, passed, should_complete):
+def test_browsing_never_bypasses_completion_checks(monkeypatch, allow_browsing, passed, should_complete):
+    monkeypatch.setattr(settings, "lesson_allow_browsing", allow_browsing)
     db = SimpleNamespace(
         execute=AsyncMock(
             return_value=SimpleNamespace(
@@ -116,6 +122,31 @@ def test_completion_persists_only_after_every_test(monkeypatch, passed, should_c
     else:
         db.add.assert_not_called()
         db.commit.assert_not_awaited()
+
+
+@pytest.mark.parametrize("allow_browsing", [True, False])
+def test_reading_lesson_exposes_browsing_flag_without_saving_progress(monkeypatch, allow_browsing):
+    from app.api.v1.services import lesson_content as content_module
+
+    monkeypatch.setattr(settings, "lesson_allow_browsing", allow_browsing)
+    monkeypatch.setattr(content_module.minio_storage, "get_text", AsyncMock(return_value=(
+        ":::test\nid: test-1\nВопрос\n- ( ) Один\n- ( ) Два\n:::\n"
+    )))
+    monkeypatch.setattr(content_module.minio_storage, "get_url", AsyncMock(return_value="https://example.com/lesson.md"))
+    db = SimpleNamespace(
+        execute=AsyncMock(return_value=SimpleNamespace(all=Mock(return_value=[]))),
+        add=Mock(), commit=AsyncMock(),
+    )
+    response = asyncio.run(LessonContentService(db)._read_content(
+        request=object(),
+        lesson=SimpleNamespace(lesson_id=3, module_id=2, title="Урок", description=None, position=1),
+        course_id=1, error={}, user_id=123,
+    ))
+    assert response.allow_lesson_browsing is allow_browsing
+    assert response.completed_exercises == {}
+    assert response.lesson.is_completed is False
+    db.add.assert_not_called()
+    db.commit.assert_not_awaited()
 
 
 def test_completion_route_returns_boolean_json(monkeypatch):

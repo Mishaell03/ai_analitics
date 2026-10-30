@@ -588,20 +588,32 @@ function LessonEditor({courseSlug, moduleId, lesson, onClose, onSaved}) {
                                         {t("codeExerciseHint")}
                                     </p>
                                     {codeExercises.map((block) => (
-                                        <label className={styles.field} key={`${block.start}-${block.exercise_id}`}>
-                                            <span>{t("codeExerciseReference", {language: block.language,
-                                                id: block.exercise_id || t("codeExerciseMissingId")})}</span>
-                                            <textarea className={styles.reference} rows={6} maxLength={8000}
+                                        <div className={styles.field} key={`${block.start}-${block.exercise_id}`}>
+                                            <label htmlFor={`reference-${block.exercise_id}`}>{t("codeExerciseReference", {language: block.language,
+                                                id: block.exercise_id || t("codeExerciseMissingId")})}</label>
+                                            <textarea id={`reference-${block.exercise_id}`} className={styles.reference} rows={6} maxLength={8000}
                                                       spellCheck={false} value={codeSolutions[block.exercise_id]?.code ?? ""}
                                                       onChange={(event) => setCodeSolutions((current) => ({
-                                                          ...current, [block.exercise_id]: {
-                                                              language: block.language, code: event.target.value,
+                                                           ...current, [block.exercise_id]: {
+                                                               ...current[block.exercise_id],
+                                                               language: block.language, code: event.target.value,
                                                           },
-                                                      }))}/>
+                                                       }))}/>
+                                             <label className={styles.checkboxField}>
+                                                <input type="checkbox"
+                                                       checked={codeSolutions[block.exercise_id]?.check_mode === "self_review"}
+                                                       onChange={(event) => setCodeSolutions((current) => ({
+                                                           ...current, [block.exercise_id]: {
+                                                               ...current[block.exercise_id], language: block.language,
+                                                               check_mode: event.target.checked ? "self_review" : "graded",
+                                                           },
+                                                       }))}/>
+                                                <span>{t("codeExerciseSelfReview")}</span>
+                                             </label>
                                             {codeSolutions[block.exercise_id]?.language
                                                 && codeSolutions[block.exercise_id].language !== block.language
                                                 && <small role="alert">{t("codeExerciseLanguageChanged")}</small>}
-                                        </label>
+                                        </div>
                                     ))}
                                     {referenceOpen ? (
                                         <>

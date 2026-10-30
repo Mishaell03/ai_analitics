@@ -1,21 +1,22 @@
-import {useMemo, useState} from "react";
+import {useId, useMemo, useState} from "react";
 import {ListChecks} from "lucide-react";
 import {parseInline} from "@/services/markdown/MarkdownService.js";
-import {ANSWER_TYPE_CHOICE, buildAnswer, parseExercises} from "@/services/exercises.js";
+import {ANSWER_TYPE_CHOICE, ANSWER_TYPE_SINGLE_CHOICE, buildAnswer, parseExercises} from "@/services/exercises.js";
 import MarkdownInline from "@/components/Markdown/MarkdownInline.jsx";
 import styles from "./markdown.module.css";
 
 /**
  * ЗАДАНИЕ УРОКА
  *
- * Задание показано как список вариантов с чекбоксами. В режиме
- * чтения отметка правильного варианта подставляется из базы:
- * в самом Markdown её нет, иначе ответ утечёт в файл урока.
+ * Квадратные скобки показываются чекбоксами, круглые — радиокнопками.
+ * Отметки Markdown не используются для проверки. Ответ приходит
+ * отдельно: в админке из БД, у ученика — после успешной проверки.
  *
  * У задания без вариантов правильный ответ показывается отдельным
  * полем — это ввод кода или текста.
  */
 function MarkdownTestBlock({block, answers = {}, labels = {}, onCheck}) {
+    const groupId = useId();
     const exerciseId = block.data?.exercise_id ?? null;
 
     // варианты и вопрос разбираем из тела блока
@@ -26,7 +27,7 @@ function MarkdownTestBlock({block, answers = {}, labels = {}, onCheck}) {
     }, [block.data?.body]);
 
     const answer = exerciseId ? answers[exerciseId] : null;
-    const correctOptions = answer?.type === ANSWER_TYPE_CHOICE ? (answer.correct ?? []) : [];
+    const correctOptions = [ANSWER_TYPE_CHOICE, ANSWER_TYPE_SINGLE_CHOICE].includes(answer?.type) ? (answer.correct ?? []) : [];
     const [draftOptions, setDraftOptions] = useState([]);
     const [checking, setChecking] = useState(false);
     const [checkError, setCheckError] = useState(false);
@@ -35,7 +36,7 @@ function MarkdownTestBlock({block, answers = {}, labels = {}, onCheck}) {
     const selectedOptions = completed ? correctOptions : draftOptions;
 
     const toggleOption = (optionText) => {
-        setDraftOptions((selected) => selected.includes(optionText)
+        setDraftOptions((selected) => exercise.singleChoice ? [optionText] : selected.includes(optionText)
             ? selected.filter((item) => item !== optionText)
             : [...selected, optionText]);
         setIncorrect(false);
@@ -89,14 +90,15 @@ function MarkdownTestBlock({block, answers = {}, labels = {}, onCheck}) {
                                 key={`${option.text}-${index}`}
                             >
                                 <input
-                                    id={`exercise-${exerciseId}-${index}`}
-                                    type="checkbox"
+                                    id={`${groupId}-${index}`}
+                                    name={groupId}
+                                    type={exercise.singleChoice ? "radio" : "checkbox"}
                                     checked={selectedOptions.includes(option.text)}
                                     onChange={() => toggleOption(option.text)}
                                     disabled={completed || checking}
                                 />
 
-                                <label htmlFor={`exercise-${exerciseId}-${index}`}>
+                                <label htmlFor={`${groupId}-${index}`}>
                                     <MarkdownInline nodes={parseInline(option.text)}/>
                                 </label>
                             </li>

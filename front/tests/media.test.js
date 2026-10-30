@@ -7,6 +7,7 @@ import {
     formatDuration,
     getFileKind,
     getMediaAlt,
+    loadLessonMediaMap,
     parseAssetReference,
     validateMediaFile,
 } from "../src/services/media.js";
@@ -16,6 +17,29 @@ import {markdownService} from "../src/services/markdown/MarkdownService.js";
 function makeFile(name, type, size = 1024) {
     return {name, type, size};
 }
+
+test("медиа урока загружаются со всех страниц с типом и временной ссылкой", async () => {
+    const calls = [];
+    const video = {media_key: "m_bb0da2e8512e410c", kind: "video", url: "https://example.com/video.mp4"};
+    const image = {media_key: "m_0123456789abcdef", kind: "image", url: "https://example.com/image.webp"};
+    const map = await loadLessonMediaMap(async (page) => {
+        calls.push(page);
+        return {total_pages: 2, media: page === 1 ? [image] : [video]};
+    });
+    assert.deepEqual(calls, [1, 2]);
+    assert.deepEqual(map, {[image.media_key]: image, [video.media_key]: video});
+});
+
+test("урок без медиа получает пустую карту", async () => {
+    assert.deepEqual(await loadLessonMediaMap(async () => ({total_pages: 0, media: []})), {});
+});
+
+test("ошибка загрузки страницы медиа не скрывается неполным списком", async () => {
+    await assert.rejects(loadLessonMediaMap(async (page) => {
+        if (page === 2) throw new Error("Media unavailable");
+        return {total_pages: 2, media: []};
+    }), /Media unavailable/);
+});
 
 test("тип файла определяется по расширению и mime-типу", () => {
     assert.equal(getFileKind(makeFile("scheme.png", "image/png")), "image");

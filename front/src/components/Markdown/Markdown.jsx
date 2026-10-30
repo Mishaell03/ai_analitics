@@ -3,6 +3,7 @@ import {markdownService} from "@/services/markdown/MarkdownService.js";
 import MarkdownBlocks from "@/components/Markdown/MarkdownBlocks.jsx";
 import MarkdownTestBlock from "@/components/Markdown/MarkdownTestBlock.jsx";
 import MarkdownCodeExercise from "@/components/Markdown/MarkdownCodeExercise.jsx";
+import MarkdownSlides from "@/components/Markdown/MarkdownSlides.jsx";
 import {registerCustomBlockRenderer} from "@/components/Markdown/customBlockRenderers.js";
 import styles from "./markdown.module.css";
 
@@ -17,7 +18,14 @@ registerCustomBlockRenderer("test", (block, context) => (
 ));
 registerCustomBlockRenderer("code", (block, context) => (
     <MarkdownCodeExercise key={`${block.data?.exercise_id}-${block.data?.language}`}
-                          block={block} onCheck={context.onExerciseCheck}/>
+                          block={block} onCheck={context.onExerciseCheck}
+                          completed={context.answers?.[block.data?.exercise_id]?.type === "code"}
+                          expertSolutionAvailable={context.expertReviewExercises?.includes(block.data?.exercise_id)}
+                          onExpertSolution={context.onExpertSolution}/>
+));
+registerCustomBlockRenderer("slides", (block, context) => (
+    <MarkdownSlides key={block.content} slides={block.data?.slides}
+                    media={context.media} onMediaError={context.onMediaError}/>
 ));
 
 /**
@@ -39,7 +47,7 @@ registerCustomBlockRenderer("code", (block, context) => (
  * answers — правильные ответы на задания по идентификатору задания.
  * labels — подписи интерфейса (например, «Правильный ответ»).
  */
-function Markdown({content, media, answers, labels, onMediaError, onExerciseCheck, className}) {
+function Markdown({content, media, answers, labels, onMediaError, onExerciseCheck, onExpertSolution, expertReviewExercises, className}) {
     const blocks = useMemo(() => markdownService.parse(content), [content]);
 
     if (!blocks.length) {
@@ -55,6 +63,8 @@ function Markdown({content, media, answers, labels, onMediaError, onExerciseChec
                 labels={labels}
                 onMediaError={onMediaError}
                 onExerciseCheck={onExerciseCheck}
+                onExpertSolution={onExpertSolution}
+                expertReviewExercises={expertReviewExercises}
             />
         </div>
     );

@@ -172,7 +172,7 @@ def test_student_contract_has_no_reference_fields():
     ))
     exercises = asyncio.run(service.list_exercises(object(), "course", 1, 1, current))
     assert set(exercises[0].model_dump()) == {
-        "exercise_id", "language", "body", "execution_enabled", "is_completed",
+        "exercise_id", "language", "body", "execution_enabled", "is_completed", "expert_solution_available",
     }
     assert SECRET not in exercises[0].model_dump_json()
 

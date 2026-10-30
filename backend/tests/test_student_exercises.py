@@ -60,6 +60,7 @@ def test_list_only_public_fields_and_own_progress(current, language):
     assert exercises[0].model_dump() == {
         "exercise_id": "py-1", "body": "Print 42.", "language": language,
         "execution_enabled": True, "is_completed": True,
+        "expert_solution_available": True,
     }
     assert service.get_lesson_content.call_args.kwargs["user_id"] == 7
     assert "is_admin" not in service.get_lesson_content.call_args.kwargs

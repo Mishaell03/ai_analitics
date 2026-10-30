@@ -14,6 +14,7 @@ import {Dashboard} from "@/pages/Admin/Dashboard/Dashboard.jsx";
 import {Users} from "@/pages/Admin/Users/Users.jsx";
 import AdminCourses from "@/pages/Admin/Courses/AdminCourses.jsx";
 import AdminLayout from "@/pages/Admin/AdminLayout.jsx";
+import AdminLogs from "@/pages/Admin/Logs/AdminLogs.jsx";
 
 function App() {
 
@@ -35,6 +36,7 @@ function App() {
                 <Route element={<AdminLayout/>}>
                     <Route element={<Dashboard/>} path={ROUTES.admin}/>
                     <Route element={<Users/>} path={ROUTES.admin_users}/>
+                    <Route element={<AdminLogs/>} path={ROUTES.admin_logs}/>
                     <Route element={<AdminCourses/>} path={ROUTES.admin_courses}/>
                 </Route>
             </Route>

@@ -129,11 +129,15 @@
 
 .heroActions {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 22px;
 }
 
 .primaryButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     padding: 14px 28px;
     border: none;
     border-radius: var(--radius-md);
@@ -141,6 +145,7 @@
     color: #fff;
     font-size: 15px;
     font-weight: 700;
+    text-decoration: none;
     cursor: pointer;
     transition: 0.65s;
 }
@@ -148,6 +153,8 @@
 .primaryButton:hover {
     opacity: 0.9;
     background-color: var(--primary);
+    color: #fff;
+    text-decoration: none;
 }
 
 .secondaryLink {
@@ -319,27 +326,71 @@
     font-size: 32px;
     font-weight: 700;
     color: var(--ink);
-    margin: 0 0 30px;
+    margin: 0 0 12px;
 }
 
 .programs h2 span {
     color: var(--primary);
 }
 
+.programsDescription {
+    max-width: 640px;
+    margin: 0 0 28px;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.6;
+}
+
 .programList {
     position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
 }
 
 .programCard {
     display: flex;
-    align-items: center;
-    gap: 20px;
-    padding: 24px;
+    flex-direction: column;
+    gap: 24px;
+    min-width: 0;
+    padding: 28px;
+    border: 1px solid var(--line);
     border-radius: var(--radius-lg);
     background: var(--card);
+    color: var(--ink);
+    text-decoration: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.programCard[data-featured="true"] {
+    border-color: rgb(182 95 253 / 0.3);
+    background: linear-gradient(145deg, rgb(182 95 253 / 0.1), transparent 70%), var(--card);
+}
+
+.programCard:hover {
+    border-color: var(--accent);
+    box-shadow: 0 12px 32px rgb(23 21 31 / 0.07);
+    color: var(--ink);
+    text-decoration: none;
+}
+
+.programCard:focus-visible,
+.primaryButton:focus-visible,
+.secondaryLink:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 4px;
+}
+
+.programCardHeader {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.programLabel {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
 }
 
 .programIcon {
@@ -364,8 +415,8 @@
 }
 
 .programBody h3 {
-    margin: 0 0 6px;
-    font-size: 17px;
+    margin: 0 0 12px;
+    font-size: 21px;
     font-weight: 700;
     color: var(--ink);
 }
@@ -373,24 +424,20 @@
 .programBody p {
     margin: 0;
     font-size: 13.5px;
-    line-height: 1.5;
+    line-height: 1.7;
     color: var(--muted);
 }
 
 .programButton {
-    flex-shrink: 0;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
-    padding: 12px 20px;
-    border: none;
-    border-radius: var(--radius-md);
-    background: var(--accent);
-    color: #fff;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    color: var(--accent);
     font-size: 14px;
     font-weight: 700;
-    cursor: pointer;
-    transition: 0.65s;
 }
 
 .programButton svg {
@@ -398,9 +445,8 @@
     height: 16px;
 }
 
-.programButton:hover {
-    opacity: 0.9;
-    background-color: var(--primary);
+.programCard:hover .programButton {
+    color: var(--primary);
 }
 
 /* ---------- responsive ---------- */
@@ -442,6 +488,10 @@
 
 
 @media (max-width: 770px) {
+    .programList {
+        grid-template-columns: 1fr;
+    }
+
     .hero {
         flex-direction: column;
         align-items: flex-start;
@@ -472,12 +522,7 @@
     }
 
     .programCard {
-        flex-wrap: wrap;
-    }
-
-    .programButton {
-        width: 100%;
-        justify-content: center;
+        padding: 24px;
     }
 
     .artefact {
