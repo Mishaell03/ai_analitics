@@ -48,6 +48,8 @@ services:
     user: "65534:65534"
     read_only: true
     cap_drop: [ALL]
+    ports:
+      - "127.0.0.1:8000:8000"
     security_opt:
       - no-new-privileges:true
     env_file: .env
