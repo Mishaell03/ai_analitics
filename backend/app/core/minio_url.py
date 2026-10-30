@@ -45,7 +45,7 @@ class MinioStorageService:
 
         try:
             return await asyncio.to_thread(
-                settings.minio_client.presigned_get_object,
+                settings.minio_presign_client.presigned_get_object,
                 bucket_name=bucket,
                 object_name=file_path,
                 expires=expires,
@@ -348,7 +348,7 @@ class MinioStorageService:
         )
 
         form_data = await asyncio.to_thread(
-            settings.minio_client.presigned_post_policy,
+            settings.minio_presign_client.presigned_post_policy,
             policy,
         )
 
@@ -365,9 +365,14 @@ class MinioStorageService:
     def get_post_url(bucket: str) -> str:
         """АДРЕС БАКЕТА ДЛЯ ПРЯМОЙ ЗАГРУЗКИ ФАЙЛА (POST)"""
 
-        scheme = "https" if settings.minio_secure else "http"
+        endpoint = settings.minio_public_endpoint or settings.minio_endpoint
+        secure = (
+            settings.minio_public_secure
+            if settings.minio_public_endpoint else settings.minio_secure
+        )
+        scheme = "https" if secure else "http"
 
-        return f"{scheme}://{settings.minio_endpoint}/{bucket}"
+        return f"{scheme}://{endpoint}/{bucket}"
 
     async def delete_file(
         self,

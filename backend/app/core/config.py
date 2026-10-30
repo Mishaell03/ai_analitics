@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parents[1]
 ENV_FILE = BASE_DIR / ".env"
 
-load_dotenv(ENV_FILE, override=True)
+load_dotenv(ENV_FILE, override=False)
 
 class Settings:
     # DATABASE
@@ -36,6 +36,12 @@ class Settings:
     minio_access_key: str = os.getenv("MINIO_ACCESS_KEY")
     minio_secret_key: str = os.getenv("MINIO_SECRET_KEY")
     minio_secure: bool = os.getenv("MINIO_SECURE", "false").lower() == "true"
+    # Адрес S3 API для браузера, без схемы и пути (не порт консоли 9001).
+    minio_public_endpoint: str = os.getenv("MINIO_PUBLIC_ENDPOINT", "").strip()
+    minio_public_secure: bool = (
+        os.getenv("MINIO_PUBLIC_SECURE", str(minio_secure)).lower() == "true"
+    )
+    minio_region: str = os.getenv("MINIO_REGION", "us-east-1")
 
     # переносить ли старые объекты в раскладку course-content при старте
     minio_migrate_on_startup: bool = (
@@ -49,6 +55,23 @@ class Settings:
         secret_key=minio_secret_key,
         secure=minio_secure,
     )
+
+    # Фиксированный регион позволяет подписывать ссылки без сетевого
+    # обращения из контейнера к публичному адресу MinIO.
+    _minio_public_client = (
+        Minio(
+            endpoint=minio_public_endpoint,
+            access_key=minio_access_key,
+            secret_key=minio_secret_key,
+            secure=minio_public_secure,
+            region=minio_region,
+        )
+        if minio_public_endpoint else None
+    )
+
+    @property
+    def minio_presign_client(self) -> Minio:
+        return self._minio_public_client or self.minio_client
 
     image_url_ttl: int = int(os.getenv("IMAGE_URL_TTL", "3600"))
     content_url_ttl: int = int(os.getenv("CONTENT_URL_TTL", "3600"))
